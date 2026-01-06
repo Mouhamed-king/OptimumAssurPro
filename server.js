@@ -104,13 +104,8 @@ app.get('*', (req, res) => {
         }
     }
     
-    // Pour index.html, servir le fichier (la protection sera gérée côté client)
-    if (req.path === '/index.html') {
-        return res.sendFile(path.join(__dirname, 'index.html'));
-    }
-    
-    // Routes HTML spécifiques à servir directement
-    const htmlRoutes = ['/register.html', '/login.html', '/verify-email.html', '/reset-password.html'];
+    // Routes HTML spécifiques à servir directement (double vérification)
+    const htmlRoutes = ['/register.html', '/login.html', '/verify-email.html', '/reset-password.html', '/index.html'];
     if (htmlRoutes.includes(req.path)) {
         const filePath = path.join(__dirname, req.path);
         if (fs.existsSync(filePath)) {

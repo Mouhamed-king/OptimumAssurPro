@@ -149,23 +149,22 @@ async function sendVerificationEmail(email, verificationToken, nom) {
             throw new Error('Configuration SMTP manquante. Veuillez configurer SMTP_USER et SMTP_PASSWORD dans .env');
         }
         
-        // Vérifier la connexion SMTP avant d'envoyer
+        // Vérifier la connexion SMTP avant d'envoyer (optionnel, ne bloque pas l'envoi)
         console.log('🔍 Vérification de la connexion SMTP...');
         try {
             await transporter.verify();
             console.log('✅ Connexion SMTP vérifiée avec succès');
         } catch (verifyError) {
-            console.error('❌ Erreur de vérification SMTP:');
-            console.error('   Code:', verifyError.code);
-            console.error('   Message:', verifyError.message);
-            console.error('   Command:', verifyError.command);
-            if (verifyError.response) {
-                console.error('   Response:', verifyError.response);
-            }
-            throw new Error(`Configuration SMTP invalide: ${verifyError.message}. Vérifiez vos paramètres dans .env`);
+            console.warn('⚠️  Vérification SMTP échouée, mais tentative d\'envoi quand même...');
+            console.warn('   Code:', verifyError.code);
+            console.warn('   Message:', verifyError.message);
+            // Ne pas bloquer l'envoi, certains serveurs SMTP ne supportent pas verify() mais peuvent envoyer
         }
         
         console.log('📤 Envoi de l\'email de vérification...');
+        console.log('   À:', email);
+        console.log('   Depuis:', process.env.SMTP_USER);
+        console.log('   URL:', verificationUrl);
         const info = await transporter.sendMail(mailOptions);
         console.log('✅ Email de vérification envoyé à:', email);
         console.log('   Message ID:', info.messageId);
@@ -322,27 +321,39 @@ async function sendPasswordResetEmail(email, resetToken, nom) {
             throw new Error('Configuration SMTP manquante. Veuillez configurer SMTP_USER et SMTP_PASSWORD dans .env');
         }
         
-        // Vérifier la connexion SMTP avant d'envoyer
+        // Vérifier la connexion SMTP avant d'envoyer (optionnel, peut échouer sur certains serveurs)
         console.log('🔍 Vérification de la connexion SMTP...');
         try {
             await transporter.verify();
             console.log('✅ Connexion SMTP vérifiée avec succès');
         } catch (verifyError) {
-            console.error('❌ Erreur de vérification SMTP:');
-            console.error('   Code:', verifyError.code);
-            console.error('   Message:', verifyError.message);
-            console.error('   Command:', verifyError.command);
-            if (verifyError.response) {
-                console.error('   Response:', verifyError.response);
-            }
-            throw new Error(`Configuration SMTP invalide: ${verifyError.message}. Vérifiez vos paramètres dans .env`);
+            console.warn('⚠️  Vérification SMTP échouée, mais tentative d\'envoi quand même...');
+            console.warn('   Code:', verifyError.code);
+            console.warn('   Message:', verifyError.message);
+            // Ne pas bloquer l'envoi, certains serveurs SMTP ne supportent pas verify()
         }
         
         console.log('📤 Envoi de l\'email de réinitialisation...');
-        const info = await transporter.sendMail(mailOptions);
-        console.log('✅ Email de réinitialisation envoyé à:', email);
-        console.log('   Message ID:', info.messageId);
-        console.log('   Response:', info.response);
+        console.log('   À:', email);
+        console.log('   Depuis:', process.env.SMTP_USER);
+        try {
+            const info = await transporter.sendMail(mailOptions);
+            console.log('✅ Email de réinitialisation envoyé à:', email);
+            console.log('   Message ID:', info.messageId);
+            console.log('   Response:', info.response);
+        } catch (sendError) {
+            console.error('❌ Erreur lors de l\'envoi de l\'email:');
+            console.error('   Code:', sendError.code);
+            console.error('   Message:', sendError.message);
+            console.error('   Command:', sendError.command);
+            if (sendError.response) {
+                console.error('   Response:', sendError.response);
+            }
+            if (sendError.responseCode) {
+                console.error('   Response Code:', sendError.responseCode);
+            }
+            throw new Error(`Impossible d'envoyer l'email: ${sendError.message}. Vérifiez votre configuration SMTP sur Render.`);
+        }
         return { success: true, messageId: info.messageId };
     } catch (error) {
         console.error('❌ Erreur lors de l\'envoi de l\'email de réinitialisation:');

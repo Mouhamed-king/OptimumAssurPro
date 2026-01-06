@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: optimum-assur-pro
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      # Les autres variables d'environnement doivent être ajoutées dans le dashboard Render
+

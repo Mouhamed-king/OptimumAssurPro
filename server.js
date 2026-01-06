@@ -27,7 +27,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Servir les fichiers statiques (frontend)
-// Important: doit être avant les routes pour que Vercel serve correctement les fichiers CSS/JS
+// Sur Vercel, les fichiers statiques sont servis automatiquement avant d'atteindre le serveur
+// Mais on garde express.static pour le développement local
 app.use(express.static(path.join(__dirname, '.'), {
     maxAge: '1y',
     etag: true,

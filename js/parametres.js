@@ -35,7 +35,9 @@ async function loadParametres() {
         
     } catch (error) {
         console.error('Erreur lors du chargement des paramètres:', error);
-        showToast('Erreur lors du chargement des paramètres', 'error');
+        if (typeof window.showToast === 'function') {
+            window.showToast('Erreur lors du chargement des paramètres: ' + (error.message || 'Erreur inconnue'), 'error');
+        }
     }
 }
 
@@ -50,14 +52,18 @@ async function saveEntrepriseInfo(event) {
     
     // Validation
     if (!nom || !email) {
-        showToast('Le nom et l\'email sont obligatoires', 'error');
+        if (typeof window.showToast === 'function') {
+            window.showToast('Le nom et l\'email sont obligatoires', 'error');
+        }
         return;
     }
     
     // Validation email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-        showToast('Format d\'email invalide', 'error');
+        if (typeof window.showToast === 'function') {
+            window.showToast('Format d\'email invalide', 'error');
+        }
         return;
     }
     
@@ -65,7 +71,9 @@ async function saveEntrepriseInfo(event) {
         // Appeler l'API pour mettre à jour l'entreprise
         const response = await window.api.auth.updateProfile({ nom, email, telephone, adresse });
         
-        showToast('Informations mises à jour avec succès', 'success');
+        if (typeof window.showToast === 'function') {
+            window.showToast('Informations mises à jour avec succès', 'success');
+        }
         
         // Mettre à jour le nom dans le header
         const userName = document.querySelector('.user-name');
@@ -75,7 +83,9 @@ async function saveEntrepriseInfo(event) {
         
     } catch (error) {
         console.error('Erreur lors de la sauvegarde:', error);
-        showToast('Erreur: ' + (error.message || 'Une erreur est survenue'), 'error');
+        if (typeof window.showToast === 'function') {
+            window.showToast('Erreur: ' + (error.message || 'Une erreur est survenue'), 'error');
+        }
     }
 }
 
@@ -115,24 +125,32 @@ async function changePassword(event) {
     
     // Validation
     if (!currentPassword || !newPassword || !confirmPassword) {
-        showToast('Tous les champs sont obligatoires', 'error');
+        if (typeof window.showToast === 'function') {
+            window.showToast('Tous les champs sont obligatoires', 'error');
+        }
         return;
     }
     
     // Validation du nouveau mot de passe
     const passwordValidation = validatePassword(newPassword);
     if (!passwordValidation.valid) {
-        showToast(passwordValidation.error, 'error');
+        if (typeof window.showToast === 'function') {
+            window.showToast(passwordValidation.error, 'error');
+        }
         return;
     }
     
     if (newPassword !== confirmPassword) {
-        showToast('Les mots de passe ne correspondent pas', 'error');
+        if (typeof window.showToast === 'function') {
+            window.showToast('Les mots de passe ne correspondent pas', 'error');
+        }
         return;
     }
     
     if (currentPassword === newPassword) {
-        showToast('Le nouveau mot de passe doit être différent de l\'ancien', 'error');
+        if (typeof window.showToast === 'function') {
+            window.showToast('Le nouveau mot de passe doit être différent de l\'ancien', 'error');
+        }
         return;
     }
     
@@ -140,12 +158,16 @@ async function changePassword(event) {
         // Appeler l'API pour changer le mot de passe
         await window.api.auth.changePassword({ currentPassword, newPassword });
         
-        showToast('Mot de passe changé avec succès', 'success');
+        if (typeof window.showToast === 'function') {
+            window.showToast('Mot de passe changé avec succès', 'success');
+        }
         resetPasswordForm();
         
     } catch (error) {
         console.error('Erreur lors du changement de mot de passe:', error);
-        showToast('Erreur: ' + (error.message || 'Une erreur est survenue'), 'error');
+        if (typeof window.showToast === 'function') {
+            window.showToast('Erreur: ' + (error.message || 'Une erreur est survenue'), 'error');
+        }
     }
 }
 

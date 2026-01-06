@@ -285,34 +285,12 @@ function formatTimeAgo(dateString) {
     }
 }
 
-// Fonction pour afficher les notifications toast
-function showToast(message, type = 'info') {
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.textContent = message;
-    
-    // Styles pour le toast
-    toast.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: ${type === 'success' ? '#10B981' : type === 'error' ? '#EF4444' : '#2563EB'};
-        color: white;
-        padding: 1rem 1.5rem;
-        border-radius: 8px;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        z-index: 1000;
-        animation: slideIn 0.3s ease-out;
-    `;
-    
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.style.animation = 'slideOut 0.3s ease-out';
-        setTimeout(() => {
-            document.body.removeChild(toast);
-        }, 300);
-    }, 3000);
+// showToast est maintenant dans utils.js et chargé avant app.js
+// Si elle n'existe pas encore, créer une version de secours
+if (typeof window.showToast !== 'function') {
+    window.showToast = function(message, type = 'info') {
+        console.log(`[${type.toUpperCase()}] ${message}`);
+    };
 }
 
 // Ajouter les animations CSS pour les toasts

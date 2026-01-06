@@ -279,6 +279,9 @@ async function loadBordereau() {
         updateBordereauTotals();
     } catch (error) {
         console.error('Erreur lors du chargement du bordereau:', error);
+        if (typeof window.showToast === 'function') {
+            window.showToast('Erreur lors du chargement du bordereau: ' + (error.message || 'Erreur inconnue'), 'error');
+        }
     }
 }
 

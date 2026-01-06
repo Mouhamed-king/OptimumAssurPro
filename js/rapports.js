@@ -86,7 +86,9 @@ async function loadRapports() {
     } catch (error) {
         console.error('Erreur lors du chargement des rapports:', error);
         console.error('Détails de l\'erreur:', error.stack);
-        showToast('Erreur lors du chargement des rapports: ' + (error.message || 'Erreur inconnue'), 'error');
+        if (typeof window.showToast === 'function') {
+            window.showToast('Erreur lors du chargement des rapports: ' + (error.message || 'Erreur inconnue'), 'error');
+        }
     }
 }
 

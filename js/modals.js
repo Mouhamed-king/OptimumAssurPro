@@ -100,7 +100,7 @@ function openEditClientModal(clientId) {
             document.getElementById('clientModal').classList.add('show');
         })
         .catch(error => {
-            showToast('Erreur lors du chargement du client: ' + error.message, 'error');
+            (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur lors du chargement du client: ' + error.message, 'error');
         });
 }
 
@@ -142,18 +142,18 @@ async function saveClient(event) {
     
     // Validation
     if (!nom || !telephone || !numeroPolice || !immatriculation || !dateEffet || !dateEcheance || !primeNette || primeNette <= 0) {
-        showToast('Veuillez remplir tous les champs obligatoires', 'error');
+        (typeof window.showToast === 'function' ? window.showToast : console.log)('Veuillez remplir tous les champs obligatoires', 'error');
         return;
     }
     
     // Validation des montants
     if (montantPaye < 0) {
-        showToast('Le montant payé ne peut pas être négatif', 'error');
+        (typeof window.showToast === 'function' ? window.showToast : console.log)('Le montant payé ne peut pas être négatif', 'error');
         return;
     }
     
     if (montantRestant < 0) {
-        showToast('Le montant restant ne peut pas être négatif', 'error');
+        (typeof window.showToast === 'function' ? window.showToast : console.log)('Le montant restant ne peut pas être négatif', 'error');
         return;
     }
     
@@ -191,12 +191,12 @@ async function saveClient(event) {
             // Modifier (sans créer de nouveau contrat)
             const result = await window.api.clients.update(currentEditingClientId, formData);
             console.log('Client modifié:', result);
-            showToast('Client modifié avec succès', 'success');
+            (typeof window.showToast === 'function' ? window.showToast : console.log)('Client modifié avec succès', 'success');
         } else {
             // Créer client avec véhicule et contrat
             const result = await window.api.clients.create(formData);
             console.log('Client créé:', result);
-            showToast('Client et contrat créés avec succès', 'success');
+            (typeof window.showToast === 'function' ? window.showToast : console.log)('Client et contrat créés avec succès', 'success');
             
             // Recharger le bordereau
             if (typeof loadBordereau === 'function') {
@@ -209,7 +209,7 @@ async function saveClient(event) {
         loadDashboard(); // Recharger le dashboard pour mettre à jour les stats
     } catch (error) {
         console.error('Erreur lors de la sauvegarde du client:', error);
-        showToast('Erreur: ' + (error.message || 'Une erreur est survenue'), 'error');
+        (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur: ' + (error.message || 'Une erreur est survenue'), 'error');
     }
 }
 
@@ -280,7 +280,7 @@ async function viewClient(id) {
         
         document.getElementById('viewClientModal').classList.add('show');
     } catch (error) {
-        showToast('Erreur lors du chargement: ' + error.message, 'error');
+        (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur lors du chargement: ' + error.message, 'error');
     }
 }
 
@@ -300,7 +300,7 @@ async function updatePayment(contratId, montantTotal, montantPayeActuel, montant
     const montantPaye = parseFloat(nouveauMontantPaye);
     
     if (isNaN(montantPaye) || montantPaye < 0) {
-        showToast('Le montant payé ne peut pas être négatif', 'error');
+        (typeof window.showToast === 'function' ? window.showToast : console.log)('Le montant payé ne peut pas être négatif', 'error');
         return;
     }
     
@@ -313,7 +313,7 @@ async function updatePayment(contratId, montantTotal, montantPayeActuel, montant
     const montantRestant = parseFloat(nouveauMontantRestant);
     
     if (isNaN(montantRestant) || montantRestant < 0) {
-        showToast('Le montant restant ne peut pas être négatif', 'error');
+        (typeof window.showToast === 'function' ? window.showToast : console.log)('Le montant restant ne peut pas être négatif', 'error');
         return;
     }
     
@@ -333,7 +333,7 @@ async function updatePayment(contratId, montantTotal, montantPayeActuel, montant
         const data = await response.json();
         
         if (response.ok) {
-            showToast('Paiement mis à jour avec succès', 'success');
+            (typeof window.showToast === 'function' ? window.showToast : console.log)('Paiement mis à jour avec succès', 'success');
             // Recharger les données du client
             const clientId = document.getElementById('viewClientContent').getAttribute('data-client-id');
             if (clientId) {
@@ -346,11 +346,11 @@ async function updatePayment(contratId, montantTotal, montantPayeActuel, montant
                 loadRapports();
             }
         } else {
-            showToast('Erreur: ' + (data.error || 'Une erreur est survenue'), 'error');
+            (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur: ' + (data.error || 'Une erreur est survenue'), 'error');
         }
     } catch (error) {
         console.error('Erreur lors de la mise à jour du paiement:', error);
-        showToast('Erreur lors de la mise à jour du paiement', 'error');
+        (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur lors de la mise à jour du paiement', 'error');
     }
 }
 
@@ -380,7 +380,7 @@ async function openAddContractModal() {
         document.getElementById('contractDateDebut').valueAsDate = new Date();
         document.getElementById('contractModal').classList.add('show');
     } catch (error) {
-        showToast('Erreur lors du chargement des clients: ' + error.message, 'error');
+        (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur lors du chargement des clients: ' + error.message, 'error');
     }
 }
 
@@ -409,7 +409,7 @@ async function loadClientVehicules(clientId) {
             vehiculeSelect.innerHTML = '<option value="">Ce client n\'a pas de véhicule</option>';
         }
     } catch (error) {
-        showToast('Erreur lors du chargement des véhicules: ' + error.message, 'error');
+        (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur lors du chargement des véhicules: ' + error.message, 'error');
     }
 }
 
@@ -434,18 +434,18 @@ async function saveContract(event) {
         if (currentEditingContractId) {
             // Modifier
             await window.api.contracts.update(currentEditingContractId, formData);
-            showToast('Contrat modifié avec succès', 'success');
+            (typeof window.showToast === 'function' ? window.showToast : console.log)('Contrat modifié avec succès', 'success');
         } else {
             // Créer
             await window.api.contracts.create(formData);
-            showToast('Contrat créé avec succès', 'success');
+            (typeof window.showToast === 'function' ? window.showToast : console.log)('Contrat créé avec succès', 'success');
         }
         
         closeContractModal();
         loadContrats();
         loadDashboard();
     } catch (error) {
-        showToast('Erreur: ' + error.message, 'error');
+        (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur: ' + error.message, 'error');
     }
 }
 
@@ -484,7 +484,7 @@ async function viewContract(id) {
         
         document.getElementById('viewContractModal').classList.add('show');
     } catch (error) {
-        showToast('Erreur lors du chargement: ' + error.message, 'error');
+        (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur lors du chargement: ' + error.message, 'error');
     }
 }
 

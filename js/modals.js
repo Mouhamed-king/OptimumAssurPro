@@ -53,6 +53,16 @@ function openEditClientModal(clientId) {
     document.getElementById('clientModalTitle').textContent = 'Modifier le client';
     
     // Charger les données du client avec véhicules et contrats
+    // Vérifier que l'API est chargée
+    try {
+        if (!window.api || !window.api.clients) {
+            throw new Error('API non chargée');
+        }
+    } catch (error) {
+        (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur: API non chargée', 'error');
+        return;
+    }
+    
     window.api.clients.getById(clientId)
         .then(data => {
             const client = data.client;
@@ -185,6 +195,11 @@ async function saveClient(event) {
     };
     
     try {
+        // Vérifier que l'API est chargée
+        if (!window.api || !window.api.clients) {
+            throw new Error('API non chargée');
+        }
+        
         console.log('Données du formulaire:', formData);
         
         if (currentEditingClientId) {
@@ -215,6 +230,11 @@ async function saveClient(event) {
 
 async function viewClient(id) {
     try {
+        // Vérifier que l'API est chargée
+        if (!window.api || !window.api.clients) {
+            throw new Error('API non chargée');
+        }
+        
         const data = await window.api.clients.getById(id);
         const client = data.client;
         
@@ -366,6 +386,11 @@ async function openAddContractModal() {
     
     // Charger la liste des clients
     try {
+        // Vérifier que l'API est chargée
+        if (!window.api || !window.api.clients) {
+            throw new Error('API non chargée');
+        }
+        
         const data = await window.api.clients.getAll();
         const select = document.getElementById('contractClient');
         select.innerHTML = '<option value="">Sélectionner un client</option>';
@@ -393,6 +418,11 @@ async function loadClientVehicules(clientId) {
     }
     
     try {
+        // Vérifier que l'API est chargée
+        if (!window.api || !window.api.clients) {
+            throw new Error('API non chargée');
+        }
+        
         const data = await window.api.clients.getById(clientId);
         const client = data.client;
         
@@ -451,6 +481,11 @@ async function saveContract(event) {
 
 async function viewContract(id) {
     try {
+        // Vérifier que l'API est chargée
+        if (!window.api || !window.api.contracts) {
+            throw new Error('API non chargée');
+        }
+        
         const data = await window.api.contracts.getById(id);
         const contrat = data.contrat;
         

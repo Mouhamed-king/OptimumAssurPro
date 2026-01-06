@@ -9,6 +9,11 @@ let beneficeChart = null;
 // Charger les rapports
 async function loadRapports() {
     try {
+        // Vérifier que l'API est chargée
+        if (!window.api || !window.api.stats || !window.api.contracts) {
+            throw new Error('API non chargée');
+        }
+        
         const periode = document.getElementById('rapportPeriode')?.value || 'annee';
         
         // Charger les statistiques

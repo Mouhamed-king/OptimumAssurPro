@@ -207,6 +207,11 @@ document.addEventListener('DOMContentLoaded', function() {
             submitButton.disabled = true;
             
             try {
+                // Vérifier que l'API est chargée
+                if (!window.api || !window.api.auth) {
+                    throw new Error('API non chargée. Veuillez recharger la page.');
+                }
+                
                 // Appel à l'API d'inscription
                 const data = await window.api.auth.register({
                     nom,

@@ -326,6 +326,9 @@ document.head.appendChild(style);
 
 async function loadEntrepriseInfo() {
     try {
+        if (!window.api || !window.api.auth) {
+            throw new Error('API non chargée');
+        }
         const data = await window.api.auth.getMe();
         const entreprise = data.entreprise;
         
@@ -364,6 +367,11 @@ async function loadDashboard() {
             return;
         }
         
+        // Vérifier que l'API est chargée
+        if (!window.api || !window.api.stats) {
+            throw new Error('API non chargée');
+        }
+        
         // Charger les statistiques depuis Supabase
         const stats = await window.api.stats.getDashboard();
         console.log('Statistiques reçues:', stats);
@@ -391,7 +399,10 @@ async function loadDashboard() {
         
         // Charger les notifications (gérer les erreurs silencieusement)
         try {
-            const notificationsData = await window.api.notifications.getAll('false');
+            if (!window.api || !window.api.notifications) {
+                console.warn('API notifications non chargée');
+            } else {
+                const notificationsData = await window.api.notifications.getAll('false');
             const notifications = notificationsData.notifications || [];
             
             // Mettre à jour le badge de notifications
@@ -433,6 +444,10 @@ async function loadDashboard() {
         }
         
         // Charger les contrats à renouveler
+        if (!window.api || !window.api.contracts) {
+            throw new Error('API non chargée');
+        }
+        
         const contractsData = await window.api.contracts.getAll('actif');
         const contrats = contractsData.contrats || [];
         const contratsARenouveler = contrats.filter(c => c.alerte_renouvellement);
@@ -462,7 +477,7 @@ async function loadDashboard() {
         
         // Mettre à jour l'activité récente (derniers clients et contrats créés)
         const activityContainer = document.getElementById('recentActivity');
-        if (activityContainer) {
+        if (activityContainer && window.api && window.api.clients) {
             // Charger les derniers clients créés
             const clientsData = await window.api.clients.getAll();
             const recentClients = (clientsData.clients || []).slice(0, 3);
@@ -570,6 +585,11 @@ function renderClientsTable(clients) {
 async function deleteClient(clientId) {
     if (confirm('Êtes-vous sûr de vouloir supprimer ce client ? Cette action supprimera aussi tous ses contrats.')) {
         try {
+            // Vérifier que l'API est chargée
+            if (!window.api || !window.api.clients) {
+                throw new Error('API non chargée');
+            }
+            
             await window.api.clients.delete(clientId);
             showToast('Client supprimé avec succès', 'success');
             loadClients();
@@ -599,6 +619,11 @@ function editClient(id) {
 
 async function loadContrats() {
     try {
+        // Vérifier que l'API est chargée
+        if (!window.api || !window.api.contracts) {
+            throw new Error('API non chargée');
+        }
+        
         const data = await window.api.contracts.getAll();
         const contrats = data.contrats || [];
         
@@ -666,6 +691,11 @@ function renderContractsCards(contrats) {
 async function renewContract(contractId) {
     if (confirm('Voulez-vous renouveler ce contrat ?')) {
         try {
+            // Vérifier que l'API est chargée
+            if (!window.api || !window.api.contracts) {
+                throw new Error('API non chargée');
+            }
+            
             await window.api.contracts.renew(contractId);
             showToast('Contrat renouvelé avec succès', 'success');
             loadContrats();
@@ -714,6 +744,9 @@ function setupSearch() {
                 // Si on est sur la page contrats
                 else if (document.getElementById('contrats-page').classList.contains('active')) {
                     try {
+                        if (!window.api || !window.api.contracts) {
+                            throw new Error('API non chargée');
+                        }
                         const data = await window.api.contracts.getAll('', searchTerm);
                         renderContractsCards(data.contrats || []);
                     } catch (error) {

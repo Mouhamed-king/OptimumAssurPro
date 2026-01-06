@@ -5,6 +5,11 @@
 // Charger les paramètres
 async function loadParametres() {
     try {
+        // Vérifier que l'API est chargée
+        if (!window.api || !window.api.auth) {
+            throw new Error('API non chargée');
+        }
+        
         // Charger les informations de l'entreprise
         const data = await window.api.auth.getMe();
         const entreprise = data.entreprise;
@@ -85,6 +90,11 @@ async function saveEntrepriseInfo(event) {
     }
     
     try {
+        // Vérifier que l'API est chargée
+        if (!window.api || !window.api.auth) {
+            throw new Error('API non chargée');
+        }
+        
         // Appeler l'API pour mettre à jour l'entreprise
         const response = await window.api.auth.updateProfile({ nom, email, telephone, adresse });
         
@@ -183,6 +193,11 @@ async function changePassword(event) {
     }
     
     try {
+        // Vérifier que l'API est chargée
+        if (!window.api || !window.api.auth) {
+            throw new Error('API non chargée');
+        }
+        
         // Appeler l'API pour changer le mot de passe
         await window.api.auth.changePassword({ currentPassword, newPassword });
         

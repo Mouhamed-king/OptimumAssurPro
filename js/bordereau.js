@@ -217,6 +217,11 @@ function updateBordereauTotals() {
 // Charger tous les contrats dans le bordereau
 async function loadBordereau() {
     try {
+        // Vérifier que l'API est chargée
+        if (!window.api || !window.api.contracts) {
+            throw new Error('API non chargée');
+        }
+        
         const data = await window.api.contracts.getAll();
         const contrats = data.contrats || [];
         

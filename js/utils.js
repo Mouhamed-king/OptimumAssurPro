@@ -42,6 +42,19 @@ function showToast(message, type = 'info') {
     }, 3000);
 }
 
+// Fonction pour vérifier que l'API est chargée
+function checkAPI() {
+    if (!window.api) {
+        const error = new Error('API non chargée. Veuillez recharger la page.');
+        console.error(error);
+        if (typeof window.showToast === 'function') {
+            window.showToast('Erreur: API non chargée. Veuillez recharger la page.', 'error');
+        }
+        throw error;
+    }
+    return true;
+}
+
 // Exposer globalement
 window.showToast = showToast;
-
+window.checkAPI = checkAPI;

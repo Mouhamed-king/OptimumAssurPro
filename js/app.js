@@ -712,12 +712,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Fonction de déconnexion
 function logout() {
-    if (confirm('Voulez-vous vraiment vous déconnecter ?')) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('entreprise');
-        sessionStorage.removeItem('token');
-        sessionStorage.removeItem('entreprise');
-        window.location.href = 'login.html';
-    }
+    // Nettoyer tous les tokens et données
+    localStorage.removeItem('token');
+    localStorage.removeItem('entreprise');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('entreprise');
+    sessionStorage.removeItem('redirectAfterLogin');
+    
+    // Rediriger vers login.html
+    window.location.href = 'login.html';
 }
+
+// Exposer logout globalement
+window.logout = logout;
 

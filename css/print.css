@@ -1,0 +1,105 @@
+/* ============================================
+   STYLES D'IMPRESSION POUR LE BORDEREAU
+   ============================================ */
+
+@media print {
+    /* Masquer tous les éléments sauf le bordereau */
+    body * {
+        visibility: hidden;
+    }
+    
+    /* Afficher uniquement le bordereau */
+    #bordereauCard,
+    #bordereauCard * {
+        visibility: visible;
+    }
+    
+    /* Positionner le bordereau en haut de la page */
+    #bordereauCard {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        page-break-inside: avoid;
+    }
+    
+    /* Optimiser le conteneur du bordereau */
+    .bordereau-container {
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+    }
+    
+    .bordereau-body {
+        padding: 0.5rem !important;
+        margin: 0 !important;
+    }
+    
+    /* Optimiser le tableau pour utiliser toute la largeur */
+    #bordereauTable {
+        width: 100% !important;
+        font-size: 0.7rem !important;
+        border-collapse: collapse !important;
+        margin: 0 !important;
+    }
+    
+    #bordereauTable th,
+    #bordereauTable td {
+        padding: 0.4rem 0.3rem !important;
+        border: 1px solid #000 !important;
+        font-size: 0.7rem !important;
+    }
+    
+    #bordereauTable thead th {
+        background-color: #1E3A8A !important;
+        color: white !important;
+        font-weight: 600 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    
+    /* Masquer les éléments non nécessaires */
+    .page-header,
+    .btn-primary,
+    .btn-secondary,
+    .badge,
+    .card-header {
+        display: none !important;
+    }
+    
+    /* Optimiser les marges de la page - utiliser toute la largeur */
+    @page {
+        margin: 0.3cm;
+        size: A4 landscape;
+    }
+    
+    /* Masquer le header, sidebar et footer */
+    .header,
+    .sidebar,
+    .footer {
+        display: none !important;
+    }
+    
+    /* Optimiser le main-content */
+    .main-content {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    
+    /* En-tête du bordereau */
+    #bordereauCard h2 {
+        margin-bottom: 0.5rem !important;
+        font-size: 1.2rem !important;
+    }
+    
+    #bordereauCard > div > div:first-child {
+        padding: 0.5rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+}

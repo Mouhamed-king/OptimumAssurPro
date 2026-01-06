@@ -1,0 +1,54 @@
+# Dépendances
+node_modules/
+vendor/
+package-lock.json
+
+# Fichiers de configuration sensibles
+config.php
+config.json
+.env
+.env.local
+.env.production
+.env.development
+
+# Fichiers de log
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Fichiers temporaires
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build
+dist/
+build/
+
+# Base de données locale
+*.sqlite
+*.db
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Fichiers de sauvegarde
+*.bak
+*.backup
+*~
+
+# Vercel
+.vercel
+

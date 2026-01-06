@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OptimumAssurPro - Gestion Clients Assurance</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/print.css" media="print">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Roboto:wght@400;500&family=Inter:wght@500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <div class="logo">
+                <i class="fas fa-shield-alt"></i>
+                <span>OptimumAssurPro</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="notifications">
+                <i class="fas fa-bell"></i>
+                <span class="badge" style="display: none;">0</span>
+            </div>
+            <div class="user-menu" onclick="logout()" style="cursor: pointer;">
+                <div class="user-avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <span class="user-name">Entreprise</span>
+                <i class="fas fa-sign-out-alt"></i>
+            </div>
+        </div>
+    </header>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <nav class="sidebar-nav">
+            <a href="index.html" class="nav-item active" data-page="dashboard">
+                <i class="fas fa-home"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="#" class="nav-item" data-page="clients">
+                <i class="fas fa-users"></i>
+                <span>Clients</span>
+            </a>
+            <a href="#" class="nav-item" data-page="bordereaux">
+                <i class="fas fa-file-invoice"></i>
+                <span>Bordereaux</span>
+            </a>
+            <a href="#" class="nav-item" data-page="rapports">
+                <i class="fas fa-chart-bar"></i>
+                <span>Rapports</span>
+            </a>
+            <a href="#" class="nav-item" data-page="parametres">
+                <i class="fas fa-cog"></i>
+                <span>Paramètres</span>
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Dashboard Page -->
+        <div id="dashboard-page" class="page active">
+            <div class="page-header">
+                <h1>Dashboard</h1>
+                <p class="page-subtitle">Vue d'ensemble de votre activité</p>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon blue">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>0</h3>
+                        <p>Clients actifs</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon green">
+                        <i class="fas fa-file-contract"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>0</h3>
+                        <p>Contrats actifs</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon orange">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>0</h3>
+                        <p>Renouvellements à venir</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon purple">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>0</h3>
+                        <p>Expirés ce mois</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alerts Section -->
+            <div class="alert-section">
+                <div class="section-header">
+                    <h2>Alertes et notifications</h2>
+                    <button class="btn-secondary">Voir tout</button>
+                </div>
+                <div class="alert-card" id="alertCard">
+                    <!-- Les alertes seront chargées dynamiquement depuis la base de données -->
+                    <div class="alert-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="alert-content">
+                        <h4>Tout est à jour</h4>
+                        <p>Aucun renouvellement urgent à prévoir</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="content-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Activité récente</h2>
+                    </div>
+                    <div class="card-body" id="recentActivity">
+                        <!-- L'activité récente sera chargée dynamiquement depuis la base de données -->
+                        <p style="text-align: center; padding: 2rem; color: #6B7280;">Aucune activité récente</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Contrats à renouveler</h2>
+                    </div>
+                    <div class="card-body" id="contractsToRenew">
+                        <!-- Les contrats à renouveler seront chargés dynamiquement depuis la base de données -->
+                        <p style="text-align: center; padding: 2rem; color: #6B7280;">Aucun contrat à renouveler</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Clients Page -->
+        <div id="clients-page" class="page">
+            <div class="page-header">
+                <h1>Gestion des clients</h1>
+                <button class="btn-primary" onclick="openAddClientModal()">
+                    <i class="fas fa-plus"></i>
+                    Ajouter un client
+                </button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="Rechercher un client...">
+                    </div>
+                    <div class="filter-buttons">
+                        <button class="btn-filter active">Tous</button>
+                        <button class="btn-filter">Actifs</button>
+                        <button class="btn-filter">Inactifs</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Nom</th>
+                                <th>Téléphone</th>
+                                <th>Immatriculation</th>
+                                <th>Date d'échéance</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Les clients seront chargés dynamiquement depuis la base de données -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bordereaux Page -->
+        <div id="bordereaux-page" class="page">
+            <div class="page-header">
+                <h1>Bordereau d'assurance</h1>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <span class="badge badge-success" style="display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-lock"></i>
+                        Secure Access
+                    </span>
+                    <button class="btn-secondary" onclick="printBordereau()">
+                        <i class="fas fa-print"></i>
+                        Imprimer
+                    </button>
+                    <button class="btn-primary" onclick="exportBordereau()">
+                        <i class="fas fa-download"></i>
+                        Exporter
+                    </button>
+                </div>
+            </div>
+            
+            <div class="card bordereau-container" id="bordereauCard" style="max-width: 900px; margin: 0 auto;">
+                <div class="card-body bordereau-body" style="padding: 2rem;">
+                    <!-- En-tête du bordereau -->
+                    <div style="text-align: center; margin-bottom: 2rem; border-bottom: 2px solid var(--color-primary); padding-bottom: 1rem;">
+                        <h2 style="color: var(--color-primary); margin-bottom: 0.5rem;">BORDEREAU D'ASSURANCE</h2>
+                        <p style="color: var(--color-text-secondary); margin: 0;">
+                            Catégorie: <strong>AC</strong> | 
+                            AU: <strong id="bordereauDate">30/06/2025</strong> | 
+                            CODE: <strong id="bordereauCode">-</strong>
+                        </p>
+                    </div>
+                    
+                    <!-- Tableau du bordereau -->
+                    <div style="overflow-x: auto;">
+                        <table id="bordereauTable" style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                            <thead>
+                                <tr style="background-color: var(--color-primary); color: white;">
+                                    <th style="padding: 0.75rem; text-align: left; border: 1px solid #ddd;">N°</th>
+                                    <th style="padding: 0.75rem; text-align: left; border: 1px solid #ddd;">N° Police</th>
+                                    <th style="padding: 0.75rem; text-align: left; border: 1px solid #ddd;">Assuré</th>
+                                    <th style="padding: 0.75rem; text-align: left; border: 1px solid #ddd;">Immat.</th>
+                                    <th style="padding: 0.75rem; text-align: left; border: 1px solid #ddd;">Effet</th>
+                                    <th style="padding: 0.75rem; text-align: left; border: 1px solid #ddd;">Échéance</th>
+                                    <th style="padding: 0.75rem; text-align: right; border: 1px solid #ddd;">P. Nette</th>
+                                    <th style="padding: 0.75rem; text-align: right; border: 1px solid #ddd;">Frais</th>
+                                    <th style="padding: 0.75rem; text-align: right; border: 1px solid #ddd;">Taxes</th>
+                                    <th style="padding: 0.75rem; text-align: right; border: 1px solid #ddd;">FGA</th>
+                                    <th style="padding: 0.75rem; text-align: right; border: 1px solid #ddd;">P. TTC</th>
+                                    <th style="padding: 0.75rem; text-align: right; border: 1px solid #ddd;">Comra</th>
+                                    <th style="padding: 0.75rem; text-align: right; border: 1px solid #ddd;">N à V</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bordereauTableBody">
+                                <!-- Les lignes seront ajoutées dynamiquement -->
+                                <tr>
+                                    <td colspan="13" style="padding: 2rem; text-align: center; color: var(--color-text-secondary);">
+                                        Le bordereau se remplit automatiquement lors de l'ajout d'un client avec contrat
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+
+        <!-- Rapports Page -->
+        <div id="rapports-page" class="page">
+            <div class="page-header">
+                <h1>Rapports et Statistiques</h1>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <select id="rapportPeriode" class="btn-secondary" style="padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--color-border);">
+                        <option value="mois">Ce mois</option>
+                        <option value="trimestre">Ce trimestre</option>
+                        <option value="annee" selected>Cette année</option>
+                        <option value="tout">Tout</option>
+                    </select>
+                    <button class="btn-primary" onclick="exportRapport()">
+                        <i class="fas fa-download"></i>
+                        Exporter
+                    </button>
+                </div>
+            </div>
+
+            <!-- Statistiques générales -->
+            <div class="stats-grid" style="margin-bottom: 2rem;">
+                <div class="stat-card">
+                    <div class="stat-icon blue">
+                        <i class="fas fa-money-bill-wave"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 id="rapportChiffreAffaires">0</h3>
+                        <p>Chiffre d'affaires total (FCFA)</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon green">
+                        <i class="fas fa-money-check-alt"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 id="rapportMontantEncaisse">0</h3>
+                        <p>Montant encaissé (FCFA)</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon orange">
+                        <i class="fas fa-money-bill"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 id="rapportMontantRestant">0</h3>
+                        <p>Montant restant (FCFA)</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon purple">
+                        <i class="fas fa-file-contract"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 id="rapportContratsTotal">0</h3>
+                        <p>Contrats totaux</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon teal">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 id="rapportClientsTotal">0</h3>
+                        <p>Clients totaux</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon purple">
+                        <i class="fas fa-percentage"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 id="rapportTauxRenouvellement">0%</h3>
+                        <p>Taux de renouvellement</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #10B981 0%, #059669 100%);">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 id="rapportBenefice" style="color: #10B981;">0</h3>
+                        <p>Bénéfice total (FCFA)</p>
+                        <small style="color: #6B7280; font-size: 12px;">Montant payé - Net à verser</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Graphiques -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Évolution mensuelle des contrats</h3>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="evolutionChart" style="max-height: 300px;"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Répartition par type de contrat</h3>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="repartitionChart" style="max-height: 300px;"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Répartition des paiements</h3>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="paiementsChart" style="max-height: 300px;"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Évolution du bénéfice mensuel</h3>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="beneficeChart" style="max-height: 300px;"></canvas>
+                        <p style="margin-top: 1rem; font-size: 12px; color: #6B7280; text-align: center;">
+                            Bénéfice = Montant payé - Prime nette (net à verser)
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tableau détaillé -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Détails des contrats</h3>
+                </div>
+                <div class="card-body">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Client</th>
+                                <th>Numéro de police</th>
+                                <th>Date de début</th>
+                                <th>Date d'échéance</th>
+                                <th>Montant total (FCFA)</th>
+                                <th>Montant encaissé (FCFA)</th>
+                                <th>Montant restant (FCFA)</th>
+                                <th>Statut</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rapportsTableBody">
+                            <tr>
+                                <td colspan="6" style="text-align: center; padding: 2rem; color: #6B7280;">
+                                    Chargement des données...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Paramètres Page -->
+        <div id="parametres-page" class="page">
+            <div class="page-header">
+                <div>
+                    <h1>Paramètres</h1>
+                    <p class="page-subtitle">Gérez vos informations et préférences</p>
+                </div>
+            </div>
+
+            <!-- Accordéons -->
+            <div style="display: flex; flex-direction: column; gap: 1.5rem; max-width: 900px;">
+                <!-- Informations de l'entreprise -->
+                <div class="settings-accordion">
+                    <button class="settings-accordion-header" onclick="toggleAccordion('entrepriseAccordion')">
+                        <div style="display: flex; align-items: center; gap: 1rem; flex: 1;">
+                            <div class="accordion-icon" style="background: linear-gradient(135deg, #2563EB 0%, #1E3A8A 100%);">
+                                <i class="fas fa-building"></i>
+                            </div>
+                            <div style="text-align: left;">
+                                <h3 style="margin: 0; font-size: 1.25rem; font-weight: 600; color: var(--color-text);">Informations de l'entreprise</h3>
+                                <p style="margin: 0.25rem 0 0 0; font-size: 0.875rem; color: var(--color-text-secondary);">Modifiez vos informations professionnelles</p>
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-down accordion-arrow" id="entrepriseAccordionArrow"></i>
+                    </button>
+                    <div class="settings-accordion-content" id="entrepriseAccordion">
+                        <div style="padding: 2rem;">
+                            <form id="entrepriseForm" onsubmit="saveEntrepriseInfo(event)">
+                                <div class="form-group" style="margin-bottom: 2rem;">
+                                    <label for="entrepriseNom">
+                                        <i class="fas fa-building"></i>
+                                        Nom de l'entreprise *
+                                    </label>
+                                    <input type="text" id="entrepriseNom" name="nom" required>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 2rem;">
+                                    <label for="entrepriseEmail">
+                                        <i class="fas fa-envelope"></i>
+                                        Email *
+                                    </label>
+                                    <input type="email" id="entrepriseEmail" name="email" required>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 2rem;">
+                                    <label for="entrepriseTelephone">
+                                        <i class="fas fa-phone"></i>
+                                        Téléphone
+                                    </label>
+                                    <input type="tel" id="entrepriseTelephone" name="telephone" placeholder="Ex: 77 123 4567">
+                                </div>
+                                <div class="form-group" style="margin-bottom: 2rem;">
+                                    <label for="entrepriseAdresse">
+                                        <i class="fas fa-map-marker-alt"></i>
+                                        Adresse
+                                    </label>
+                                    <textarea id="entrepriseAdresse" name="adresse" rows="3" placeholder="Adresse complète de l'entreprise"></textarea>
+                                </div>
+                                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2.5rem; padding-top: 2rem; border-top: 1px solid var(--color-border);">
+                                    <button type="button" class="btn-secondary" onclick="resetEntrepriseForm()">
+                                        <i class="fas fa-times"></i>
+                                        Annuler
+                                    </button>
+                                    <button type="submit" class="btn-primary">
+                                        <i class="fas fa-save"></i>
+                                        Enregistrer
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sécurité -->
+                <div class="settings-accordion">
+                    <button class="settings-accordion-header" onclick="toggleAccordion('passwordAccordion')">
+                        <div style="display: flex; align-items: center; gap: 1rem; flex: 1;">
+                            <div class="accordion-icon" style="background: linear-gradient(135deg, #10B981 0%, #059669 100%);">
+                                <i class="fas fa-shield-alt"></i>
+                            </div>
+                            <div style="text-align: left;">
+                                <h3 style="margin: 0; font-size: 1.25rem; font-weight: 600; color: var(--color-text);">Sécurité</h3>
+                                <p style="margin: 0.25rem 0 0 0; font-size: 0.875rem; color: var(--color-text-secondary);">Protégez votre compte</p>
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-down accordion-arrow" id="passwordAccordionArrow"></i>
+                    </button>
+                    <div class="settings-accordion-content" id="passwordAccordion">
+                        <div style="padding: 2rem;">
+                            <form id="passwordForm" onsubmit="changePassword(event)">
+                                <div class="form-group" style="margin-bottom: 2rem;">
+                                    <label for="currentPassword">
+                                        <i class="fas fa-key"></i>
+                                        Mot de passe actuel *
+                                    </label>
+                                    <input type="password" id="currentPassword" name="currentPassword" required>
+                                </div>
+                            <div class="form-group" style="margin-bottom: 2rem;">
+                                <label for="newPassword">
+                                    <i class="fas fa-lock"></i>
+                                    Nouveau mot de passe *
+                                </label>
+                                <input type="password" id="newPassword" name="newPassword" required minlength="8">
+                                <small style="color: #6B7280; font-size: 0.875rem; margin-top: 0.75rem; display: block;">
+                                    <i class="fas fa-info-circle"></i>
+                                    Minimum 8 caractères avec majuscule, minuscule et chiffre
+                                </small>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 2rem;">
+                                <label for="confirmPassword">
+                                    <i class="fas fa-lock"></i>
+                                    Confirmer le nouveau mot de passe *
+                                </label>
+                                <input type="password" id="confirmPassword" name="confirmPassword" required minlength="8">
+                            </div>
+                                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2.5rem; padding-top: 2rem; border-top: 1px solid var(--color-border);">
+                                    <button type="button" class="btn-secondary" onclick="resetPasswordForm()">
+                                        <i class="fas fa-times"></i>
+                                        Annuler
+                                    </button>
+                                    <button type="submit" class="btn-primary">
+                                        <i class="fas fa-shield-alt"></i>
+                                        Changer le mot de passe
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; 2026 OptimumAssurPro - Version 1.0.0</p>
+    </footer>
+
+    <!-- Modal Ajouter/Modifier Client -->
+    <div id="clientModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="clientModalTitle">Ajouter un client avec contrat</h2>
+                <button class="modal-close" onclick="closeClientModal()">&times;</button>
+            </div>
+            <form id="clientForm" onsubmit="saveClient(event)">
+                <div class="modal-body">
+                    <input type="hidden" id="clientId" name="id">
+                    
+                    <div class="form-group">
+                        <label for="clientNom">
+                            <i class="fas fa-user"></i>
+                            Nom de l'assuré *
+                        </label>
+                        <input type="text" id="clientNom" name="nom" required placeholder="Ex: gle le creneau" oninput="updateBordereau()">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="clientTelephone">
+                            <i class="fas fa-phone"></i>
+                            Téléphone *
+                        </label>
+                        <input type="tel" id="clientTelephone" name="telephone" required placeholder="Ex: 77 123 4567">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="contractNumeroPolice">
+                            <i class="fas fa-hashtag"></i>
+                            Numéro de police *
+                        </label>
+                        <input type="text" id="contractNumeroPolice" name="numero_police" required placeholder="Ex: 11025064" oninput="updateBordereau()">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="vehiculeImmatriculation">
+                            <i class="fas fa-id-card"></i>
+                            Immatriculation *
+                        </label>
+                        <input type="text" id="vehiculeImmatriculation" name="immatriculation" required placeholder="Ex: AA127QE" oninput="updateBordereau()">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="contractDateEffet">
+                            <i class="fas fa-calendar-check"></i>
+                            Date d'effet *
+                        </label>
+                        <input type="date" id="contractDateEffet" name="date_effet" required onchange="updateBordereau()">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="contractDateEcheance">
+                            <i class="fas fa-calendar-times"></i>
+                            Date d'échéance *
+                        </label>
+                        <input type="date" id="contractDateEcheance" name="date_echeance" required onchange="updateBordereau()">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="contractPrimeNette">
+                            <i class="fas fa-money-bill-wave"></i>
+                            Prime nette (FCFA) *
+                        </label>
+                        <input type="number" id="contractPrimeNette" name="prime_nette" required min="0" step="0.01" placeholder="Ex: 9488.50" oninput="calculateRemainingAmount()">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="contractMontantPaye">
+                            <i class="fas fa-money-check-alt"></i>
+                            Montant payé par le client (FCFA) *
+                        </label>
+                        <input type="number" id="contractMontantPaye" name="montant_paye" required min="0" step="0.01" placeholder="Ex: 5000" oninput="updateBordereau()">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="contractMontantRestant">
+                            <i class="fas fa-money-bill"></i>
+                            Montant restant (FCFA)
+                        </label>
+                        <input type="number" id="contractMontantRestant" name="montant_restant" min="0" step="0.01" placeholder="Ex: 4488.50" oninput="updateBordereau()">
+                        <small style="color: #6B7280; font-size: 12px; display: block; margin-top: 4px;">Montant restant à payer par le client (peut varier selon le prix demandé)</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeClientModal()">Annuler</button>
+                    <button type="submit" class="btn-primary">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Ajouter/Modifier Contrat -->
+    <div id="contractModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="contractModalTitle">Nouveau contrat</h2>
+                <button class="modal-close" onclick="closeContractModal()">&times;</button>
+            </div>
+            <form id="contractForm" onsubmit="saveContract(event)">
+                <div class="modal-body">
+                    <input type="hidden" id="contractId" name="id">
+                    <div class="form-group">
+                        <label for="contractClient">Client *</label>
+                        <select id="contractClient" name="client_id" required onchange="loadClientVehicules(this.value)">
+                            <option value="">Sélectionner un client</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="contractVehicule">Véhicule *</label>
+                        <select id="contractVehicule" name="vehicule_id" required>
+                            <option value="">Sélectionner d'abord un client</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="contractType">Type de contrat *</label>
+                        <select id="contractType" name="type_contrat" required>
+                            <option value="Tous risques">Tous risques</option>
+                            <option value="Tiers">Tiers</option>
+                            <option value="Tiers collision">Tiers collision</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="contractDuree">Durée (mois) *</label>
+                        <select id="contractDuree" name="duree_mois" required>
+                            <option value="1">1 mois</option>
+                            <option value="3">3 mois</option>
+                            <option value="6">6 mois</option>
+                            <option value="12" selected>12 mois</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="contractDateDebut">Date de début *</label>
+                        <input type="date" id="contractDateDebut" name="date_debut" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="contractMontant">Montant (FCFA) *</label>
+                        <input type="number" id="contractMontant" name="montant" required min="0" step="1000">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeContractModal()">Annuler</button>
+                    <button type="submit" class="btn-primary">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Voir Client -->
+    <div id="viewClientModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Détails du client</h2>
+                <button class="modal-close" onclick="closeViewClientModal()">&times;</button>
+            </div>
+            <div id="viewClientContent" class="modal-body">
+                <!-- Contenu chargé dynamiquement -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeViewClientModal()">Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Voir Contrat -->
+    <div id="viewContractModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Détails du contrat</h2>
+                <button class="modal-close" onclick="closeViewContractModal()">&times;</button>
+            </div>
+            <div id="viewContractContent" class="modal-body">
+                <!-- Contenu chargé dynamiquement -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeViewContractModal()">Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/bordereau.js"></script>
+    <script src="js/modals.js"></script>
+    <script src="js/rapports.js"></script>
+    <script src="js/parametres.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inscription - OptimumAssurPro</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/login.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Roboto:wght@400;500&family=Inter:wght@500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="login-page">
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="login-logo">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <h1>Créer un compte</h1>
+                <p>Inscrivez votre entreprise</p>
+            </div>
+            
+            <form class="login-form" id="registerForm">
+                <div class="form-group">
+                    <label for="nom">
+                        <i class="fas fa-building"></i>
+                        Nom de l'entreprise
+                    </label>
+                    <input 
+                        type="text" 
+                        id="nom" 
+                        name="nom" 
+                        placeholder="Ex: Assurance ABC"
+                        autocomplete="organization"
+                        required
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">
+                        <i class="fas fa-envelope"></i>
+                        Email de l'entreprise *
+                    </label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        name="email" 
+                        placeholder="entreprise@exemple.com"
+                        autocomplete="email"
+                        required
+                        pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
+                    >
+                    <small id="emailError" class="error-message" style="display: none;"></small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">
+                        <i class="fas fa-lock"></i>
+                        Mot de passe *
+                    </label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        placeholder="••••••••"
+                        autocomplete="new-password"
+                        required
+                        minlength="8"
+                    >
+                    <small class="password-requirements">
+                        <strong>Exigences du mot de passe :</strong>
+                        <ul id="passwordRequirements">
+                            <li id="req-length"><i class="fas fa-times"></i> Au moins 8 caractères</li>
+                            <li id="req-uppercase"><i class="fas fa-times"></i> Une majuscule</li>
+                            <li id="req-lowercase"><i class="fas fa-times"></i> Une minuscule</li>
+                            <li id="req-number"><i class="fas fa-times"></i> Un chiffre</li>
+                        </ul>
+                    </small>
+                    <small id="passwordError" class="error-message" style="display: none;"></small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirmPassword">
+                        <i class="fas fa-lock"></i>
+                        Confirmer le mot de passe *
+                    </label>
+                    <input 
+                        type="password" 
+                        id="confirmPassword" 
+                        name="confirmPassword" 
+                        placeholder="••••••••"
+                        autocomplete="new-password"
+                        required
+                        minlength="8"
+                    >
+                    <small id="confirmPasswordError" class="error-message" style="display: none;"></small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="telephone">
+                        <i class="fas fa-phone"></i>
+                        Téléphone (optionnel)
+                    </label>
+                    <input 
+                        type="tel" 
+                        id="telephone" 
+                        name="telephone" 
+                        placeholder="+221 77 123 4567"
+                        autocomplete="tel"
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label for="adresse">
+                        <i class="fas fa-map-marker-alt"></i>
+                        Adresse (optionnel)
+                    </label>
+                    <textarea 
+                        id="adresse" 
+                        name="adresse" 
+                        placeholder="Votre adresse complète"
+                        rows="3"
+                    ></textarea>
+                </div>
+                
+                <button type="submit" class="btn-login">
+                    <span>Créer mon compte</span>
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </form>
+            
+            <div class="login-footer">
+                <p>Vous avez déjà un compte ? <a href="login.html">Se connecter</a></p>
+            </div>
+        </div>
+        
+        <div class="login-illustration">
+            <div class="illustration-content">
+                <i class="fas fa-user-plus"></i>
+                <h2>Rejoignez OptimumAssurPro</h2>
+                <p>Gérez vos clients d'assurance facilement</p>
+            </div>
+        </div>
+    </div>
+    
+    <script src="js/api.js"></script>
+    <script src="js/register.js"></script>
+</body>
+</html>
+

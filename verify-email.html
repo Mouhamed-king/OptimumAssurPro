@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vérification Email - OptimumAssurPro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Roboto:wght@400;500&family=Inter:wght@500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .verification-wrapper {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 550px;
+            width: 100%;
+            padding: 50px 40px;
+            text-align: center;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .verification-header {
+            margin-bottom: 40px;
+        }
+
+        .verification-logo {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, #2563EB 0%, #1E3A8A 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            color: white;
+            font-size: 32px;
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
+        }
+
+        .verification-header h1 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 28px;
+            font-weight: 700;
+            color: #1E3A8A;
+            margin-bottom: 8px;
+        }
+
+        .verification-header p {
+            color: #6B7280;
+            font-size: 15px;
+        }
+
+        .verification-content {
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Loading State */
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .spinner-wrapper {
+            width: 80px;
+            height: 80px;
+            border: 4px solid #E5E7EB;
+            border-top-color: #2563EB;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: #6B7280;
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        /* Success State */
+        .success-container {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .success-icon-wrapper {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 30px;
+            position: relative;
+            animation: scaleIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);
+        }
+
+        .success-icon-wrapper::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            opacity: 0.3;
+            animation: pulse 2s ease-out infinite;
+        }
+
+        @keyframes scaleIn {
+            0% {
+                transform: scale(0);
+            }
+            50% {
+                transform: scale(1.1);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 0.3;
+            }
+            50% {
+                transform: scale(1.3);
+                opacity: 0;
+            }
+        }
+
+        .success-icon {
+            font-size: 60px;
+            color: white;
+            position: relative;
+            z-index: 1;
+        }
+
+        .success-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 26px;
+            font-weight: 700;
+            color: #10B981;
+            margin-bottom: 15px;
+        }
+
+        .success-message {
+            color: #6B7280;
+            font-size: 16px;
+            line-height: 1.7;
+            margin-bottom: 35px;
+            max-width: 450px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .success-button {
+            background: linear-gradient(135deg, #2563EB 0%, #1E3A8A 100%);
+            color: white;
+            border: none;
+            padding: 16px 40px;
+            border-radius: 12px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+        }
+
+        .success-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+        }
+
+        .success-button:active {
+            transform: translateY(0);
+        }
+
+        /* Error State */
+        .error-container {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .error-icon-wrapper {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 30px;
+            animation: scaleIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            box-shadow: 0 10px 30px rgba(239, 68, 68, 0.4);
+        }
+
+        .error-icon {
+            font-size: 60px;
+            color: white;
+        }
+
+        .error-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 26px;
+            font-weight: 700;
+            color: #EF4444;
+            margin-bottom: 15px;
+        }
+
+        .error-message {
+            color: #6B7280;
+            font-size: 16px;
+            line-height: 1.7;
+            margin-bottom: 35px;
+            max-width: 450px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .error-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #2563EB;
+            border: 2px solid #2563EB;
+            padding: 14px 30px;
+            border-radius: 12px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-secondary:hover {
+            background: #2563EB;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #2563EB 0%, #1E3A8A 100%);
+            color: white;
+            border: none;
+            padding: 14px 30px;
+            border-radius: 12px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .verification-wrapper {
+                padding: 40px 30px;
+            }
+
+            .verification-header h1 {
+                font-size: 24px;
+            }
+
+            .success-title,
+            .error-title {
+                font-size: 22px;
+            }
+
+            .success-icon-wrapper,
+            .error-icon-wrapper {
+                width: 100px;
+                height: 100px;
+            }
+
+            .success-icon,
+            .error-icon {
+                font-size: 50px;
+            }
+
+            .error-actions {
+                flex-direction: column;
+            }
+
+            .btn-secondary,
+            .btn-primary,
+            .success-button {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="verification-wrapper">
+        <div class="verification-header">
+            <div class="verification-logo">
+                <i class="fas fa-shield-alt"></i>
+            </div>
+            <h1>Vérification de l'email</h1>
+            <p id="statusMessage">Vérification en cours...</p>
+        </div>
+        
+        <div class="verification-content">
+            <!-- Loading State -->
+            <div id="loadingSpinner" class="loading-container">
+                <div class="spinner-wrapper"></div>
+                <p class="loading-text">Vérification en cours...</p>
+            </div>
+
+            <!-- Success State -->
+            <div id="successMessage" class="success-container" style="display: none;">
+                <div class="success-icon-wrapper">
+                    <i class="fas fa-check success-icon"></i>
+                </div>
+                <h2 class="success-title">Email vérifié avec succès !</h2>
+                <p class="success-message">
+                    Votre adresse email a été vérifiée avec succès. Vous pouvez maintenant vous connecter à votre compte et commencer à utiliser OptimumAssurPro.
+                </p>
+                <a href="login.html" class="success-button">
+                    <span>Se connecter</span>
+                    <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+
+            <!-- Error State -->
+            <div id="errorMessage" class="error-container" style="display: none;">
+                <div class="error-icon-wrapper">
+                    <i class="fas fa-times error-icon"></i>
+                </div>
+                <h2 class="error-title">Erreur de vérification</h2>
+                <p id="errorText" class="error-message"></p>
+                <div class="error-actions">
+                    <a href="login.html" class="btn-secondary">
+                        <i class="fas fa-arrow-left"></i>
+                        Retour à la connexion
+                    </a>
+                    <button id="resendButton" class="btn-primary" onclick="resendVerificationEmail()" style="display: none;">
+                        <i class="fas fa-envelope"></i>
+                        Renvoyer l'email
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="js/api.js"></script>
+    <script>
+        // Récupérer le token depuis l'URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        
+        async function verifyEmail() {
+            if (!token) {
+                showError('Token de vérification manquant dans l\'URL');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${window.API_BASE_URL || 'http://localhost:3000/api'}/auth/verify-email?token=${token}`);
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showSuccess();
+                } else {
+                    showError(data.error || 'Erreur lors de la vérification');
+                    // Afficher le bouton de renvoi si le token est expiré
+                    if (data.error && data.error.includes('expiré')) {
+                        document.getElementById('resendButton').style.display = 'inline-flex';
+                    }
+                }
+            } catch (error) {
+                console.error('Erreur:', error);
+                showError('Une erreur est survenue lors de la vérification');
+            }
+        }
+        
+        function showSuccess() {
+            document.getElementById('loadingSpinner').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'block';
+            document.getElementById('statusMessage').textContent = 'Vérification réussie';
+        }
+        
+        function showError(message) {
+            document.getElementById('loadingSpinner').style.display = 'none';
+            document.getElementById('errorMessage').style.display = 'block';
+            document.getElementById('errorText').textContent = message;
+            document.getElementById('statusMessage').textContent = 'Erreur de vérification';
+        }
+        
+        async function resendVerificationEmail() {
+            const email = prompt('Veuillez entrer votre adresse email pour recevoir un nouveau lien de vérification :');
+            if (!email) return;
+            
+            try {
+                const response = await fetch(`${window.API_BASE_URL || 'http://localhost:3000/api'}/auth/resend-verification`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert('Un nouvel email de vérification vous a été envoyé. Veuillez vérifier votre boîte de réception.');
+                } else {
+                    alert(data.error || 'Erreur lors de l\'envoi de l\'email');
+                }
+            } catch (error) {
+                console.error('Erreur:', error);
+                alert('Une erreur est survenue');
+            }
+        }
+        
+        // Vérifier l'email au chargement de la page
+        if (token) {
+            verifyEmail();
+        } else {
+            showError('Token de vérification manquant');
+        }
+    </script>
+</body>
+</html>

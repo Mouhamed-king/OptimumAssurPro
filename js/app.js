@@ -6,30 +6,45 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Vérifier si l'utilisateur est connecté
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    const isLoginPage = window.location.pathname.includes('login.html') || 
-                        window.location.pathname.includes('register.html') ||
-                        window.location.pathname.includes('verify-email.html') ||
-                        window.location.pathname.includes('reset-password.html');
+    const currentPath = window.location.pathname;
+    const isLoginPage = currentPath.includes('login.html') || 
+                        currentPath.includes('register.html') ||
+                        currentPath.includes('verify-email.html') ||
+                        currentPath.includes('reset-password.html');
+    const isIndexPage = currentPath === '/' || currentPath.includes('index.html');
     
-    // Si pas de token et pas sur une page publique, rediriger vers login
-    if (!token && !isLoginPage) {
-        // Sauvegarder l'URL actuelle pour rediriger après connexion
-        const currentPath = window.location.pathname;
-        if (currentPath !== '/login.html' && currentPath !== '/') {
-            sessionStorage.setItem('redirectAfterLogin', currentPath);
-        }
-        window.location.href = 'login.html';
-        return;
-    }
-    
-    // Si sur une page publique et connecté, rediriger vers dashboard
-    if (token && isLoginPage) {
-        window.location.href = 'index.html';
-        return;
-    }
-    
-    // Si pas de token, ne pas charger les données
+    // Si pas de token
     if (!token) {
+        // Si on est sur index.html ou la racine sans token, rediriger vers login
+        if (isIndexPage) {
+            window.location.href = 'login.html';
+            return;
+        }
+        // Si on est sur une autre page protégée sans token, rediriger vers login
+        if (!isLoginPage) {
+            sessionStorage.setItem('redirectAfterLogin', currentPath);
+            window.location.href = 'login.html';
+            return;
+        }
+        // Si on est sur login.html, ne rien faire (on reste là)
+        return;
+    }
+    
+    // Si on a un token et qu'on est sur login.html, rediriger vers index.html
+    if (token && isLoginPage) {
+        const redirectPath = sessionStorage.getItem('redirectAfterLogin');
+        if (redirectPath && redirectPath !== '/login.html') {
+            sessionStorage.removeItem('redirectAfterLogin');
+            window.location.href = redirectPath;
+        } else {
+            window.location.href = 'index.html';
+        }
+        return;
+    }
+    
+    // Si on est sur index.html avec un token, charger les données
+    if (!isIndexPage) {
+        // Si on n'est pas sur index.html, ne pas charger les données ici
         return;
     }
     
@@ -44,51 +59,43 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Charger le dashboard si on est sur la page dashboard
-    // Vérifier aussi si c'est la page par défaut (index.html)
-    const dashboardPage = document.getElementById('dashboard-page');
-    const isDashboardActive = dashboardPage && (
-        dashboardPage.classList.contains('active') || 
-        window.location.pathname === '/' || 
-        window.location.pathname.endsWith('index.html') ||
-        window.location.pathname.endsWith('/')
-    );
+    // Ne charger les données QUE si on est sur index.html avec un token valide
+    if (!isIndexPage || !token) {
+        return;
+    }
     
-    if (isDashboardActive) {
-        // S'assurer que la page dashboard est active
-        if (dashboardPage) {
-            dashboardPage.classList.add('active');
-            // Masquer les autres pages
-            document.querySelectorAll('.page').forEach(page => {
-                if (page.id !== 'dashboard-page') {
-                    page.classList.remove('active');
-                }
-            });
+    // Charger les données de l'entreprise
+    loadEntrepriseInfo().catch(error => {
+        console.error('Erreur lors du chargement des informations de l\'entreprise:', error);
+        // Si erreur d'authentification, rediriger vers login
+        if (error.message && error.message.includes('Token')) {
+            localStorage.removeItem('token');
+            sessionStorage.removeItem('token');
+            window.location.href = 'login.html';
         }
+    });
+    
+    // Charger le dashboard (page par défaut sur index.html)
+    const dashboardPage = document.getElementById('dashboard-page');
+    if (dashboardPage) {
+        dashboardPage.classList.add('active');
+        // Masquer les autres pages
+        document.querySelectorAll('.page').forEach(page => {
+            if (page.id !== 'dashboard-page') {
+                page.classList.remove('active');
+            }
+        });
+        
         loadDashboard().catch(error => {
             console.error('Erreur lors du chargement du dashboard:', error);
-            if (typeof showToast === 'function') {
+            if (error.message && error.message.includes('Token')) {
+                localStorage.removeItem('token');
+                sessionStorage.removeItem('token');
+                window.location.href = 'login.html';
+            } else if (typeof showToast === 'function') {
                 showToast('Erreur lors du chargement du dashboard: ' + (error.message || 'Erreur inconnue'), 'error');
             }
         });
-    }
-    
-    // Charger les clients si on est sur la page clients
-    const clientsPage = document.getElementById('clients-page');
-    if (clientsPage && clientsPage.classList.contains('active')) {
-        loadClients().catch(error => {
-            console.error('Erreur lors du chargement des clients:', error);
-        });
-    }
-    
-    // Charger le bordereau si on est sur la page bordereaux
-    const bordereauxPage = document.getElementById('bordereaux-page');
-    if (bordereauxPage && bordereauxPage.classList.contains('active')) {
-        if (typeof loadBordereau === 'function') {
-            loadBordereau().catch(error => {
-                console.error('Erreur lors du chargement du bordereau:', error);
-            });
-        }
     }
 });
 
@@ -119,19 +126,34 @@ document.addEventListener('DOMContentLoaded', function() {
             if (targetPageElement) {
                 targetPageElement.classList.add('active');
                 
+                // Vérifier le token avant de charger les données
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                if (!token) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+                
                 // Charger les données de la page avec gestion d'erreur
                 try {
                     if (targetPage === 'dashboard') {
                         loadDashboard().catch(error => {
                             console.error('Erreur lors du chargement du dashboard:', error);
-                            if (typeof showToast === 'function') {
+                            if (error.message && error.message.includes('Token')) {
+                                localStorage.removeItem('token');
+                                sessionStorage.removeItem('token');
+                                window.location.href = 'login.html';
+                            } else if (typeof showToast === 'function') {
                                 showToast('Erreur lors du chargement du dashboard', 'error');
                             }
                         });
                     } else if (targetPage === 'clients') {
                         loadClients().catch(error => {
                             console.error('Erreur lors du chargement des clients:', error);
-                            if (typeof showToast === 'function') {
+                            if (error.message && error.message.includes('Token')) {
+                                localStorage.removeItem('token');
+                                sessionStorage.removeItem('token');
+                                window.location.href = 'login.html';
+                            } else if (typeof showToast === 'function') {
                                 showToast('Erreur lors du chargement des clients', 'error');
                             }
                         });
@@ -144,7 +166,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (typeof loadBordereau === 'function') {
                             loadBordereau().catch(error => {
                                 console.error('Erreur lors du chargement du bordereau:', error);
-                                if (typeof showToast === 'function') {
+                                if (error.message && error.message.includes('Token')) {
+                                    localStorage.removeItem('token');
+                                    sessionStorage.removeItem('token');
+                                    window.location.href = 'login.html';
+                                } else if (typeof showToast === 'function') {
                                     showToast('Erreur lors du chargement du bordereau', 'error');
                                 }
                             });
@@ -153,7 +179,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (typeof loadRapports === 'function') {
                             loadRapports().catch(error => {
                                 console.error('Erreur lors du chargement des rapports:', error);
-                                if (typeof showToast === 'function') {
+                                if (error.message && error.message.includes('Token')) {
+                                    localStorage.removeItem('token');
+                                    sessionStorage.removeItem('token');
+                                    window.location.href = 'login.html';
+                                } else if (typeof showToast === 'function') {
                                     showToast('Erreur lors du chargement des rapports', 'error');
                                 }
                             });
@@ -162,7 +192,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (typeof loadParametres === 'function') {
                             loadParametres().catch(error => {
                                 console.error('Erreur lors du chargement des paramètres:', error);
-                                if (typeof showToast === 'function') {
+                                if (error.message && error.message.includes('Token')) {
+                                    localStorage.removeItem('token');
+                                    sessionStorage.removeItem('token');
+                                    window.location.href = 'login.html';
+                                } else if (typeof showToast === 'function') {
                                     showToast('Erreur lors du chargement des paramètres', 'error');
                                 }
                             });
@@ -170,7 +204,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 } catch (error) {
                     console.error('Erreur lors du chargement de la page:', error);
-                    if (typeof showToast === 'function') {
+                    if (error.message && error.message.includes('Token')) {
+                        localStorage.removeItem('token');
+                        sessionStorage.removeItem('token');
+                        window.location.href = 'login.html';
+                    } else if (typeof showToast === 'function') {
                         showToast('Erreur lors du chargement de la page', 'error');
                     }
                 }

@@ -73,7 +73,7 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-// Route pour servir le frontend (SPA)
+// Route pour servir le frontend
 // Cette route ne sera appelée QUE si express.static n'a pas trouvé de fichier correspondant
 app.get('*', (req, res) => {
     // Ignorer les routes API
@@ -90,8 +90,25 @@ app.get('*', (req, res) => {
         return res.status(404).send('File not found');
     }
     
-    // Servir index.html pour toutes les autres routes (SPA)
-    res.sendFile(path.join(__dirname, 'index.html'));
+    // Si c'est la racine ou index.html, servir login.html par défaut
+    // L'application frontend gérera la redirection vers index.html si l'utilisateur est connecté
+    if (req.path === '/' || req.path === '/index.html') {
+        // Vérifier si l'utilisateur a un token dans les cookies ou headers (pour le SSR)
+        // Sinon, servir login.html par défaut
+        return res.sendFile(path.join(__dirname, 'login.html'));
+    }
+    
+    // Pour les autres routes, servir le fichier HTML correspondant ou index.html
+    const htmlFile = req.path.endsWith('.html') ? req.path : req.path + '.html';
+    const filePath = path.join(__dirname, htmlFile);
+    
+    // Vérifier si le fichier existe
+    if (require('fs').existsSync(filePath)) {
+        return res.sendFile(filePath);
+    }
+    
+    // Sinon, servir login.html par défaut
+    res.sendFile(path.join(__dirname, 'login.html'));
 });
 
 // Gestion des erreurs

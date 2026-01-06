@@ -491,7 +491,9 @@ function formatMoney(amount) {
 
 // Exporter le rapport
 function exportRapport() {
-    showToast('Fonctionnalité d\'export en cours de développement', 'info');
+    if (typeof window.showToast === 'function') {
+        window.showToast('Fonctionnalité d\'export en cours de développement', 'info');
+    }
     // TODO: Implémenter l'export PDF/Excel
 }
 

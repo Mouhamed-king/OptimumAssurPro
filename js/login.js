@@ -131,7 +131,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     if (token && window.location.pathname.includes('login.html')) {
         // Rediriger vers le dashboard si déjà connecté
-        window.location.href = 'index.html';
+        window.location.href = '/index.html';
     }
 });
 
@@ -244,6 +244,6 @@ function logout() {
     localStorage.removeItem('entreprise');
     sessionStorage.removeItem('token');
     sessionStorage.removeItem('entreprise');
-    window.location.href = 'login.html';
+    window.location.href = '/login.html';
 }
 

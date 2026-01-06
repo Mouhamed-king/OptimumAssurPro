@@ -236,7 +236,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Rediriger vers la page de connexion après 5 secondes
                 setTimeout(() => {
-                    window.location.href = 'login.html?message=email-sent';
+                    window.location.href = '/login.html?message=email-sent';
                 }, 5000);
                 
             } catch (error) {

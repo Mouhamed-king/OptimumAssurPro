@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (error.message && error.message.includes('Token')) {
             localStorage.removeItem('token');
             sessionStorage.removeItem('token');
-            window.location.href = 'login.html';
+            window.location.href = '/login.html';
         }
     });
     
@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (error.message && error.message.includes('Token')) {
                 localStorage.removeItem('token');
                 sessionStorage.removeItem('token');
-                window.location.href = 'login.html';
+                window.location.href = '/login.html';
             } else if (typeof showToast === 'function') {
                 showToast('Erreur lors du chargement du dashboard: ' + (error.message || 'Erreur inconnue'), 'error');
             }
@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Vérifier le token avant de charger les données
                 const token = localStorage.getItem('token') || sessionStorage.getItem('token');
                 if (!token) {
-                    window.location.href = 'login.html';
+                    window.location.href = '/login.html';
                     return;
                 }
                 
@@ -125,7 +125,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             if (error.message && error.message.includes('Token')) {
                                 localStorage.removeItem('token');
                                 sessionStorage.removeItem('token');
-                                window.location.href = 'login.html';
+                                window.location.href = '/login.html';
                             } else if (typeof showToast === 'function') {
                                 showToast('Erreur lors du chargement du dashboard', 'error');
                             }
@@ -136,7 +136,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             if (error.message && error.message.includes('Token')) {
                                 localStorage.removeItem('token');
                                 sessionStorage.removeItem('token');
-                                window.location.href = 'login.html';
+                                window.location.href = '/login.html';
                             } else if (typeof showToast === 'function') {
                                 showToast('Erreur lors du chargement des clients', 'error');
                             }
@@ -153,7 +153,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 if (error.message && error.message.includes('Token')) {
                                     localStorage.removeItem('token');
                                     sessionStorage.removeItem('token');
-                                    window.location.href = 'login.html';
+                                    window.location.href = '/login.html';
                                 } else if (typeof showToast === 'function') {
                                     showToast('Erreur lors du chargement du bordereau', 'error');
                                 }
@@ -166,7 +166,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 if (error.message && error.message.includes('Token')) {
                                     localStorage.removeItem('token');
                                     sessionStorage.removeItem('token');
-                                    window.location.href = 'login.html';
+                                    window.location.href = '/login.html';
                                 } else if (typeof showToast === 'function') {
                                     showToast('Erreur lors du chargement des rapports', 'error');
                                 }
@@ -179,7 +179,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 if (error.message && error.message.includes('Token')) {
                                     localStorage.removeItem('token');
                                     sessionStorage.removeItem('token');
-                                    window.location.href = 'login.html';
+                                    window.location.href = '/login.html';
                                 } else if (typeof showToast === 'function') {
                                     showToast('Erreur lors du chargement des paramètres', 'error');
                                 }
@@ -191,7 +191,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (error.message && error.message.includes('Token')) {
                         localStorage.removeItem('token');
                         sessionStorage.removeItem('token');
-                        window.location.href = 'login.html';
+                        window.location.href = '/login.html';
                     } else if (typeof showToast === 'function') {
                         showToast('Erreur lors du chargement de la page', 'error');
                     }
@@ -345,7 +345,7 @@ async function loadEntrepriseInfo() {
             localStorage.removeItem('entreprise');
             sessionStorage.removeItem('token');
             sessionStorage.removeItem('entreprise');
-            window.location.href = 'login.html';
+            window.location.href = '/login.html';
         }
         throw error; // Re-lancer l'erreur pour que le code appelant puisse la gérer
     }
@@ -363,7 +363,7 @@ async function loadDashboard() {
         const token = localStorage.getItem('token') || sessionStorage.getItem('token');
         if (!token) {
             console.warn('Aucun token trouvé, redirection vers login...');
-            window.location.href = 'login.html';
+            window.location.href = '/login.html';
             return;
         }
         
@@ -816,7 +816,7 @@ function logout() {
     sessionStorage.removeItem('redirectAfterLogin');
     
     // Rediriger vers login.html
-    window.location.href = 'login.html';
+    window.location.href = '/login.html';
 }
 
 // Exposer logout globalement

@@ -6,6 +6,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 
 // Import des routes
 const authRoutes = require('./routes/auth');
@@ -103,7 +104,7 @@ app.get('*', (req, res) => {
     const filePath = path.join(__dirname, htmlFile);
     
     // Vérifier si le fichier existe
-    if (require('fs').existsSync(filePath)) {
+    if (fs.existsSync(filePath)) {
         return res.sendFile(filePath);
     }
     

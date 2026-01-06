@@ -78,7 +78,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 // Rediriger vers le dashboard
-                window.location.href = 'index.html';
+                window.location.href = '/index.html';
                 
             } catch (error) {
                 // Afficher l'erreur

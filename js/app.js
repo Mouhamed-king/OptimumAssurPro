@@ -22,12 +22,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!token) {
         // Si on est sur index.html ou la racine sans token, rediriger vers login
         if (isIndexPage) {
-            window.location.href = 'login.html';
+            window.location.href = '/login.html';
             return;
         }
         // Si on est sur une autre page protégée sans token, rediriger vers login
         sessionStorage.setItem('redirectAfterLogin', currentPath);
-        window.location.href = 'login.html';
+        window.location.href = '/login.html';
         return;
     }
     
@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', function() {
             sessionStorage.removeItem('redirectAfterLogin');
             window.location.href = redirectPath;
         } else {
-            window.location.href = 'index.html';
+            window.location.href = '/index.html';
         }
         return;
     }

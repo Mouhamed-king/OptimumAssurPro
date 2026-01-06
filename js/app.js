@@ -21,19 +21,28 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         // Si on est sur une autre page protégée sans token, rediriger vers login
-        if (!isLoginPage) {
+        if (!isPublicPage) {
             sessionStorage.setItem('redirectAfterLogin', currentPath);
             window.location.href = 'login.html';
             return;
         }
-        // Si on est sur login.html, ne rien faire (on reste là)
+        // Si on est sur une page publique, ne rien faire (on reste là)
         return;
     }
     
+    // Pages publiques qui doivent être accessibles même si connecté
+    const publicPages = ['register.html', 'verify-email.html', 'reset-password.html'];
+    const isPublicPage = publicPages.some(page => currentPath.includes(page));
+    
+    // Si on est sur une page publique, ne pas vérifier le token (laisser la page se charger)
+    if (isPublicPage) {
+        return; // Laisser ces pages se charger normalement
+    }
+    
     // Si on a un token et qu'on est sur login.html, rediriger vers index.html
-    if (token && isLoginPage) {
+    if (token && currentPath.includes('login.html')) {
         const redirectPath = sessionStorage.getItem('redirectAfterLogin');
-        if (redirectPath && redirectPath !== '/login.html') {
+        if (redirectPath && redirectPath !== '/login.html' && !redirectPath.includes('register.html')) {
             sessionStorage.removeItem('redirectAfterLogin');
             window.location.href = redirectPath;
         } else {

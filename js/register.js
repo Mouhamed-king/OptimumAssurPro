@@ -243,10 +243,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Vérifier si l'utilisateur est déjà connecté
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    if (token && !window.location.pathname.includes('register.html')) {
-        window.location.href = 'index.html';
-    }
+    // Ne pas rediriger depuis register.html même si connecté
+    // Permettre la création de compte même si déjà connecté
 });
 

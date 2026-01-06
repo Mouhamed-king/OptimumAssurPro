@@ -109,6 +109,15 @@ app.get('*', (req, res) => {
         return res.sendFile(path.join(__dirname, 'index.html'));
     }
     
+    // Routes HTML spécifiques à servir directement
+    const htmlRoutes = ['/register.html', '/login.html', '/verify-email.html', '/reset-password.html'];
+    if (htmlRoutes.includes(req.path)) {
+        const filePath = path.join(__dirname, req.path);
+        if (fs.existsSync(filePath)) {
+            return res.sendFile(filePath);
+        }
+    }
+    
     // Pour toutes les autres routes non-API, servir login.html par défaut
     res.sendFile(path.join(__dirname, 'login.html'));
 });

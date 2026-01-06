@@ -104,21 +104,33 @@ function updateBordereauTable(nom, immatriculation, numeroPolice, dateEffet, dat
         return policeCell && policeCell.textContent.trim() === numeroPolice;
     });
     
+    let rowUpdated = false;
+    
     if (existingRow) {
         // Mettre à jour la ligne existante
         const cells = existingRow.querySelectorAll('td');
-        cells[2].textContent = nom;
-        cells[3].textContent = immatriculation;
-        cells[4].textContent = formatDate(dateEffet);
-        cells[5].textContent = formatDate(dateEcheance);
-        cells[6].textContent = formatNumber(primeNette);
-        cells[7].textContent = formatNumber(values.frais);
-        cells[8].textContent = formatNumber(values.taxes);
-        cells[9].textContent = formatNumber(values.fga);
-        cells[10].textContent = formatNumber(values.primeTTC);
-        cells[11].textContent = formatNumber(values.commission);
-        cells[12].textContent = formatNumber(values.netAVerser);
-    } else {
+        // Vérifier que la ligne a bien 13 cellules (pas une ligne de totaux ou vide)
+        if (cells.length >= 13 && cells[2] && cells[12]) {
+            cells[2].textContent = nom;
+            cells[3].textContent = immatriculation;
+            cells[4].textContent = formatDate(dateEffet);
+            cells[5].textContent = formatDate(dateEcheance);
+            cells[6].textContent = formatNumber(primeNette);
+            cells[7].textContent = formatNumber(values.frais);
+            cells[8].textContent = formatNumber(values.taxes);
+            cells[9].textContent = formatNumber(values.fga);
+            cells[10].textContent = formatNumber(values.primeTTC);
+            cells[11].textContent = formatNumber(values.commission);
+            cells[12].textContent = formatNumber(values.netAVerser);
+            rowUpdated = true;
+        } else {
+            // Si la ligne n'a pas le bon nombre de cellules, la supprimer
+            existingRow.remove();
+        }
+    }
+    
+    // Si on n'a pas mis à jour de ligne existante, créer une nouvelle ligne
+    if (!rowUpdated) {
         // Ajouter une nouvelle ligne
         const rowCount = tbody.querySelectorAll('tr').length;
         const row = document.createElement('tr');
@@ -167,8 +179,12 @@ function updateBordereauTotals() {
     let totalNetAVerser = 0;
     
     rows.forEach(row => {
+        // Ignorer la ligne de totaux et les lignes vides
+        if (row.classList.contains('totals-row')) return;
+        
         const cells = row.querySelectorAll('td');
-        if (cells.length === 13) {
+        // Vérifier que c'est une ligne de données valide avec 13 cellules
+        if (cells.length === 13 && cells[6] && cells[6].textContent) {
             // Parser les nombres en remplaçant les espaces et les virgules par des points
             const parseNumber = (text) => {
                 if (!text || text.trim() === '' || text.trim() === '-') return 0;
@@ -216,7 +232,7 @@ function updateBordereauTotals() {
         };
         const cells = totalsRow.querySelectorAll('td');
         // La ligne de totaux a 8 cellules : 1 avec colspan="6" (indice 0) + 7 cellules numériques (indices 1-7)
-        if (cells.length >= 8) {
+        if (cells.length >= 8 && cells[1] && cells[2] && cells[3] && cells[4] && cells[5] && cells[6] && cells[7]) {
             cells[1].textContent = formatNumber(totalPrimeNette);
             cells[2].textContent = formatNumber(totalFrais);
             cells[3].textContent = formatNumber(totalTaxes);

@@ -27,12 +27,13 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Servir les fichiers statiques (frontend)
-// Sur Vercel, les fichiers statiques sont servis automatiquement avant d'atteindre le serveur
-// Mais on garde express.static pour le développement local
+// IMPORTANT: express.static doit être AVANT toutes les autres routes
+// pour que les fichiers CSS/JS soient servis correctement
 app.use(express.static(path.join(__dirname, '.'), {
     maxAge: '1y',
     etag: true,
-    lastModified: true
+    lastModified: true,
+    index: false // Ne pas servir index.html automatiquement pour les dossiers
 }));
 
 // Routes API
@@ -53,12 +54,20 @@ app.get('/api/health', (req, res) => {
 });
 
 // Route pour servir le frontend (SPA)
-// express.static sert déjà les fichiers statiques (CSS, JS, images, etc.)
-// Cette route ne sera appelée que pour les routes qui ne correspondent à aucun fichier statique
-app.get('*', (req, res) => {
+// Cette route ne sera appelée QUE si express.static n'a pas trouvé de fichier correspondant
+app.get('*', (req, res, next) => {
     // Ignorer les routes API
     if (req.path.startsWith('/api')) {
         return res.status(404).json({ error: 'Route API non trouvée' });
+    }
+    
+    // Vérifier explicitement que ce n'est pas un fichier statique
+    const ext = path.extname(req.path).toLowerCase();
+    const staticExtensions = ['.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.woff', '.woff2', '.ttf', '.eot', '.json', '.html'];
+    
+    // Si c'est un fichier statique, laisser express.static le gérer
+    if (staticExtensions.includes(ext) && req.path !== '/index.html') {
+        return res.status(404).send('File not found');
     }
     
     // Servir index.html pour toutes les autres routes (SPA)

@@ -7,11 +7,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // Vérifier si l'utilisateur est connecté
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     const currentPath = window.location.pathname;
-    const isLoginPage = currentPath.includes('login.html') || 
-                        currentPath.includes('register.html') ||
-                        currentPath.includes('verify-email.html') ||
-                        currentPath.includes('reset-password.html');
+    
+    // Pages publiques qui doivent être accessibles même si connecté
+    const publicPages = ['register.html', 'verify-email.html', 'reset-password.html'];
+    const isPublicPage = publicPages.some(page => currentPath.includes(page));
     const isIndexPage = currentPath === '/' || currentPath.includes('index.html');
+    
+    // Si on est sur une page publique, ne pas vérifier le token (laisser la page se charger)
+    if (isPublicPage) {
+        return; // Laisser ces pages se charger normalement
+    }
     
     // Si pas de token
     if (!token) {
@@ -21,22 +26,9 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         // Si on est sur une autre page protégée sans token, rediriger vers login
-        if (!isPublicPage) {
-            sessionStorage.setItem('redirectAfterLogin', currentPath);
-            window.location.href = 'login.html';
-            return;
-        }
-        // Si on est sur une page publique, ne rien faire (on reste là)
+        sessionStorage.setItem('redirectAfterLogin', currentPath);
+        window.location.href = 'login.html';
         return;
-    }
-    
-    // Pages publiques qui doivent être accessibles même si connecté
-    const publicPages = ['register.html', 'verify-email.html', 'reset-password.html'];
-    const isPublicPage = publicPages.some(page => currentPath.includes(page));
-    
-    // Si on est sur une page publique, ne pas vérifier le token (laisser la page se charger)
-    if (isPublicPage) {
-        return; // Laisser ces pages se charger normalement
     }
     
     // Si on a un token et qu'on est sur login.html, rediriger vers index.html

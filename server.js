@@ -27,7 +27,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Servir les fichiers statiques (frontend)
-app.use(express.static(path.join(__dirname, '.')));
+// Important: doit être avant les routes pour que Vercel serve correctement les fichiers CSS/JS
+app.use(express.static(path.join(__dirname, '.'), {
+    maxAge: '1y',
+    etag: true,
+    lastModified: true
+}));
 
 // Routes API
 app.use('/api/auth', authRoutes);

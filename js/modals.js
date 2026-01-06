@@ -513,7 +513,7 @@ window.onclick = function(event) {
     const modals = ['clientModal', 'contractModal', 'viewClientModal', 'viewContractModal'];
     modals.forEach(modalId => {
         const modal = document.getElementById(modalId);
-        if (event.target === modal) {
+        if (modal && event.target === modal) {
             modal.classList.remove('show');
         }
     });

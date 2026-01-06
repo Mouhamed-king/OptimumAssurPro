@@ -67,22 +67,26 @@ function updatePasswordRequirements(password) {
     
     if (reqLength) {
         reqLength.className = requirements.length ? 'valid' : 'invalid';
-        reqLength.querySelector('i').className = requirements.length ? 'fas fa-check' : 'fas fa-times';
+        const icon = reqLength.querySelector('i');
+        if (icon) icon.className = requirements.length ? 'fas fa-check' : 'fas fa-times';
     }
     
     if (reqUppercase) {
         reqUppercase.className = requirements.uppercase ? 'valid' : 'invalid';
-        reqUppercase.querySelector('i').className = requirements.uppercase ? 'fas fa-check' : 'fas fa-times';
+        const icon = reqUppercase.querySelector('i');
+        if (icon) icon.className = requirements.uppercase ? 'fas fa-check' : 'fas fa-times';
     }
     
     if (reqLowercase) {
         reqLowercase.className = requirements.lowercase ? 'valid' : 'invalid';
-        reqLowercase.querySelector('i').className = requirements.lowercase ? 'fas fa-check' : 'fas fa-times';
+        const icon = reqLowercase.querySelector('i');
+        if (icon) icon.className = requirements.lowercase ? 'fas fa-check' : 'fas fa-times';
     }
     
     if (reqNumber) {
         reqNumber.className = requirements.number ? 'valid' : 'invalid';
-        reqNumber.querySelector('i').className = requirements.number ? 'fas fa-check' : 'fas fa-times';
+        const icon = reqNumber.querySelector('i');
+        if (icon) icon.className = requirements.number ? 'fas fa-check' : 'fas fa-times';
     }
     
     return validation.valid;

@@ -10,10 +10,15 @@ async function loadParametres() {
         const entreprise = data.entreprise;
         
         // Remplir le formulaire
-        document.getElementById('entrepriseNom').value = entreprise.nom || '';
-        document.getElementById('entrepriseEmail').value = entreprise.email || '';
-        document.getElementById('entrepriseTelephone').value = entreprise.telephone || '';
-        document.getElementById('entrepriseAdresse').value = entreprise.adresse || '';
+        const nomEl = document.getElementById('entrepriseNom');
+        const emailEl = document.getElementById('entrepriseEmail');
+        const telEl = document.getElementById('entrepriseTelephone');
+        const adresseEl = document.getElementById('entrepriseAdresse');
+        
+        if (nomEl) nomEl.value = entreprise.nom || '';
+        if (emailEl) emailEl.value = entreprise.email || '';
+        if (telEl) telEl.value = entreprise.telephone || '';
+        if (adresseEl) adresseEl.value = entreprise.adresse || '';
         
         // Mettre à jour le nom dans le header
         const userName = document.querySelector('.user-name');
@@ -45,10 +50,22 @@ async function loadParametres() {
 async function saveEntrepriseInfo(event) {
     event.preventDefault();
     
-    const nom = document.getElementById('entrepriseNom').value.trim();
-    const email = document.getElementById('entrepriseEmail').value.trim();
-    const telephone = document.getElementById('entrepriseTelephone').value.trim();
-    const adresse = document.getElementById('entrepriseAdresse').value.trim();
+    const nomEl = document.getElementById('entrepriseNom');
+    const emailEl = document.getElementById('entrepriseEmail');
+    const telEl = document.getElementById('entrepriseTelephone');
+    const adresseEl = document.getElementById('entrepriseAdresse');
+    
+    if (!nomEl || !emailEl) {
+        if (typeof window.showToast === 'function') {
+            window.showToast('Erreur: Formulaire non trouvé', 'error');
+        }
+        return;
+    }
+    
+    const nom = nomEl.value.trim();
+    const email = emailEl.value.trim();
+    const telephone = telEl ? telEl.value.trim() : '';
+    const adresse = adresseEl ? adresseEl.value.trim() : '';
     
     // Validation
     if (!nom || !email) {
@@ -119,9 +136,20 @@ function validatePassword(password) {
 async function changePassword(event) {
     event.preventDefault();
     
-    const currentPassword = document.getElementById('currentPassword').value;
-    const newPassword = document.getElementById('newPassword').value;
-    const confirmPassword = document.getElementById('confirmPassword').value;
+    const currentPasswordEl = document.getElementById('currentPassword');
+    const newPasswordEl = document.getElementById('newPassword');
+    const confirmPasswordEl = document.getElementById('confirmPassword');
+    
+    if (!currentPasswordEl || !newPasswordEl || !confirmPasswordEl) {
+        if (typeof window.showToast === 'function') {
+            window.showToast('Erreur: Formulaire non trouvé', 'error');
+        }
+        return;
+    }
+    
+    const currentPassword = currentPasswordEl.value;
+    const newPassword = newPasswordEl.value;
+    const confirmPassword = confirmPasswordEl.value;
     
     // Validation
     if (!currentPassword || !newPassword || !confirmPassword) {

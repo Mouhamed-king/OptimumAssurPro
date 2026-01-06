@@ -372,10 +372,15 @@ async function loadDashboard() {
         const statsCards = document.querySelectorAll('.stat-card');
         if (statsCards.length >= 4) {
             // Toujours mettre à jour les valeurs depuis la base de données
-            statsCards[0].querySelector('h3').textContent = stats.clients_actifs ?? 0;
-            statsCards[1].querySelector('h3').textContent = stats.contrats_actifs ?? 0;
-            statsCards[2].querySelector('h3').textContent = stats.renouvellements_a_venir ?? 0;
-            statsCards[3].querySelector('h3').textContent = stats.expires_ce_mois ?? 0;
+            const h3_0 = statsCards[0].querySelector('h3');
+            const h3_1 = statsCards[1].querySelector('h3');
+            const h3_2 = statsCards[2].querySelector('h3');
+            const h3_3 = statsCards[3].querySelector('h3');
+            
+            if (h3_0) h3_0.textContent = stats.clients_actifs ?? 0;
+            if (h3_1) h3_1.textContent = stats.contrats_actifs ?? 0;
+            if (h3_2) h3_2.textContent = stats.renouvellements_a_venir ?? 0;
+            if (h3_3) h3_3.textContent = stats.expires_ce_mois ?? 0;
             console.log('Statistiques mises à jour:', {
                 clients: stats.clients_actifs ?? 0,
                 contrats: stats.contrats_actifs ?? 0,

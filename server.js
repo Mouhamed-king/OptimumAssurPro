@@ -52,18 +52,13 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-// Route pour servir le frontend (seulement si ce n'est pas un fichier statique)
+// Route pour servir le frontend (SPA)
+// express.static sert déjà les fichiers statiques (CSS, JS, images, etc.)
+// Cette route ne sera appelée que pour les routes qui ne correspondent à aucun fichier statique
 app.get('*', (req, res) => {
     // Ignorer les routes API
     if (req.path.startsWith('/api')) {
         return res.status(404).json({ error: 'Route API non trouvée' });
-    }
-    
-    // Ignorer les fichiers statiques (ils sont servis par express.static)
-    const ext = path.extname(req.path).toLowerCase();
-    const staticExtensions = ['.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.woff', '.woff2', '.ttf', '.eot', '.json'];
-    if (staticExtensions.includes(ext)) {
-        return res.status(404).send('File not found');
     }
     
     // Servir index.html pour toutes les autres routes (SPA)

@@ -29,12 +29,32 @@ app.use(express.urlencoded({ extended: true }));
 // Servir les fichiers statiques (frontend)
 // IMPORTANT: express.static doit être AVANT toutes les autres routes
 // pour que les fichiers CSS/JS soient servis correctement
-app.use(express.static(path.join(__dirname, '.'), {
+const staticOptions = {
     maxAge: '1y',
     etag: true,
     lastModified: true,
-    index: false // Ne pas servir index.html automatiquement pour les dossiers
-}));
+    index: false, // Ne pas servir index.html automatiquement pour les dossiers
+    setHeaders: (res, filePath) => {
+        // Définir les headers appropriés selon le type de fichier
+        const ext = path.extname(filePath);
+        if (ext === '.js') {
+            res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+        } else if (ext === '.css') {
+            res.setHeader('Content-Type', 'text/css; charset=utf-8');
+        }
+    }
+};
+
+app.use(express.static(path.join(__dirname, '.'), staticOptions));
+
+// Routes explicites pour les fichiers statiques (sécurité supplémentaire pour Vercel)
+app.get('/css/:file', (req, res) => {
+    res.sendFile(path.join(__dirname, 'css', req.params.file));
+});
+
+app.get('/js/:file', (req, res) => {
+    res.sendFile(path.join(__dirname, 'js', req.params.file));
+});
 
 // Routes API
 app.use('/api/auth', authRoutes);
@@ -55,7 +75,7 @@ app.get('/api/health', (req, res) => {
 
 // Route pour servir le frontend (SPA)
 // Cette route ne sera appelée QUE si express.static n'a pas trouvé de fichier correspondant
-app.get('*', (req, res, next) => {
+app.get('*', (req, res) => {
     // Ignorer les routes API
     if (req.path.startsWith('/api')) {
         return res.status(404).json({ error: 'Route API non trouvée' });
@@ -63,10 +83,10 @@ app.get('*', (req, res, next) => {
     
     // Vérifier explicitement que ce n'est pas un fichier statique
     const ext = path.extname(req.path).toLowerCase();
-    const staticExtensions = ['.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.woff', '.woff2', '.ttf', '.eot', '.json', '.html'];
+    const staticExtensions = ['.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.woff', '.woff2', '.ttf', '.eot', '.json'];
     
-    // Si c'est un fichier statique, laisser express.static le gérer
-    if (staticExtensions.includes(ext) && req.path !== '/index.html') {
+    // Si c'est un fichier statique, retourner 404 (il devrait être servi par express.static ou les routes explicites)
+    if (staticExtensions.includes(ext)) {
         return res.status(404).send('File not found');
     }
     

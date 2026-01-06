@@ -45,7 +45,12 @@ Remplissez les champs suivants :
 - **Root Directory** : (laissez vide)
 - **Build Command** : `npm install`
 - **Start Command** : `npm start`
+- **Node Version** : `20.18.0` (IMPORTANT : Définissez cette version dans les settings avancés)
 - **Plan** : `Free` (gratuit)
+
+⚠️ **IMPORTANT** : Dans les **"Advanced Settings"** de Render :
+- **Node Version** : Mettez `20.18.0` (ou laissez vide pour utiliser `.nvmrc`)
+- Assurez-vous que **"Auto-Deploy"** est activé
 
 ### 5. Configurer les Variables d'Environnement
 

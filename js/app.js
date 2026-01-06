@@ -45,10 +45,31 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Charger le dashboard si on est sur la page dashboard
+    // Vérifier aussi si c'est la page par défaut (index.html)
     const dashboardPage = document.getElementById('dashboard-page');
-    if (dashboardPage && dashboardPage.classList.contains('active')) {
+    const isDashboardActive = dashboardPage && (
+        dashboardPage.classList.contains('active') || 
+        window.location.pathname === '/' || 
+        window.location.pathname.endsWith('index.html') ||
+        window.location.pathname.endsWith('/')
+    );
+    
+    if (isDashboardActive) {
+        // S'assurer que la page dashboard est active
+        if (dashboardPage) {
+            dashboardPage.classList.add('active');
+            // Masquer les autres pages
+            document.querySelectorAll('.page').forEach(page => {
+                if (page.id !== 'dashboard-page') {
+                    page.classList.remove('active');
+                }
+            });
+        }
         loadDashboard().catch(error => {
             console.error('Erreur lors du chargement du dashboard:', error);
+            if (typeof showToast === 'function') {
+                showToast('Erreur lors du chargement du dashboard: ' + (error.message || 'Erreur inconnue'), 'error');
+            }
         });
     }
     
@@ -98,24 +119,60 @@ document.addEventListener('DOMContentLoaded', function() {
             if (targetPageElement) {
                 targetPageElement.classList.add('active');
                 
-                // Charger les données de la page
-                if (targetPage === 'dashboard') {
-                    loadDashboard();
-                } else if (targetPage === 'clients') {
-                    loadClients();
-                    // Réinitialiser la recherche et les filtres
-                    setTimeout(() => {
-                        setupSearch();
-                        setupFilters();
-                    }, 100);
-                } else if (targetPage === 'bordereaux') {
-                    if (typeof loadBordereau === 'function') {
-                        loadBordereau();
+                // Charger les données de la page avec gestion d'erreur
+                try {
+                    if (targetPage === 'dashboard') {
+                        loadDashboard().catch(error => {
+                            console.error('Erreur lors du chargement du dashboard:', error);
+                            if (typeof showToast === 'function') {
+                                showToast('Erreur lors du chargement du dashboard', 'error');
+                            }
+                        });
+                    } else if (targetPage === 'clients') {
+                        loadClients().catch(error => {
+                            console.error('Erreur lors du chargement des clients:', error);
+                            if (typeof showToast === 'function') {
+                                showToast('Erreur lors du chargement des clients', 'error');
+                            }
+                        });
+                        // Réinitialiser la recherche et les filtres
+                        setTimeout(() => {
+                            if (typeof setupSearch === 'function') setupSearch();
+                            if (typeof setupFilters === 'function') setupFilters();
+                        }, 100);
+                    } else if (targetPage === 'bordereaux') {
+                        if (typeof loadBordereau === 'function') {
+                            loadBordereau().catch(error => {
+                                console.error('Erreur lors du chargement du bordereau:', error);
+                                if (typeof showToast === 'function') {
+                                    showToast('Erreur lors du chargement du bordereau', 'error');
+                                }
+                            });
+                        }
+                    } else if (targetPage === 'rapports') {
+                        if (typeof loadRapports === 'function') {
+                            loadRapports().catch(error => {
+                                console.error('Erreur lors du chargement des rapports:', error);
+                                if (typeof showToast === 'function') {
+                                    showToast('Erreur lors du chargement des rapports', 'error');
+                                }
+                            });
+                        }
+                    } else if (targetPage === 'parametres') {
+                        if (typeof loadParametres === 'function') {
+                            loadParametres().catch(error => {
+                                console.error('Erreur lors du chargement des paramètres:', error);
+                                if (typeof showToast === 'function') {
+                                    showToast('Erreur lors du chargement des paramètres', 'error');
+                                }
+                            });
+                        }
                     }
-                } else if (targetPage === 'rapports') {
-                    loadRapports();
-                } else if (targetPage === 'parametres') {
-                    loadParametres();
+                } catch (error) {
+                    console.error('Erreur lors du chargement de la page:', error);
+                    if (typeof showToast === 'function') {
+                        showToast('Erreur lors du chargement de la page', 'error');
+                    }
                 }
             }
         });

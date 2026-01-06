@@ -35,18 +35,23 @@ async function apiRequest(endpoint, options = {}) {
     try {
         const response = await fetch(`${API_BASE_URL}${endpoint}`, finalOptions);
         
-        // Si le token est expiré ou invalide, ne pas rediriger automatiquement
-        // Laisser le code appelant gérer l'erreur (sauf pour les pages protégées)
+        // Si le token est expiré ou invalide, nettoyer et rediriger
         if (response.status === 401 || response.status === 403) {
-            // Ne rediriger que si on n'est pas déjà sur la page de login
-            if (!window.location.pathname.includes('login.html') && 
-                !window.location.pathname.includes('register.html') &&
-                !window.location.pathname.includes('verify-email.html') &&
-                !window.location.pathname.includes('reset-password.html')) {
+            // Ne rediriger que si on n'est pas déjà sur une page publique
+            const isPublicPage = window.location.pathname.includes('login.html') || 
+                                window.location.pathname.includes('register.html') ||
+                                window.location.pathname.includes('verify-email.html') ||
+                                window.location.pathname.includes('reset-password.html');
+            
+            if (!isPublicPage) {
                 localStorage.removeItem('token');
+                localStorage.removeItem('entreprise');
                 sessionStorage.removeItem('token');
-                window.location.href = 'login.html';
-                return;
+                sessionStorage.removeItem('entreprise');
+                // Retourner une erreur claire au lieu de rediriger immédiatement
+                // Laisser le code appelant gérer la redirection
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Token d\'authentification manquant ou invalide');
             }
         }
         

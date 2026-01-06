@@ -6,33 +6,69 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Vérifier si l'utilisateur est connecté
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    if (!token && !window.location.pathname.includes('login.html')) {
+    const isLoginPage = window.location.pathname.includes('login.html') || 
+                        window.location.pathname.includes('register.html') ||
+                        window.location.pathname.includes('verify-email.html') ||
+                        window.location.pathname.includes('reset-password.html');
+    
+    // Si pas de token et pas sur une page publique, rediriger vers login
+    if (!token && !isLoginPage) {
+        // Sauvegarder l'URL actuelle pour rediriger après connexion
+        const currentPath = window.location.pathname;
+        if (currentPath !== '/login.html' && currentPath !== '/') {
+            sessionStorage.setItem('redirectAfterLogin', currentPath);
+        }
         window.location.href = 'login.html';
         return;
     }
     
+    // Si sur une page publique et connecté, rediriger vers dashboard
+    if (token && isLoginPage) {
+        window.location.href = 'index.html';
+        return;
+    }
+    
+    // Si pas de token, ne pas charger les données
+    if (!token) {
+        return;
+    }
+    
     // Charger les données de l'entreprise
-    loadEntrepriseInfo();
+    loadEntrepriseInfo().catch(error => {
+        console.error('Erreur lors du chargement des informations de l\'entreprise:', error);
+        // Si erreur d'authentification, rediriger vers login
+        if (error.message && error.message.includes('Token')) {
+            localStorage.removeItem('token');
+            sessionStorage.removeItem('token');
+            window.location.href = 'login.html';
+        }
+    });
     
     // Charger le dashboard si on est sur la page dashboard
     const dashboardPage = document.getElementById('dashboard-page');
     if (dashboardPage && dashboardPage.classList.contains('active')) {
-        loadDashboard();
+        loadDashboard().catch(error => {
+            console.error('Erreur lors du chargement du dashboard:', error);
+        });
     }
     
     // Charger les clients si on est sur la page clients
     const clientsPage = document.getElementById('clients-page');
     if (clientsPage && clientsPage.classList.contains('active')) {
-        loadClients();
+        loadClients().catch(error => {
+            console.error('Erreur lors du chargement des clients:', error);
+        });
     }
     
-                // Charger le bordereau si on est sur la page bordereaux
-                const bordereauxPage = document.getElementById('bordereaux-page');
-                if (bordereauxPage && bordereauxPage.classList.contains('active')) {
-                    if (typeof loadBordereau === 'function') {
-                        loadBordereau();
-                    }
-                }
+    // Charger le bordereau si on est sur la page bordereaux
+    const bordereauxPage = document.getElementById('bordereaux-page');
+    if (bordereauxPage && bordereauxPage.classList.contains('active')) {
+        if (typeof loadBordereau === 'function') {
+            loadBordereau().catch(error => {
+                console.error('Erreur lors du chargement du bordereau:', error);
+            });
+        }
+    }
 });
 
 // Navigation entre les pages
@@ -243,6 +279,15 @@ async function loadEntrepriseInfo() {
         }
     } catch (error) {
         console.error('Erreur lors du chargement des informations de l\'entreprise:', error);
+        // Si erreur d'authentification, rediriger vers login
+        if (error.message && (error.message.includes('Token') || error.message.includes('authentification'))) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('entreprise');
+            sessionStorage.removeItem('token');
+            sessionStorage.removeItem('entreprise');
+            window.location.href = 'login.html';
+        }
+        throw error; // Re-lancer l'erreur pour que le code appelant puisse la gérer
     }
 }
 
@@ -253,6 +298,14 @@ async function loadEntrepriseInfo() {
 async function loadDashboard() {
     try {
         console.log('Chargement du dashboard...');
+        
+        // Vérifier que le token existe avant de faire l'appel API
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        if (!token) {
+            console.warn('Aucun token trouvé, redirection vers login...');
+            window.location.href = 'login.html';
+            return;
+        }
         
         // Charger les statistiques depuis Supabase
         const stats = await window.api.stats.getDashboard();

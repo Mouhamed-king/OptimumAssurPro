@@ -20,7 +20,8 @@ APP_URL=https://votre-app.onrender.com
 
 ⚠️ **IMPORTANT** : 
 - `SMTP_PASSWORD` doit être un **mot de passe d'application Gmail**, pas votre mot de passe habituel
-- `APP_URL` doit être l'URL complète de votre application Render (ex: `https://optimum-assur-pro.onrender.com`)
+- **Vous pouvez réutiliser le même mot de passe d'application** sur plusieurs services (Vercel, Render, etc.) - pas besoin d'en créer un nouveau
+- `APP_URL` doit être l'URL complète de votre application Render (ex: `https://optimum-assur-pro.onrender.com`), **pas** l'URL Vercel
 
 #### 2. Vérifier les logs Render
 
@@ -34,6 +35,8 @@ Dans le dashboard Render → Votre service → **Logs**, cherchez :
 **a) Mot de passe d'application requis**
 
 Gmail nécessite un "mot de passe d'application" pour les connexions SMTP :
+
+> 💡 **Note** : Si vous avez déjà un mot de passe d'application qui fonctionne sur Vercel, vous pouvez réutiliser le même sur Render. Pas besoin d'en créer un nouveau, sauf si celui-ci a été révoqué ou expiré.
 
 1. Allez sur [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
 2. Activez la **validation en 2 étapes** si ce n'est pas déjà fait

@@ -178,13 +178,16 @@ function updateBordereauTotals() {
     let totalCommission = 0;
     let totalNetAVerser = 0;
     
+    let hasValidRows = false;
+    
     rows.forEach(row => {
         // Ignorer la ligne de totaux et les lignes vides
         if (row.classList.contains('totals-row')) return;
         
         const cells = row.querySelectorAll('td');
         // Vérifier que c'est une ligne de données valide avec 13 cellules
-        if (cells.length === 13 && cells[6] && cells[6].textContent) {
+        if (cells.length === 13 && cells[6] && cells[6].textContent && cells[6].textContent.trim() !== '') {
+            hasValidRows = true;
             // Parser les nombres en remplaçant les espaces et les virgules par des points
             const parseNumber = (text) => {
                 if (!text || text.trim() === '' || text.trim() === '-') return 0;
@@ -202,7 +205,8 @@ function updateBordereauTotals() {
     
     // Vérifier si la ligne de totaux existe
     let totalsRow = tbody.querySelector('tr.totals-row');
-    if (!totalsRow && rows.length > 0) {
+    // Ne créer la ligne de totaux que s'il y a des lignes de données valides
+    if (!totalsRow && hasValidRows) {
         totalsRow = document.createElement('tr');
         totalsRow.className = 'totals-row';
         totalsRow.style.backgroundColor = '#F3F4F6';
@@ -230,16 +234,25 @@ function updateBordereauTotals() {
             parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
             return parts.length > 1 ? parts.join(',') : parts[0];
         };
-        const cells = totalsRow.querySelectorAll('td');
+        
+        const cells = Array.from(totalsRow.querySelectorAll('td'));
         // La ligne de totaux a 8 cellules : 1 avec colspan="6" (indice 0) + 7 cellules numériques (indices 1-7)
-        if (cells.length >= 8 && cells[1] && cells[2] && cells[3] && cells[4] && cells[5] && cells[6] && cells[7]) {
-            cells[1].textContent = formatNumber(totalPrimeNette);
-            cells[2].textContent = formatNumber(totalFrais);
-            cells[3].textContent = formatNumber(totalTaxes);
-            cells[4].textContent = formatNumber(totalFGA);
-            cells[5].textContent = formatNumber(totalTTC);
-            cells[6].textContent = formatNumber(totalCommission);
-            cells[7].textContent = formatNumber(totalNetAVerser);
+        // Vérifier chaque cellule individuellement avant d'y accéder pour éviter les erreurs
+        if (cells && cells.length >= 8) {
+            try {
+                if (cells[1]) cells[1].textContent = formatNumber(totalPrimeNette);
+                if (cells[2]) cells[2].textContent = formatNumber(totalFrais);
+                if (cells[3]) cells[3].textContent = formatNumber(totalTaxes);
+                if (cells[4]) cells[4].textContent = formatNumber(totalFGA);
+                if (cells[5]) cells[5].textContent = formatNumber(totalTTC);
+                if (cells[6]) cells[6].textContent = formatNumber(totalCommission);
+                if (cells[7]) cells[7].textContent = formatNumber(totalNetAVerser);
+            } catch (error) {
+                console.error('Erreur lors de la mise à jour des totaux:', error);
+                console.error('Cells:', cells, 'Length:', cells ? cells.length : 0);
+            }
+        } else {
+            console.warn('La ligne de totaux n\'a pas le bon nombre de cellules:', cells ? cells.length : 0);
         }
     }
 }

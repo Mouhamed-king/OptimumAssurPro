@@ -169,13 +169,18 @@ function updateBordereauTotals() {
     rows.forEach(row => {
         const cells = row.querySelectorAll('td');
         if (cells.length === 13) {
-            totalPrimeNette += parseFloat(cells[6].textContent.replace(/\s/g, '') || 0);
-            totalFrais += parseFloat(cells[7].textContent.replace(/\s/g, '') || 0);
-            totalTaxes += parseFloat(cells[8].textContent.replace(/\s/g, '') || 0);
-            totalFGA += parseFloat(cells[9].textContent.replace(/\s/g, '') || 0);
-            totalTTC += parseFloat(cells[10].textContent.replace(/\s/g, '') || 0);
-            totalCommission += parseFloat(cells[11].textContent.replace(/\s/g, '') || 0);
-            totalNetAVerser += parseFloat(cells[12].textContent.replace(/\s/g, '') || 0);
+            // Parser les nombres en remplaçant les espaces et les virgules par des points
+            const parseNumber = (text) => {
+                if (!text || text.trim() === '' || text.trim() === '-') return 0;
+                return parseFloat(text.replace(/\s/g, '').replace(',', '.')) || 0;
+            };
+            totalPrimeNette += parseNumber(cells[6].textContent);
+            totalFrais += parseNumber(cells[7].textContent);
+            totalTaxes += parseNumber(cells[8].textContent);
+            totalFGA += parseNumber(cells[9].textContent);
+            totalTTC += parseNumber(cells[10].textContent);
+            totalCommission += parseNumber(cells[11].textContent);
+            totalNetAVerser += parseNumber(cells[12].textContent);
         }
     });
     
@@ -200,16 +205,25 @@ function updateBordereauTotals() {
     }
     
     if (totalsRow) {
-        const formatNumber = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+        // Formater les nombres avec espaces et décimales
+        const formatNumber = (num) => {
+            // Arrondir à 2 décimales
+            const rounded = Math.round(num * 100) / 100;
+            // Formater avec espaces pour les milliers et garder les décimales
+            const parts = rounded.toString().split('.');
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+            return parts.length > 1 ? parts.join(',') : parts[0];
+        };
         const cells = totalsRow.querySelectorAll('td');
-        if (cells.length >= 7) {
-            cells[6].textContent = formatNumber(totalPrimeNette);
-            cells[7].textContent = formatNumber(totalFrais);
-            cells[8].textContent = formatNumber(totalTaxes);
-            cells[9].textContent = formatNumber(totalFGA);
-            cells[10].textContent = formatNumber(totalTTC);
-            cells[11].textContent = formatNumber(totalCommission);
-            cells[12].textContent = formatNumber(totalNetAVerser);
+        // La ligne de totaux a 8 cellules : 1 avec colspan="6" (indice 0) + 7 cellules numériques (indices 1-7)
+        if (cells.length >= 8) {
+            cells[1].textContent = formatNumber(totalPrimeNette);
+            cells[2].textContent = formatNumber(totalFrais);
+            cells[3].textContent = formatNumber(totalTaxes);
+            cells[4].textContent = formatNumber(totalFGA);
+            cells[5].textContent = formatNumber(totalTTC);
+            cells[6].textContent = formatNumber(totalCommission);
+            cells[7].textContent = formatNumber(totalNetAVerser);
         }
     }
 }
@@ -253,7 +267,15 @@ async function loadBordereau() {
                 return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
             };
             
-            const formatNumber = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+            // Formater les nombres avec espaces et décimales
+            const formatNumber = (num) => {
+                // Arrondir à 2 décimales
+                const rounded = Math.round(num * 100) / 100;
+                // Formater avec espaces pour les milliers et garder les décimales
+                const parts = rounded.toString().split('.');
+                parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+                return parts.length > 1 ? parts.join(',') : parts[0];
+            };
             
             // Récupérer l'immatriculation depuis les véhicules
             const immatriculation = contrat.vehicules?.immatriculation || (contrat.vehicules && contrat.vehicules.length > 0 ? contrat.vehicules[0].immatriculation : null) || contrat.immatriculation || '-';

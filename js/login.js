@@ -143,7 +143,7 @@ async function resendVerificationEmail(email) {
     }
     
     try {
-        const response = await fetch(`${window.API_BASE_URL || 'http://localhost:3000/api'}/auth/resend-verification`, {
+        const response = await fetch(`${window.API_BASE_URL || window.location.origin + '/api'}/auth/resend-verification`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -209,7 +209,7 @@ async function handleForgotPassword(event) {
     submitButton.disabled = true;
     
     try {
-        const response = await fetch(`${window.API_BASE_URL || 'http://localhost:3000/api'}/auth/forgot-password`, {
+        const response = await fetch(`${window.API_BASE_URL || window.location.origin + '/api'}/auth/forgot-password`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

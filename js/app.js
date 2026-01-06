@@ -43,23 +43,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Si on est sur index.html avec un token, charger les données
-    if (!isIndexPage) {
-        // Si on n'est pas sur index.html, ne pas charger les données ici
-        return;
-    }
-    
-    // Charger les données de l'entreprise
-    loadEntrepriseInfo().catch(error => {
-        console.error('Erreur lors du chargement des informations de l\'entreprise:', error);
-        // Si erreur d'authentification, rediriger vers login
-        if (error.message && error.message.includes('Token')) {
-            localStorage.removeItem('token');
-            sessionStorage.removeItem('token');
-            window.location.href = 'login.html';
-        }
-    });
-    
-    // Ne charger les données QUE si on est sur index.html avec un token valide
     if (!isIndexPage || !token) {
         return;
     }

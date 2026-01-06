@@ -318,7 +318,7 @@ async function updatePayment(contratId, montantTotal, montantPayeActuel, montant
     }
     
     try {
-        const response = await fetch(`${window.API_BASE_URL || 'http://localhost:3000/api'}/contracts/${contratId}/payment`, {
+        const response = await fetch(`${window.API_BASE_URL || window.location.origin + '/api'}/contracts/${contratId}/payment`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',

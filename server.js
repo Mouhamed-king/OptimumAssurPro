@@ -91,24 +91,25 @@ app.get('*', (req, res) => {
         return res.status(404).send('File not found');
     }
     
-    // Si c'est la racine ou index.html, servir login.html par défaut
-    // L'application frontend gérera la redirection vers index.html si l'utilisateur est connecté
-    if (req.path === '/' || req.path === '/index.html') {
-        // Vérifier si l'utilisateur a un token dans les cookies ou headers (pour le SSR)
-        // Sinon, servir login.html par défaut
+    // Si c'est la racine, servir login.html par défaut
+    if (req.path === '/') {
         return res.sendFile(path.join(__dirname, 'login.html'));
     }
     
-    // Pour les autres routes, servir le fichier HTML correspondant ou index.html
-    const htmlFile = req.path.endsWith('.html') ? req.path : req.path + '.html';
-    const filePath = path.join(__dirname, htmlFile);
-    
-    // Vérifier si le fichier existe
-    if (fs.existsSync(filePath)) {
-        return res.sendFile(filePath);
+    // Pour les routes HTML spécifiques, servir le fichier correspondant
+    if (req.path.endsWith('.html')) {
+        const filePath = path.join(__dirname, req.path);
+        if (fs.existsSync(filePath)) {
+            return res.sendFile(filePath);
+        }
     }
     
-    // Sinon, servir login.html par défaut
+    // Pour index.html, servir le fichier (la protection sera gérée côté client)
+    if (req.path === '/index.html') {
+        return res.sendFile(path.join(__dirname, 'index.html'));
+    }
+    
+    // Pour toutes les autres routes non-API, servir login.html par défaut
     res.sendFile(path.join(__dirname, 'login.html'));
 });
 

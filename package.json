@@ -10,7 +10,7 @@
     "migrate-payments": "node database/add-payment-columns.js",
     "seed": "node database/seed.js",
     "clean": "node database/clean-test-data.js",
-    "test-smtp": "node scripts/test-smtp.js",
+    "test-smtp": "node scripts/test-smtp.js"
   },
   "engines": {
     "node": ">=14.0.0",

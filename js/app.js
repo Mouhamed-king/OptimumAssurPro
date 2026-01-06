@@ -403,13 +403,14 @@ async function loadDashboard() {
                 console.warn('API notifications non chargée');
             } else {
                 const notificationsData = await window.api.notifications.getAll('false');
-            const notifications = notificationsData.notifications || [];
-            
-            // Mettre à jour le badge de notifications
-            const badge = document.querySelector('.notifications .badge');
-            if (badge) {
-                badge.textContent = notifications.length;
-                badge.style.display = notifications.length > 0 ? 'flex' : 'none';
+                const notifications = notificationsData.notifications || [];
+                
+                // Mettre à jour le badge de notifications
+                const badge = document.querySelector('.notifications .badge');
+                if (badge) {
+                    badge.textContent = notifications.length;
+                    badge.style.display = notifications.length > 0 ? 'flex' : 'none';
+                }
             }
         } catch (notifError) {
             console.warn('Erreur lors du chargement des notifications:', notifError);

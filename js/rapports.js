@@ -534,9 +534,9 @@ async function exportRapport() {
             const vehicule = contrat.vehicules?.immatriculation || '-';
             const dateDebut = contrat.date_debut ? new Date(contrat.date_debut).toLocaleDateString('fr-FR') : '-';
             const dateFin = contrat.date_fin ? new Date(contrat.date_fin).toLocaleDateString('fr-FR') : '-';
-            const primeNette = formatCurrency(parseFloat(contrat.montant) || 0);
-            const montantPaye = formatCurrency(parseFloat(contrat.montant_paye) || 0);
-            const montantRestant = formatCurrency(parseFloat(contrat.montant_restant) || 0);
+            const primeNette = formatMoney(parseFloat(contrat.montant) || 0);
+            const montantPaye = formatMoney(parseFloat(contrat.montant_paye) || 0);
+            const montantRestant = formatMoney(parseFloat(contrat.montant_restant) || 0);
             const statut = contrat.actif ? 'Actif' : 'Inactif';
             
             return [
@@ -558,7 +558,7 @@ async function exportRapport() {
         const totalRestant = contratsFiltres.reduce((sum, c) => sum + (parseFloat(c.montant_restant) || 0), 0);
         
         csvRows.push([]); // Ligne vide
-        csvRows.push(['TOTAL', '', '', '', '', formatCurrency(totalPrimeNette).replace(/\s/g, ''), formatCurrency(totalPaye).replace(/\s/g, ''), formatCurrency(totalRestant).replace(/\s/g, ''), '']);
+        csvRows.push(['TOTAL', '', '', '', '', formatMoney(totalPrimeNette).replace(/\s/g, ''), formatMoney(totalPaye).replace(/\s/g, ''), formatMoney(totalRestant).replace(/\s/g, ''), '']);
         
         // Convertir en CSV
         const csvContent = [

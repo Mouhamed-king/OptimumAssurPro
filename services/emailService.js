@@ -32,7 +32,7 @@ if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
 // Envoyer un email de vérification
 async function sendVerificationEmail(email, verificationToken, nom) {
     try {
-        const verificationUrl = `${process.env.APP_URL || 'http://localhost:3000'}/verify-email.html?token=${verificationToken}`;
+        const verificationUrl = `${process.env.APP_URL || (process.env.NODE_ENV === 'production' ? 'https://optimumassurpro.onrender.com' : 'http://localhost:3000')}/verify-email.html?token=${verificationToken}`;
         
         const mailOptions = {
             from: `"${process.env.SMTP_FROM_NAME || 'OptimumAssurPro'}" <${process.env.SMTP_USER}>`,
@@ -196,7 +196,7 @@ async function sendVerificationEmail(email, verificationToken, nom) {
 // Envoyer un email de réinitialisation de mot de passe
 async function sendPasswordResetEmail(email, resetToken, nom) {
     try {
-        const resetUrl = `${process.env.APP_URL || 'http://localhost:3000'}/reset-password.html?token=${resetToken}`;
+        const resetUrl = `${process.env.APP_URL || (process.env.NODE_ENV === 'production' ? 'https://optimumassurpro.onrender.com' : 'http://localhost:3000')}/reset-password.html?token=${resetToken}`;
         
         const mailOptions = {
             from: `"${process.env.SMTP_FROM_NAME || 'OptimumAssurPro'}" <${process.env.SMTP_USER}>`,

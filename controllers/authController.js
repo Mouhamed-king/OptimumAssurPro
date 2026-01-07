@@ -117,7 +117,7 @@ const register = async (req, res) => {
         }
         
         // Si SMTP n'est pas configuré, afficher le lien de vérification dans la réponse
-        const verificationUrl = `${process.env.APP_URL || 'http://localhost:3000'}/verify-email.html?token=${verificationToken}`;
+        const verificationUrl = `${process.env.APP_URL || (process.env.NODE_ENV === 'production' ? 'https://optimumassurpro.onrender.com' : 'http://localhost:3000')}/verify-email.html?token=${verificationToken}`;
         
         res.status(201).json({
             message: emailSent 

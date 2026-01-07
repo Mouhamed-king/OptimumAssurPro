@@ -38,9 +38,6 @@ const transporter = nodemailer.createTransport(transporterConfig);
 
 // Vérifier la configuration email au démarrage
 console.log('📧 Configuration SMTP:');
-const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
-const smtpPort = process.env.SMTP_PORT || '587';
-const isSendGrid = smtpHost.includes('sendgrid');
 console.log('   Host:', smtpHost, isSendGrid ? '(SendGrid)' : '(Gmail par défaut)');
 console.log('   Port:', smtpPort);
 console.log('   Secure:', process.env.SMTP_SECURE === 'true' ? 'true' : 'false');

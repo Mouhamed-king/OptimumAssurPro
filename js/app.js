@@ -826,8 +826,10 @@ window.logout = logout;
 // ============================================
 
 async function showAllNotifications() {
+    console.log('showAllNotifications appelée');
     try {
         if (!window.api || !window.api.notifications) {
+            console.error('API notifications non disponible', window.api);
             if (typeof window.showToast === 'function') {
                 window.showToast('API notifications non disponible', 'error');
             } else {

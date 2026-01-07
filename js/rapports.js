@@ -496,8 +496,10 @@ function formatMoney(amount) {
 
 // Exporter le rapport en CSV
 async function exportRapport() {
+    console.log('exportRapport appelée');
     try {
         if (!window.api || !window.api.stats || !window.api.contracts) {
+            console.error('API non disponible', window.api);
             if (typeof window.showToast === 'function') {
                 window.showToast('API non disponible', 'error');
             } else {

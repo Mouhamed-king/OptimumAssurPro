@@ -828,7 +828,12 @@ window.logout = logout;
 async function showAllNotifications() {
     try {
         if (!window.api || !window.api.notifications) {
-            showToast('API notifications non disponible', 'error');
+            if (typeof window.showToast === 'function') {
+                window.showToast('API notifications non disponible', 'error');
+            } else {
+                console.error('API notifications non disponible');
+                alert('API notifications non disponible');
+            }
             return;
         }
         
@@ -922,7 +927,11 @@ async function showAllNotifications() {
         
     } catch (error) {
         console.error('Erreur lors du chargement des notifications:', error);
-        showToast('Erreur lors du chargement des notifications', 'error');
+        if (typeof window.showToast === 'function') {
+            window.showToast('Erreur lors du chargement des notifications: ' + (error.message || 'Erreur inconnue'), 'error');
+        } else {
+            alert('Erreur lors du chargement des notifications: ' + (error.message || 'Erreur inconnue'));
+        }
     }
 }
 
@@ -961,7 +970,11 @@ async function markNotificationAsRead(id, button) {
         
     } catch (error) {
         console.error('Erreur lors du marquage de la notification:', error);
-        showToast('Erreur lors du marquage de la notification', 'error');
+        if (typeof window.showToast === 'function') {
+            window.showToast('Erreur lors du marquage de la notification: ' + (error.message || 'Erreur inconnue'), 'error');
+        } else {
+            console.error('Erreur lors du marquage de la notification:', error);
+        }
     }
 }
 

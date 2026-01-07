@@ -498,7 +498,11 @@ function formatMoney(amount) {
 async function exportRapport() {
     try {
         if (!window.api || !window.api.stats || !window.api.contracts) {
-            showToast('API non disponible', 'error');
+            if (typeof window.showToast === 'function') {
+                window.showToast('API non disponible', 'error');
+            } else {
+                alert('API non disponible');
+            }
             return;
         }
         
@@ -509,10 +513,17 @@ async function exportRapport() {
         const contrats = contractsData.contrats || [];
         
         // Filtrer par période
+        if (typeof filtrerParPeriode !== 'function') {
+            throw new Error('La fonction filtrerParPeriode n\'est pas définie');
+        }
         const contratsFiltres = filtrerParPeriode(contrats, periode);
         
         if (contratsFiltres.length === 0) {
-            showToast('Aucune donnée à exporter pour cette période', 'info');
+            if (typeof window.showToast === 'function') {
+                window.showToast('Aucune donnée à exporter pour cette période', 'info');
+            } else {
+                alert('Aucune donnée à exporter pour cette période');
+            }
             return;
         }
         
@@ -582,11 +593,19 @@ async function exportRapport() {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
         
-        showToast('Rapport exporté avec succès', 'success');
+        if (typeof window.showToast === 'function') {
+            window.showToast('Rapport exporté avec succès', 'success');
+        } else {
+            alert('Rapport exporté avec succès');
+        }
         
     } catch (error) {
         console.error('Erreur lors de l\'export du rapport:', error);
-        showToast('Erreur lors de l\'export du rapport', 'error');
+        if (typeof window.showToast === 'function') {
+            window.showToast('Erreur lors de l\'export du rapport: ' + (error.message || 'Erreur inconnue'), 'error');
+        } else {
+            alert('Erreur lors de l\'export du rapport: ' + (error.message || 'Erreur inconnue'));
+        }
     }
 }
 

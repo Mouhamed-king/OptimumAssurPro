@@ -213,8 +213,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const notifications = document.querySelector('.notifications');
     if (notifications) {
         notifications.addEventListener('click', function() {
-            // Ici vous pouvez afficher les notifications
-            console.log('Notifications cliquées');
+            showAllNotifications();
         });
     }
     
@@ -821,4 +820,152 @@ function logout() {
 
 // Exposer logout globalement
 window.logout = logout;
+
+// ============================================
+// AFFICHER TOUTES LES NOTIFICATIONS
+// ============================================
+
+async function showAllNotifications() {
+    try {
+        if (!window.api || !window.api.notifications) {
+            showToast('API notifications non disponible', 'error');
+            return;
+        }
+        
+        // Charger toutes les notifications
+        const data = await window.api.notifications.getAll();
+        const notifications = data.notifications || [];
+        
+        // Créer la modal
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.style.display = 'flex';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 800px; max-height: 80vh; overflow-y: auto;">
+                <div class="modal-header">
+                    <h2>Alertes et notifications</h2>
+                    <button class="modal-close" onclick="this.closest('.modal').remove()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    ${notifications.length === 0 ? `
+                        <div style="text-align: center; padding: 3rem;">
+                            <i class="fas fa-check-circle" style="font-size: 3rem; color: var(--color-success); margin-bottom: 1rem;"></i>
+                            <p style="color: var(--color-text-secondary); font-size: 1.1rem;">Aucune notification</p>
+                        </div>
+                    ` : `
+                        <div class="notifications-list">
+                            ${notifications.map(notif => {
+                                const date = new Date(notif.created_at);
+                                const dateStr = date.toLocaleDateString('fr-FR', { 
+                                    day: '2-digit', 
+                                    month: '2-digit', 
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                });
+                                
+                                const iconMap = {
+                                    'renouvellement': 'fa-exclamation-circle',
+                                    'expiration': 'fa-clock',
+                                    'paiement': 'fa-money-bill',
+                                    'info': 'fa-info-circle'
+                                };
+                                
+                                const colorMap = {
+                                    'renouvellement': 'var(--color-accent)',
+                                    'expiration': 'var(--color-danger)',
+                                    'paiement': 'var(--color-success)',
+                                    'info': 'var(--color-primary)'
+                                };
+                                
+                                const icon = iconMap[notif.type] || 'fa-bell';
+                                const color = colorMap[notif.type] || 'var(--color-text-secondary)';
+                                
+                                return `
+                                    <div class="notification-item" style="padding: 1rem; border-bottom: 1px solid var(--color-border); display: flex; gap: 1rem; align-items: start; ${notif.lu ? 'opacity: 0.7;' : 'background: rgba(37, 99, 235, 0.05);'}">
+                                        <div style="width: 40px; height: 40px; border-radius: 50%; background: ${color}20; color: ${color}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                            <i class="fas ${icon}"></i>
+                                        </div>
+                                        <div style="flex: 1;">
+                                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                                                <h4 style="margin: 0; font-size: 1rem; color: var(--color-text);">${notif.titre || 'Notification'}</h4>
+                                                ${!notif.lu ? `<span style="background: var(--color-primary); color: white; padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.75rem;">Nouveau</span>` : ''}
+                                            </div>
+                                            <p style="margin: 0 0 0.5rem 0; color: var(--color-text-secondary); font-size: 0.9rem;">${notif.message || ''}</p>
+                                            ${notif.numero_contrat ? `<p style="margin: 0 0 0.5rem 0; color: var(--color-text-secondary); font-size: 0.85rem;"><strong>Contrat:</strong> ${notif.numero_contrat}</p>` : ''}
+                                            <p style="margin: 0; color: var(--color-text-secondary); font-size: 0.8rem;">${dateStr}</p>
+                                        </div>
+                                        ${!notif.lu ? `
+                                            <button class="btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.85rem;" onclick="markNotificationAsRead(${notif.id}, this)">
+                                                Marquer comme lu
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    `}
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Fermer la modal en cliquant en dehors
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+        
+    } catch (error) {
+        console.error('Erreur lors du chargement des notifications:', error);
+        showToast('Erreur lors du chargement des notifications', 'error');
+    }
+}
+
+// Marquer une notification comme lue
+async function markNotificationAsRead(id, button) {
+    try {
+        if (!window.api || !window.api.notifications) {
+            return;
+        }
+        
+        await window.api.notifications.markAsRead(id);
+        
+        // Mettre à jour l'interface
+        const notificationItem = button.closest('.notification-item');
+        if (notificationItem) {
+            notificationItem.style.opacity = '0.7';
+            notificationItem.style.background = 'transparent';
+            button.remove();
+            
+            // Retirer le badge "Nouveau"
+            const badge = notificationItem.querySelector('span');
+            if (badge) badge.remove();
+        }
+        
+        // Mettre à jour le badge de notifications dans la barre de navigation
+        const badge = document.querySelector('.notifications .badge');
+        if (badge) {
+            const count = parseInt(badge.textContent) || 0;
+            if (count > 0) {
+                badge.textContent = count - 1;
+                if (count - 1 === 0) {
+                    badge.style.display = 'none';
+                }
+            }
+        }
+        
+    } catch (error) {
+        console.error('Erreur lors du marquage de la notification:', error);
+        showToast('Erreur lors du marquage de la notification', 'error');
+    }
+}
+
+// Exposer les fonctions globalement
+window.showAllNotifications = showAllNotifications;
+window.markNotificationAsRead = markNotificationAsRead;
 

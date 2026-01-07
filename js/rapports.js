@@ -494,12 +494,100 @@ function formatMoney(amount) {
     }).format(amount) + ' FCFA';
 }
 
-// Exporter le rapport
-function exportRapport() {
-    if (typeof window.showToast === 'function') {
-        window.showToast('Fonctionnalité d\'export en cours de développement', 'info');
+// Exporter le rapport en CSV
+async function exportRapport() {
+    try {
+        if (!window.api || !window.api.stats || !window.api.contracts) {
+            showToast('API non disponible', 'error');
+            return;
+        }
+        
+        const periode = document.getElementById('rapportPeriode')?.value || 'annee';
+        
+        // Charger tous les contrats
+        const contractsData = await window.api.contracts.getAll();
+        const contrats = contractsData.contrats || [];
+        
+        // Filtrer par période
+        const contratsFiltres = filtrerParPeriode(contrats, periode);
+        
+        if (contratsFiltres.length === 0) {
+            showToast('Aucune donnée à exporter pour cette période', 'info');
+            return;
+        }
+        
+        // Préparer les données CSV
+        const csvHeaders = [
+            'Numéro Contrat',
+            'Client',
+            'Véhicule',
+            'Date Début',
+            'Date Fin',
+            'Prime Nette (FCFA)',
+            'Montant Payé (FCFA)',
+            'Montant Restant (FCFA)',
+            'Statut'
+        ];
+        
+        const csvRows = contratsFiltres.map(contrat => {
+            const clientNom = contrat.client_nom ? `${contrat.client_nom} ${contrat.client_prenom || ''}`.trim() : '-';
+            const vehicule = contrat.vehicules?.immatriculation || '-';
+            const dateDebut = contrat.date_debut ? new Date(contrat.date_debut).toLocaleDateString('fr-FR') : '-';
+            const dateFin = contrat.date_fin ? new Date(contrat.date_fin).toLocaleDateString('fr-FR') : '-';
+            const primeNette = formatCurrency(parseFloat(contrat.montant) || 0);
+            const montantPaye = formatCurrency(parseFloat(contrat.montant_paye) || 0);
+            const montantRestant = formatCurrency(parseFloat(contrat.montant_restant) || 0);
+            const statut = contrat.actif ? 'Actif' : 'Inactif';
+            
+            return [
+                contrat.numero_contrat || '-',
+                clientNom,
+                vehicule,
+                dateDebut,
+                dateFin,
+                primeNette.replace(/\s/g, ''),
+                montantPaye.replace(/\s/g, ''),
+                montantRestant.replace(/\s/g, ''),
+                statut
+            ];
+        });
+        
+        // Calculer les totaux
+        const totalPrimeNette = contratsFiltres.reduce((sum, c) => sum + (parseFloat(c.montant) || 0), 0);
+        const totalPaye = contratsFiltres.reduce((sum, c) => sum + (parseFloat(c.montant_paye) || 0), 0);
+        const totalRestant = contratsFiltres.reduce((sum, c) => sum + (parseFloat(c.montant_restant) || 0), 0);
+        
+        csvRows.push([]); // Ligne vide
+        csvRows.push(['TOTAL', '', '', '', '', formatCurrency(totalPrimeNette).replace(/\s/g, ''), formatCurrency(totalPaye).replace(/\s/g, ''), formatCurrency(totalRestant).replace(/\s/g, ''), '']);
+        
+        // Convertir en CSV
+        const csvContent = [
+            csvHeaders.join(','),
+            ...csvRows.map(row => row.map(cell => `"${cell}"`).join(','))
+        ].join('\n');
+        
+        // Créer le blob et télécharger
+        const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' }); // BOM pour Excel
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        
+        // Nom du fichier avec la date
+        const dateStr = new Date().toISOString().split('T')[0];
+        const periodeStr = periode === 'mois' ? 'mois' : periode === 'trimestre' ? 'trimestre' : periode === 'annee' ? 'annee' : 'tout';
+        link.download = `rapport-${periodeStr}-${dateStr}.csv`;
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        showToast('Rapport exporté avec succès', 'success');
+        
+    } catch (error) {
+        console.error('Erreur lors de l\'export du rapport:', error);
+        showToast('Erreur lors de l\'export du rapport', 'error');
     }
-    // TODO: Implémenter l'export PDF/Excel
 }
 
 // Exposer les fonctions globalement

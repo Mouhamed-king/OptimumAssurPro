@@ -30,11 +30,19 @@ const transporter = nodemailer.createTransport({
 
 // Vérifier la configuration email au démarrage
 console.log('📧 Configuration SMTP:');
-console.log('   Host:', process.env.SMTP_HOST || 'smtp.gmail.com (défaut)');
-console.log('   Port:', process.env.SMTP_PORT || '587 (défaut)');
+const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
+const smtpPort = process.env.SMTP_PORT || '587';
+const isSendGrid = smtpHost.includes('sendgrid');
+console.log('   Host:', smtpHost, isSendGrid ? '(SendGrid)' : '(Gmail par défaut)');
+console.log('   Port:', smtpPort);
 console.log('   Secure:', process.env.SMTP_SECURE === 'true' ? 'true' : 'false');
-console.log('   User:', process.env.SMTP_USER ? `${process.env.SMTP_USER.substring(0, 3)}***` : 'NON CONFIGURÉ');
-console.log('   Password:', process.env.SMTP_PASSWORD ? '***CONFIGURÉ***' : 'NON CONFIGURÉ');
+if (isSendGrid) {
+    console.log('   User:', process.env.SMTP_USER || 'apikey (requis pour SendGrid)');
+    console.log('   Password:', process.env.SMTP_PASSWORD ? '***CONFIGURÉ***' : 'NON CONFIGURÉ (clé API SendGrid requise)');
+} else {
+    console.log('   User:', process.env.SMTP_USER ? `${process.env.SMTP_USER.substring(0, 3)}***` : 'NON CONFIGURÉ');
+    console.log('   Password:', process.env.SMTP_PASSWORD ? '***CONFIGURÉ***' : 'NON CONFIGURÉ');
+}
 
 if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
     console.warn('⚠️  Configuration SMTP manquante. Les emails ne pourront pas être envoyés.');

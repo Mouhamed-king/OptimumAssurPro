@@ -428,7 +428,7 @@ async function loadDashboard() {
                         <h4>Renouvellement à venir</h4>
                         <p>${stats.renouvellements_a_venir} contrat${stats.renouvellements_a_venir > 1 ? 's' : ''} ${stats.renouvellements_a_venir > 1 ? 'arrivent' : 'arrive'} à échéance dans les 7 prochains jours</p>
                     </div>
-                    <button class="btn-primary" onclick="document.querySelector('[data-page=bordereaux]').click()">Voir détails</button>
+                    <button class="btn-primary" onclick="goToRapportsWithRenewals()">Voir détails</button>
                 `;
             } else {
                 alertCard.innerHTML = `
@@ -839,9 +839,21 @@ async function showAllNotifications() {
             return;
         }
         
-        // Charger toutes les notifications
-        const data = await window.api.notifications.getAll();
+        // Charger toutes les notifications (sans filtre lu/non lu)
+        // Passer une chaîne vide pour obtenir toutes les notifications
+        const data = await window.api.notifications.getAll('');
         const notifications = data.notifications || [];
+        console.log('Notifications chargées:', notifications.length, notifications);
+        
+        // Trier par date (plus récentes en premier) et par statut lu (non lues en premier)
+        notifications.sort((a, b) => {
+            // D'abord trier par statut lu (non lues en premier)
+            if (a.lu !== b.lu) {
+                return a.lu ? 1 : -1;
+            }
+            // Ensuite par date (plus récentes en premier)
+            return new Date(b.created_at) - new Date(a.created_at);
+        });
         
         // Créer la modal
         const modal = document.createElement('div');
@@ -980,7 +992,24 @@ async function markNotificationAsRead(id, button) {
     }
 }
 
+// Rediriger vers l'onglet rapports avec focus sur les renouvellements
+function goToRapportsWithRenewals() {
+    // Activer l'onglet rapports
+    const rapportsTab = document.querySelector('[data-page="rapports"]');
+    if (rapportsTab) {
+        rapportsTab.click();
+        // Scroll vers le haut de la page des rapports
+        setTimeout(() => {
+            const rapportsPage = document.getElementById('rapports-page');
+            if (rapportsPage) {
+                rapportsPage.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 100);
+    }
+}
+
 // Exposer les fonctions globalement
 window.showAllNotifications = showAllNotifications;
 window.markNotificationAsRead = markNotificationAsRead;
+window.goToRapportsWithRenewals = goToRapportsWithRenewals;
 

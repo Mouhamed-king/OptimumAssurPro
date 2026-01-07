@@ -138,8 +138,21 @@ document.addEventListener('DOMContentLoaded', function() {
 // Fonction pour renvoyer l'email de vérification
 async function resendVerificationEmail(email) {
     if (!email) {
-        email = prompt('Veuillez entrer votre adresse email :');
+        email = document.getElementById('email')?.value || prompt('Veuillez entrer votre adresse email :');
         if (!email) return;
+    }
+    
+    // Afficher un indicateur de chargement
+    const button = event?.target || document.querySelector('a[onclick*="resendVerificationEmail"]');
+    if (button) {
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi...';
+        button.style.pointerEvents = 'none';
+        
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.style.pointerEvents = 'auto';
+        }, 3000);
     }
     
     try {
@@ -156,15 +169,75 @@ async function resendVerificationEmail(email) {
         if (response.ok) {
             showToast('Un nouvel email de vérification vous a été envoyé. Veuillez vérifier votre boîte de réception.', 'success');
         } else {
-            showToast(data.error || 'Erreur lors de l\'envoi de l\'email', 'error');
+            // Si l'email n'a pas pu être envoyé, afficher le lien de vérification manuel
+            if (data.error && data.error.includes('SMTP') || data.error && data.error.includes('email')) {
+                showManualVerificationInfo(email);
+            } else {
+                showToast(data.error || 'Erreur lors de l\'envoi de l\'email', 'error');
+            }
         }
     } catch (error) {
         console.error('Erreur:', error);
-        showToast('Une erreur est survenue', 'error');
+        showToast('Une erreur est survenue. Veuillez utiliser la vérification manuelle.', 'error');
+        showManualVerificationInfo(email);
     }
 }
 
+// Fonction pour afficher les informations de vérification manuelle
+function showManualVerificationInfo(email) {
+    // Récupérer le token depuis Supabase ou afficher une modal avec instructions
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'flex';
+    modal.style.position = 'fixed';
+    modal.style.top = '0';
+    modal.style.left = '0';
+    modal.style.width = '100%';
+    modal.style.height = '100%';
+    modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+    modal.style.zIndex = '10000';
+    modal.style.alignItems = 'center';
+    modal.style.justifyContent = 'center';
+    
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 600px; background: white; border-radius: 8px; padding: 0; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem; border-bottom: 1px solid #e5e7eb;">
+                <h2 style="margin: 0; font-size: 1.5rem; color: #111827;">Vérification manuelle</h2>
+                <button class="modal-close" onclick="this.closest('.modal').remove()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280; padding: 0.5rem; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body" style="padding: 1.5rem;">
+                <div style="padding: 1rem; background: #FEF3C7; border-left: 4px solid #F59E0B; border-radius: 8px; margin-bottom: 1.5rem;">
+                    <p style="margin: 0; color: #92400E; font-weight: 600;">
+                        <i class="fas fa-exclamation-triangle"></i> L'email n'a pas pu être envoyé
+                    </p>
+                    <p style="margin: 0.5rem 0 0 0; color: #78350F; font-size: 0.9rem;">
+                        Le serveur SMTP n'est pas configuré ou rencontre un problème. Vous pouvez vérifier votre email manuellement.
+                    </p>
+                </div>
+                <p style="margin-bottom: 1rem; color: #374151;">
+                    Pour vérifier votre email manuellement, contactez l'administrateur avec votre adresse email : <strong>${email}</strong>
+                </p>
+                <p style="margin-bottom: 1rem; font-size: 0.9rem; color: #6B7280;">
+                    L'administrateur peut vérifier votre email directement dans la base de données Supabase ou vous fournir un lien de vérification.
+                </p>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Fermer la modal en cliquant en dehors
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+}
+
 window.resendVerificationEmail = resendVerificationEmail;
+window.showManualVerificationInfo = showManualVerificationInfo;
 
 // Fonction pour afficher les informations de vérification manuelle
 function showManualVerificationInfo(email) {

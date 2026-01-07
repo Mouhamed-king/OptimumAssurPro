@@ -297,12 +297,24 @@ const resendVerificationEmail = async (req, res) => {
         }
         
         // Envoyer l'email
+        let emailSent = false;
         try {
             await emailService.sendVerificationEmail(email, verificationToken, entreprise.nom);
-            res.json({ message: 'Email de vérification envoyé avec succès' });
+            emailSent = true;
+            res.json({ 
+                message: 'Email de vérification envoyé avec succès',
+                emailSent: true
+            });
         } catch (emailError) {
             console.error('Erreur lors de l\'envoi de l\'email:', emailError);
-            res.status(500).json({ error: 'Impossible d\'envoyer l\'email de vérification' });
+            // Si SMTP n'est pas configuré, retourner le lien de vérification
+            const verificationUrl = `${process.env.APP_URL || (process.env.NODE_ENV === 'production' ? 'https://optimumassurpro.onrender.com' : 'http://localhost:3000')}/verify-email.html?token=${verificationToken}`;
+            res.status(500).json({ 
+                error: 'Impossible d\'envoyer l\'email de vérification. SMTP non configuré.',
+                emailSent: false,
+                verificationUrl: verificationUrl,
+                verificationToken: verificationToken
+            });
         }
     } catch (error) {
         console.error('Erreur lors du renvoi de l\'email:', error);

@@ -228,10 +228,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (data.emailSent) {
                     showToast('Compte créé avec succès ! Veuillez vérifier votre email pour activer votre compte.', 'success');
-                    // Rediriger vers la page de connexion après 5 secondes
+                    // Rediriger vers la page de connexion après 2 secondes
                     setTimeout(() => {
                         window.location.href = '/login.html?message=email-sent';
-                    }, 5000);
+                    }, 2000);
                 } else {
                     // Si SMTP n'est pas configuré, afficher le lien de vérification dans une modal
                     const verificationUrl = data.verificationUrl || `${window.location.origin}/verify-email.html?token=${data.verificationToken}`;

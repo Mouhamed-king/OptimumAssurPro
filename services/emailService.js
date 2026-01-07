@@ -348,13 +348,23 @@ async function sendPasswordResetEmail(email, resetToken, nom) {
         console.log('📤 Envoi de l\'email de réinitialisation...');
         console.log('   À:', email);
         console.log('   Depuis:', process.env.SMTP_USER);
+        console.log('   Host:', process.env.SMTP_HOST || 'smtp.gmail.com');
+        console.log('   Port:', process.env.SMTP_PORT || '587');
+        
+        // Envoyer avec timeout personnalisé
+        const sendPromise = transporter.sendMail(mailOptions);
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Timeout lors de l\'envoi de l\'email (délai dépassé)')), 60000);
+        });
+        
         try {
-            const info = await transporter.sendMail(mailOptions);
+            const info = await Promise.race([sendPromise, timeoutPromise]);
             console.log('✅ Email de réinitialisation envoyé à:', email);
             console.log('   Message ID:', info.messageId);
             console.log('   Response:', info.response);
+            return { success: true, messageId: info.messageId };
         } catch (sendError) {
-            console.error('❌ Erreur lors de l\'envoi de l\'email:');
+            console.error('❌ Erreur détaillée lors de l\'envoi de l\'email:');
             console.error('   Code:', sendError.code);
             console.error('   Message:', sendError.message);
             console.error('   Command:', sendError.command);
@@ -364,9 +374,17 @@ async function sendPasswordResetEmail(email, resetToken, nom) {
             if (sendError.responseCode) {
                 console.error('   Response Code:', sendError.responseCode);
             }
-            throw new Error(`Impossible d'envoyer l'email: ${sendError.message}. Vérifiez votre configuration SMTP sur Render.`);
+            
+            if (sendError.code === 'ECONNREFUSED') {
+                throw new Error('Impossible de se connecter au serveur SMTP. Gmail peut bloquer les connexions depuis Render. Essayez d\'utiliser le port 465 avec SMTP_SECURE=true, ou utilisez un service SMTP alternatif.');
+            } else if (sendError.code === 'ETIMEDOUT' || sendError.code === 'ESOCKETTIMEDOUT' || sendError.message.includes('Timeout')) {
+                throw new Error('Timeout de connexion SMTP. Gmail bloque souvent les connexions depuis Render. Solutions: 1) Port 465 avec SMTP_SECURE=true, 2) Service SMTP alternatif (SendGrid, Mailgun), 3) Vérifiez votre mot de passe d\'application Gmail.');
+            } else if (sendError.code === 'EAUTH') {
+                throw new Error('Erreur d\'authentification SMTP. Vérifiez SMTP_USER et SMTP_PASSWORD. Utilisez un mot de passe d\'application Gmail.');
+            } else {
+                throw new Error(`Impossible d'envoyer l'email: ${sendError.message}. Vérifiez votre configuration SMTP sur Render.`);
+            }
         }
-        return { success: true, messageId: info.messageId };
     } catch (error) {
         console.error('❌ Erreur lors de l\'envoi de l\'email de réinitialisation:');
         console.error('   Code:', error.code);

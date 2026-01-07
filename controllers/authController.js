@@ -102,6 +102,8 @@ const register = async (req, res) => {
         // Envoyer l'email de vérification
         let emailSent = false;
         let emailErrorMsg = null;
+        let shouldReturnLink = false;
+        
         try {
             console.log('📧 Tentative d\'envoi de l\'email de vérification à:', email);
             const emailResult = await emailService.sendVerificationEmail(email, verificationToken, nom);
@@ -112,20 +114,32 @@ const register = async (req, res) => {
             console.error('   Détails:', error.message);
             console.error('   Stack:', error.stack);
             emailErrorMsg = error.message;
+            
+            // Si c'est une erreur SMTP (timeout, connexion refusée), retourner le lien de vérification
+            if (error.isSmtpError && (error.shouldReturnLink || error.code === 'ETIMEDOUT' || error.code === 'ESOCKETTIMEDOUT' || error.code === 'ECONNREFUSED')) {
+                shouldReturnLink = true;
+                console.log('⚠️  Erreur SMTP détectée, le lien de vérification sera retourné dans la réponse');
+                if (error.suggestion) {
+                    console.log('💡 Suggestion:', error.suggestion);
+                }
+            }
             // On continue même si l'email n'a pas pu être envoyé
-            // L'utilisateur pourra demander un renvoi plus tard ou vérifier manuellement
+            // L'utilisateur pourra utiliser le lien de vérification ou demander un renvoi plus tard
         }
         
-        // Si SMTP n'est pas configuré, afficher le lien de vérification dans la réponse
+        // Si SMTP n'est pas configuré ou si erreur SMTP, afficher le lien de vérification dans la réponse
         const verificationUrl = `${process.env.APP_URL || (process.env.NODE_ENV === 'production' ? 'https://optimumassurpro.onrender.com' : 'http://localhost:3000')}/verify-email.html?token=${verificationToken}`;
         
         res.status(201).json({
             message: emailSent 
                 ? 'Compte créé avec succès. Veuillez vérifier votre email pour activer votre compte.'
+                : shouldReturnLink
+                ? 'Compte créé avec succès. L\'email n\'a pas pu être envoyé (Gmail bloque les connexions depuis Render). Utilisez le lien de vérification ci-dessous.'
                 : 'Compte créé avec succès. SMTP n\'est pas configuré. Veuillez utiliser le lien de vérification ci-dessous ou contacter l\'administrateur.',
             emailSent: emailSent,
-            verificationUrl: !emailSent ? verificationUrl : undefined,
-            verificationToken: !emailSent ? verificationToken : undefined,
+            verificationUrl: (!emailSent || shouldReturnLink) ? verificationUrl : undefined,
+            verificationToken: (!emailSent || shouldReturnLink) ? verificationToken : undefined,
+            smtpError: emailErrorMsg || undefined,
             entreprise: {
                 id: newEntreprise.id,
                 nom: newEntreprise.nom,

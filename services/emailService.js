@@ -6,9 +6,13 @@ const nodemailer = require('nodemailer');
 require('dotenv').config();
 
 // Configuration du transporteur email avec timeout augmenté
-const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT || '587'),
+const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
+const smtpPort = parseInt(process.env.SMTP_PORT || '587');
+const isSendGrid = smtpHost.includes('sendgrid');
+
+const transporterConfig = {
+    host: smtpHost,
+    port: smtpPort,
     secure: process.env.SMTP_SECURE === 'true', // true pour 465, false pour autres ports
     auth: {
         user: process.env.SMTP_USER,
@@ -21,12 +25,16 @@ const transporter = nodemailer.createTransport({
     // Options supplémentaires pour améliorer la connexion
     tls: {
         rejectUnauthorized: false // Accepter les certificats auto-signés si nécessaire
-    },
-    // Pool de connexions pour améliorer les performances
-    pool: true,
-    maxConnections: 1,
-    maxMessages: 3
-});
+    }
+};
+
+// Pour SendGrid, désactiver le pool de connexions si timeout
+if (isSendGrid) {
+    transporterConfig.pool = false; // Pas de pool pour SendGrid
+    transporterConfig.requireTLS = true; // Require TLS pour SendGrid
+}
+
+const transporter = nodemailer.createTransport(transporterConfig);
 
 // Vérifier la configuration email au démarrage
 console.log('📧 Configuration SMTP:');

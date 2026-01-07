@@ -5,7 +5,7 @@
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
-// Configuration du transporteur email
+// Configuration du transporteur email avec timeout augmenté
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
     port: parseInt(process.env.SMTP_PORT || '587'),
@@ -13,7 +13,19 @@ const transporter = nodemailer.createTransport({
     auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASSWORD
-    }
+    },
+    // Augmenter les timeouts pour éviter les erreurs de connexion
+    connectionTimeout: 60000, // 60 secondes
+    greetingTimeout: 30000, // 30 secondes
+    socketTimeout: 60000, // 60 secondes
+    // Options supplémentaires pour améliorer la connexion
+    tls: {
+        rejectUnauthorized: false // Accepter les certificats auto-signés si nécessaire
+    },
+    // Pool de connexions pour améliorer les performances
+    pool: true,
+    maxConnections: 1,
+    maxMessages: 3
 });
 
 // Vérifier la configuration email au démarrage

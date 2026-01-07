@@ -194,14 +194,29 @@ async function sendVerificationEmail(email, verificationToken, nom) {
             console.error('   Command:', error.command);
         }
         
+        // Créer une erreur personnalisée avec plus d'informations
+        const customError = new Error();
+        customError.code = error.code;
+        customError.message = error.message;
+        customError.isSmtpError = true;
+        
         if (error.code === 'EAUTH') {
-            throw new Error('Erreur d\'authentification SMTP. Vérifiez SMTP_USER et SMTP_PASSWORD dans .env. Pour Gmail, utilisez un "Mot de passe d\'application" et non votre mot de passe habituel.');
-        } else if (error.code === 'ECONNECTION') {
-            throw new Error('Impossible de se connecter au serveur SMTP. Vérifiez SMTP_HOST et SMTP_PORT dans .env');
-        } else if (error.code === 'ETIMEDOUT') {
-            throw new Error('Timeout de connexion SMTP. Vérifiez votre connexion internet et les paramètres SMTP_HOST/SMTP_PORT');
+            customError.message = 'Erreur d\'authentification SMTP. Vérifiez SMTP_USER et SMTP_PASSWORD. Assurez-vous d\'utiliser un mot de passe d\'application Gmail.';
+            customError.suggestion = 'Générez un nouveau mot de passe d\'application Gmail dans les paramètres de sécurité de votre compte.';
+        } else if (error.code === 'ECONNECTION' || error.code === 'ECONNREFUSED') {
+            customError.message = 'Impossible de se connecter au serveur SMTP. Gmail bloque les connexions depuis Render. Utilisez un service SMTP alternatif (SendGrid, Mailgun) ou le port 465 avec SMTP_SECURE=true.';
+            customError.suggestion = 'Utilisez SendGrid (gratuit jusqu\'à 100 emails/jour) ou Mailgun (gratuit jusqu\'à 5000 emails/mois).';
+            customError.shouldReturnLink = true;
+        } else if (error.code === 'ETIMEDOUT' || error.code === 'ESOCKETTIMEDOUT' || error.message.includes('Timeout') || error.message.includes('Connection timeout')) {
+            customError.message = 'Timeout de connexion SMTP. Gmail bloque les connexions depuis Render. Solutions: 1) Utilisez le port 465 avec SMTP_SECURE=true, 2) Utilisez un service SMTP alternatif (SendGrid, Mailgun), 3) Le lien de vérification sera affiché dans la réponse.';
+            customError.suggestion = 'Gmail bloque souvent les connexions depuis les hébergeurs cloud. Utilisez SendGrid (gratuit) ou Mailgun (gratuit) à la place.';
+            customError.shouldReturnLink = true;
+        } else {
+            customError.message = 'Erreur lors de l\'envoi de l\'email: ' + (error.message || error.toString());
+            customError.shouldReturnLink = true; // Par sécurité, retourner le lien même en cas d'erreur inconnue
         }
-        throw new Error('Impossible d\'envoyer l\'email de vérification: ' + error.message);
+        
+        throw customError;
     }
 }
 

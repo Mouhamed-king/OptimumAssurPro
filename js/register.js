@@ -224,20 +224,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Ne pas stocker le token car l'email n'est pas encore vérifié
                 // L'utilisateur doit vérifier son email avant de pouvoir se connecter
                 
+                console.log('Réponse API:', data);
+                
                 if (data.emailSent) {
                     showToast('Compte créé avec succès ! Veuillez vérifier votre email pour activer votre compte.', 'success');
+                    // Rediriger vers la page de connexion après 5 secondes
+                    setTimeout(() => {
+                        window.location.href = '/login.html?message=email-sent';
+                    }, 5000);
                 } else {
-                    // Si SMTP n'est pas configuré, afficher le lien de vérification
-                    const message = `Compte créé avec succès ! SMTP n'est pas configuré. Veuillez utiliser ce lien pour vérifier votre email : ${data.verificationUrl}`;
-                    showToast(message, 'info');
-                    console.log('🔗 Lien de vérification:', data.verificationUrl);
+                    // Si SMTP n'est pas configuré, afficher le lien de vérification de manière visible
+                    const verificationUrl = data.verificationUrl || `${window.location.origin}/verify-email.html?token=${data.verificationToken}`;
+                    const message = `Compte créé avec succès !\n\n⚠️ L'email n'a pas pu être envoyé (SMTP non configuré).\n\nVeuillez utiliser ce lien pour vérifier votre email :\n${verificationUrl}`;
+                    
+                    // Afficher dans une alerte pour que l'utilisateur puisse copier le lien
+                    alert(message);
+                    showToast('Compte créé ! Vérifiez la popup pour le lien de vérification', 'info');
+                    
+                    console.log('🔗 Lien de vérification:', verificationUrl);
                     console.log('📋 Token de vérification:', data.verificationToken);
+                    
+                    // Ne pas rediriger automatiquement si l'email n'a pas été envoyé
+                    // L'utilisateur doit d'abord copier le lien
                 }
-                
-                // Rediriger vers la page de connexion après 5 secondes
-                setTimeout(() => {
-                    window.location.href = '/login.html?message=email-sent';
-                }, 5000);
                 
             } catch (error) {
                 // Afficher l'erreur
@@ -258,6 +267,16 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    
+    // Fonction pour copier le lien de vérification
+    window.copyVerificationLink = function() {
+        const linkInput = document.getElementById('verificationLink');
+        if (linkInput) {
+            linkInput.select();
+            document.execCommand('copy');
+            showToast('Lien copié dans le presse-papiers !', 'success');
+        }
+    };
     
     // Ne pas rediriger depuis register.html même si connecté
     // Permettre la création de compte même si déjà connecté

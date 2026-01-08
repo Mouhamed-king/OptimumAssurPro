@@ -11,5 +11,9 @@ services:
         value: production
       - key: PORT
         value: 10000
-      # Les autres variables d'environnement doivent être ajoutées dans le dashboard Render
+      # IMPORTANT: Configurez ces variables dans Render Dashboard > Environment:
+      # - SUPABASE_URL (trouvé dans Supabase Dashboard > Settings > API > Project URL)
+      # - SUPABASE_SERVICE_ROLE_KEY (trouvé dans Supabase Dashboard > Settings > API > service_role secret)
+      # - SUPABASE_ANON_KEY (trouvé dans Supabase Dashboard > Settings > API > anon public)
+      # - APP_URL (votre URL Render, ex: https://votre-app.onrender.com)
 

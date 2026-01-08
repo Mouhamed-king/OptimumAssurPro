@@ -117,7 +117,7 @@ const getSummary = async (req, res) => {
                 statut,
                 type_contrat,
                 clients (nom, prenom),
-                vehicules (immatriculation, marque, modele, annee)
+                vehicules (immatriculation, marque, modele)
             `)
             .eq('entreprise_id', entrepriseId)
             .order('date_debut', { ascending: false });

@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 showToast(errorMessage, 'error');
                 
                 // Si l'erreur indique que l'email n'est pas vérifié, proposer de renvoyer
-                if (errorMessage.includes('vérifier votre adresse email') || errorMessage.includes('403')) {
+                if (errorMessage.includes('vérifier votre adresse email') || errorMessage.includes('403') || errorMessage.includes('EMAIL_NOT_CONFIRMED')) {
                     // Vérifier si c'est une erreur 403 due à l'email non vérifié
                     const errorDiv = document.createElement('div');
                     errorDiv.id = 'emailVerificationError';
@@ -102,11 +102,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             <a href="#" onclick="resendVerificationEmail('${email}'); return false;" 
                                style="color: #2563EB; text-decoration: underline; font-size: 0.9rem;">
                                 Renvoyer l'email
-                            </a>
-                            <span style="color: #78350F;">|</span>
-                            <a href="#" onclick="showManualVerificationInfo('${email}'); return false;" 
-                               style="color: #2563EB; text-decoration: underline; font-size: 0.9rem;">
-                                Vérifier manuellement
                             </a>
                         </div>
                     `;

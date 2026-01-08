@@ -143,9 +143,7 @@ const createClient = async (req, res) => {
                 entreprise_id: req.entrepriseId,
                 nom: nom,
                 prenom: '', // Vide car on ne demande que le nom complet
-                telephone: telephone,
-                email: null,
-                adresse: null
+                telephone: telephone
             })
             .select()
             .single();
@@ -161,9 +159,7 @@ const createClient = async (req, res) => {
                 client_id: newClient.id,
                 marque: vehicule.marque || '',
                 modele: vehicule.modele || '',
-                immatriculation: vehicule.immatriculation,
-                annee: null,
-                couleur: null
+                immatriculation: vehicule.immatriculation
             })
             .select('id')
             .single();
@@ -217,7 +213,7 @@ const createClient = async (req, res) => {
 const updateClient = async (req, res) => {
     try {
         const { id } = req.params;
-        const { nom, prenom, telephone, email, adresse, vehicule, contrat } = req.body;
+        const { nom, prenom, telephone, vehicule, contrat } = req.body;
         
         // Vérifier que le client appartient à l'entreprise
         const { data: existing } = await db.supabase
@@ -237,9 +233,7 @@ const updateClient = async (req, res) => {
             .update({
                 nom: nom || undefined,
                 prenom: prenom || undefined,
-                telephone: telephone || undefined,
-                email: email || null,
-                adresse: adresse || null
+                telephone: telephone || undefined
             })
             .eq('id', id)
             .select()

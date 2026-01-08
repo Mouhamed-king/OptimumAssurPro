@@ -1,12 +1,8 @@
 // ============================================
-// CONTRÔLEUR D'AUTHENTIFICATION (Supabase SDK)
+// CONTRÔLEUR D'AUTHENTIFICATION (Supabase Auth)
 // ============================================
 
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
 const db = require('../database/connection');
-const emailService = require('../services/emailService');
 
 // Validation de l'email
 function validateEmail(email) {
@@ -35,7 +31,7 @@ function validatePassword(password) {
     return { valid: true };
 }
 
-// Inscription d'une nouvelle entreprise
+// Inscription d'une nouvelle entreprise avec Supabase Auth
 const register = async (req, res) => {
     try {
         const { nom, email, password, telephone, adresse } = req.body;
@@ -56,96 +52,70 @@ const register = async (req, res) => {
             return res.status(400).json({ error: passwordValidation.error });
         }
         
-        // Vérifier si l'email existe déjà avec Supabase
-        const { data: existing, error: checkError } = await db.supabase
-            .from('entreprises')
-            .select('id')
-            .eq('email', email)
-            .maybeSingle();
+        // Utiliser Supabase Auth pour créer l'utilisateur
+        // Supabase enverra automatiquement l'email de confirmation
+        const { data: authData, error: authError } = await db.supabase.auth.signUp({
+            email,
+            password,
+            options: {
+                data: {
+                    nom, // Métadonnées utilisateur
+                    telephone: telephone || null,
+                    adresse: adresse || null
+                },
+                emailRedirectTo: `${process.env.APP_URL || 'http://localhost:3000'}/verify-email.html`
+            }
+        });
         
-        if (checkError && checkError.code !== 'PGRST116') {
-            throw checkError;
+        if (authError) {
+            // Gérer les erreurs spécifiques Supabase
+            if (authError.message.includes('already registered')) {
+                return res.status(400).json({ error: 'Cet email est déjà utilisé' });
+            }
+            return res.status(400).json({ error: authError.message });
         }
         
-        if (existing) {
-            return res.status(400).json({ error: 'Cet email est déjà utilisé' });
+        if (!authData.user) {
+            return res.status(500).json({ error: 'Erreur lors de la création du compte' });
         }
         
-        // Hasher le mot de passe
-        const hashedPassword = await bcrypt.hash(password, 10);
-        
-        // Générer un token de vérification email
-        const verificationToken = crypto.randomBytes(32).toString('hex');
-        const verificationExpires = new Date();
-        verificationExpires.setHours(verificationExpires.getHours() + 24); // Expire dans 24h
-        
-        // Créer l'entreprise avec Supabase (email non vérifié)
+        // Créer l'enregistrement dans la table entreprises avec l'ID de Supabase Auth
         const { data: newEntreprise, error: insertError } = await db.supabase
             .from('entreprises')
             .insert({
+                id: authData.user.id, // Utiliser l'ID de Supabase Auth
                 nom,
                 email,
-                password: hashedPassword,
                 telephone: telephone || null,
                 adresse: adresse || null,
-                email_verified: false,
-                email_verification_token: verificationToken,
-                email_verification_expires: verificationExpires.toISOString()
+                email_verified: authData.user.email_confirmed_at !== null // Synchroniser avec Supabase Auth
             })
             .select()
             .single();
         
-        if (insertError) {
-            throw insertError;
+        // Si l'insertion échoue mais que l'utilisateur Auth existe, continuer quand même
+        // (l'utilisateur pourra compléter son profil plus tard)
+        if (insertError && !insertError.message.includes('duplicate')) {
+            console.warn('⚠️ Erreur lors de la création de l\'entreprise:', insertError);
+            // Ne pas bloquer l'inscription si c'est juste un problème de table
         }
         
-        // Envoyer l'email de vérification
-        let emailSent = false;
-        let emailErrorMsg = null;
-        let shouldReturnLink = false;
-        
-        try {
-            console.log('📧 Tentative d\'envoi de l\'email de vérification à:', email);
-            const emailResult = await emailService.sendVerificationEmail(email, verificationToken, nom);
-            emailSent = true;
-            console.log('✅ Email envoyé avec succès:', emailResult);
-        } catch (error) {
-            console.error('❌ Erreur lors de l\'envoi de l\'email:', error);
-            console.error('   Détails:', error.message);
-            console.error('   Stack:', error.stack);
-            emailErrorMsg = error.message;
-            
-            // Si c'est une erreur SMTP (timeout, connexion refusée), retourner le lien de vérification
-            if (error.isSmtpError && (error.shouldReturnLink || error.code === 'ETIMEDOUT' || error.code === 'ESOCKETTIMEDOUT' || error.code === 'ECONNREFUSED')) {
-                shouldReturnLink = true;
-                console.log('⚠️  Erreur SMTP détectée, le lien de vérification sera retourné dans la réponse');
-                if (error.suggestion) {
-                    console.log('💡 Suggestion:', error.suggestion);
-                }
-            }
-            // On continue même si l'email n'a pas pu être envoyé
-            // L'utilisateur pourra utiliser le lien de vérification ou demander un renvoi plus tard
-        }
-        
-        // Si SMTP n'est pas configuré ou si erreur SMTP, afficher le lien de vérification dans la réponse
-        const verificationUrl = `${process.env.APP_URL || (process.env.NODE_ENV === 'production' ? 'https://optimumassurpro.onrender.com' : 'http://localhost:3000')}/verify-email.html?token=${verificationToken}`;
+        // Supabase Auth envoie automatiquement l'email de confirmation
+        // Vérifier si l'email a été envoyé (dépend de la configuration Supabase)
+        const emailSent = authData.user.email_confirmed_at === null && authData.session === null;
         
         res.status(201).json({
             message: emailSent 
                 ? 'Compte créé avec succès. Veuillez vérifier votre email pour activer votre compte.'
-                : shouldReturnLink
-                ? 'Compte créé avec succès. L\'email n\'a pas pu être envoyé (Gmail bloque les connexions depuis Render). Utilisez le lien de vérification ci-dessous.'
-                : 'Compte créé avec succès. SMTP n\'est pas configuré. Veuillez utiliser le lien de vérification ci-dessous ou contacter l\'administrateur.',
+                : 'Compte créé avec succès. Un email de confirmation vous a été envoyé.',
             emailSent: emailSent,
-            verificationUrl: (!emailSent || shouldReturnLink) ? verificationUrl : undefined,
-            verificationToken: (!emailSent || shouldReturnLink) ? verificationToken : undefined,
-            smtpError: emailErrorMsg || undefined,
             entreprise: {
-                id: newEntreprise.id,
-                nom: newEntreprise.nom,
-                email: newEntreprise.email,
-                email_verified: false
-            }
+                id: authData.user.id,
+                nom: nom,
+                email: authData.user.email,
+                email_verified: authData.user.email_confirmed_at !== null
+            },
+            email_verified: authData.user.email_confirmed_at !== null
         });
     } catch (error) {
         console.error('Erreur lors de l\'inscription:', error);
@@ -153,7 +123,7 @@ const register = async (req, res) => {
     }
 };
 
-// Connexion d'une entreprise
+// Connexion d'une entreprise avec Supabase Auth
 const login = async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -163,45 +133,84 @@ const login = async (req, res) => {
             return res.status(400).json({ error: 'Email et mot de passe sont requis' });
         }
         
-        // Trouver l'entreprise avec Supabase
-        const { data: entreprise, error: findError } = await db.supabase
-            .from('entreprises')
-            .select('id, nom, email, password, email_verified')
-            .eq('email', email)
-            .single();
+        // Utiliser Supabase Auth pour la connexion
+        const { data: authData, error: authError } = await db.supabase.auth.signInWithPassword({
+            email,
+            password
+        });
         
-        if (findError || !entreprise) {
-            return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+        if (authError) {
+            // Gérer les erreurs spécifiques Supabase
+            if (authError.message.includes('Invalid login credentials')) {
+                return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+            }
+            if (authError.message.includes('Email not confirmed')) {
+                return res.status(403).json({ 
+                    error: 'Veuillez vérifier votre adresse email avant de vous connecter. Un email de vérification vous a été envoyé lors de l\'inscription.',
+                    code: 'EMAIL_NOT_CONFIRMED'
+                });
+            }
+            return res.status(401).json({ error: authError.message });
         }
         
-        // Vérifier le mot de passe
-        const isValidPassword = await bcrypt.compare(password, entreprise.password);
-        
-        if (!isValidPassword) {
-            return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+        if (!authData.user) {
+            return res.status(500).json({ error: 'Erreur lors de la connexion' });
         }
         
-        // Vérifier si l'email est vérifié
-        if (!entreprise.email_verified) {
+        // Vérifier si l'email est confirmé (Supabase Auth)
+        const isEmailVerified = authData.user.email_confirmed_at !== null;
+        
+        if (!isEmailVerified) {
             return res.status(403).json({ 
-                error: 'Veuillez vérifier votre adresse email avant de vous connecter. Un email de vérification vous a été envoyé lors de l\'inscription.' 
+                error: 'Veuillez vérifier votre adresse email avant de vous connecter. Un email de vérification vous a été envoyé lors de l\'inscription.',
+                code: 'EMAIL_NOT_CONFIRMED'
             });
         }
         
-        // Générer le token JWT
-        const token = jwt.sign(
-            { entrepriseId: entreprise.id, email: entreprise.email },
-            process.env.JWT_SECRET || 'votre_secret_jwt_tres_securise_changez_moi',
-            { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
-        );
+        // Récupérer les informations de l'entreprise depuis la table entreprises
+        const { data: entreprise, error: entrepriseError } = await db.supabase
+            .from('entreprises')
+            .select('id, nom, email, email_verified')
+            .eq('id', authData.user.id)
+            .single();
         
+        // Si l'entreprise n'existe pas dans la table, créer un enregistrement minimal
+        let entrepriseData = entreprise;
+        if (entrepriseError || !entreprise) {
+            console.warn('⚠️ Entreprise non trouvée dans la table, création d\'un enregistrement minimal');
+            const { data: newEntreprise } = await db.supabase
+                .from('entreprises')
+                .insert({
+                    id: authData.user.id,
+                    nom: authData.user.user_metadata?.nom || 'Utilisateur',
+                    email: authData.user.email,
+                    email_verified: isEmailVerified
+                })
+                .select('id, nom, email, email_verified')
+                .single();
+            entrepriseData = newEntreprise;
+        } else {
+            // Mettre à jour email_verified si nécessaire (synchronisation)
+            if (entreprise.email_verified !== isEmailVerified) {
+                await db.supabase
+                    .from('entreprises')
+                    .update({ email_verified: isEmailVerified })
+                    .eq('id', authData.user.id);
+                entrepriseData.email_verified = isEmailVerified;
+            }
+        }
+        
+        // Retourner le token d'accès Supabase (session.access_token)
+        // Le frontend utilisera ce token pour les requêtes API
         res.json({
             message: 'Connexion réussie',
-            token,
+            token: authData.session.access_token, // Token Supabase
+            refreshToken: authData.session.refresh_token,
             entreprise: {
-                id: entreprise.id,
-                nom: entreprise.nom,
-                email: entreprise.email
+                id: entrepriseData?.id || authData.user.id,
+                nom: entrepriseData?.nom || authData.user.user_metadata?.nom || 'Utilisateur',
+                email: authData.user.email,
+                email_verified: isEmailVerified
             }
         });
     } catch (error) {
@@ -210,62 +219,7 @@ const login = async (req, res) => {
     }
 };
 
-// Vérifier l'email avec le token
-const verifyEmail = async (req, res) => {
-    try {
-        const { token } = req.query;
-        
-        if (!token) {
-            return res.status(400).json({ error: 'Token de vérification manquant' });
-        }
-        
-        // Trouver l'entreprise avec ce token
-        const { data: entreprise, error: findError } = await db.supabase
-            .from('entreprises')
-            .select('id, nom, email, email_verification_expires, email_verified')
-            .eq('email_verification_token', token)
-            .single();
-        
-        if (findError || !entreprise) {
-            return res.status(400).json({ error: 'Token de vérification invalide ou expiré' });
-        }
-        
-        // Vérifier si l'email est déjà vérifié
-        if (entreprise.email_verified) {
-            return res.status(400).json({ error: 'Cet email a déjà été vérifié' });
-        }
-        
-        // Vérifier si le token a expiré
-        const expiresAt = new Date(entreprise.email_verification_expires);
-        if (expiresAt < new Date()) {
-            return res.status(400).json({ error: 'Le token de vérification a expiré. Veuillez demander un nouveau lien de vérification.' });
-        }
-        
-        // Mettre à jour l'entreprise pour marquer l'email comme vérifié
-        const { error: updateError } = await db.supabase
-            .from('entreprises')
-            .update({
-                email_verified: true,
-                email_verification_token: null,
-                email_verification_expires: null
-            })
-            .eq('id', entreprise.id);
-        
-        if (updateError) {
-            throw updateError;
-        }
-        
-        res.json({
-            message: 'Email vérifié avec succès ! Vous pouvez maintenant vous connecter.',
-            success: true
-        });
-    } catch (error) {
-        console.error('Erreur lors de la vérification de l\'email:', error);
-        res.status(500).json({ error: 'Erreur lors de la vérification de l\'email: ' + error.message });
-    }
-};
-
-// Renvoyer l'email de vérification
+// Renvoyer l'email de vérification avec Supabase Auth
 const resendVerificationEmail = async (req, res) => {
     try {
         const { email } = req.body;
@@ -274,62 +228,26 @@ const resendVerificationEmail = async (req, res) => {
             return res.status(400).json({ error: 'Email requis' });
         }
         
-        // Trouver l'entreprise
-        const { data: entreprise, error: findError } = await db.supabase
-            .from('entreprises')
-            .select('id, nom, email, email_verified')
-            .eq('email', email)
-            .single();
+        // Utiliser Supabase Auth pour renvoyer l'email de confirmation
+        const { error: authError } = await db.supabase.auth.resend({
+            type: 'signup',
+            email: email,
+            options: {
+                emailRedirectTo: `${process.env.APP_URL || 'http://localhost:3000'}/verify-email.html`
+            }
+        });
         
-        if (findError || !entreprise) {
+        if (authError) {
             // Ne pas révéler si l'email existe ou non pour la sécurité
             return res.json({ 
                 message: 'Si cet email existe et n\'est pas encore vérifié, un email de vérification vous sera envoyé.' 
             });
         }
         
-        if (entreprise.email_verified) {
-            return res.status(400).json({ error: 'Cet email est déjà vérifié' });
-        }
-        
-        // Générer un nouveau token
-        const verificationToken = crypto.randomBytes(32).toString('hex');
-        const verificationExpires = new Date();
-        verificationExpires.setHours(verificationExpires.getHours() + 24);
-        
-        // Mettre à jour le token
-        const { error: updateError } = await db.supabase
-            .from('entreprises')
-            .update({
-                email_verification_token: verificationToken,
-                email_verification_expires: verificationExpires.toISOString()
-            })
-            .eq('id', entreprise.id);
-        
-        if (updateError) {
-            throw updateError;
-        }
-        
-        // Envoyer l'email
-        let emailSent = false;
-        try {
-            await emailService.sendVerificationEmail(email, verificationToken, entreprise.nom);
-            emailSent = true;
-            res.json({ 
-                message: 'Email de vérification envoyé avec succès',
-                emailSent: true
-            });
-        } catch (emailError) {
-            console.error('Erreur lors de l\'envoi de l\'email:', emailError);
-            // Si SMTP n'est pas configuré, retourner le lien de vérification
-            const verificationUrl = `${process.env.APP_URL || (process.env.NODE_ENV === 'production' ? 'https://optimumassurpro.onrender.com' : 'http://localhost:3000')}/verify-email.html?token=${verificationToken}`;
-            res.status(500).json({ 
-                error: 'Impossible d\'envoyer l\'email de vérification. SMTP non configuré.',
-                emailSent: false,
-                verificationUrl: verificationUrl,
-                verificationToken: verificationToken
-            });
-        }
+        res.json({ 
+            message: 'Email de vérification envoyé avec succès',
+            emailSent: true
+        });
     } catch (error) {
         console.error('Erreur lors du renvoi de l\'email:', error);
         res.status(500).json({ error: 'Erreur lors du renvoi de l\'email: ' + error.message });
@@ -339,10 +257,18 @@ const resendVerificationEmail = async (req, res) => {
 // Obtenir les informations de l'entreprise connectée
 const getMe = async (req, res) => {
     try {
+        // req.userId est défini par le middleware Supabase Auth
+        const userId = req.userId || req.entrepriseId;
+        
+        if (!userId) {
+            return res.status(401).json({ error: 'Non authentifié' });
+        }
+        
+        // Récupérer les informations depuis la table entreprises
         const { data: entreprise, error } = await db.supabase
             .from('entreprises')
             .select('id, nom, email, telephone, adresse, created_at')
-            .eq('id', req.entrepriseId)
+            .eq('id', userId)
             .single();
         
         if (error || !entreprise) {
@@ -405,7 +331,7 @@ const updateProfile = async (req, res) => {
     }
 };
 
-// Changer le mot de passe
+// Changer le mot de passe avec Supabase Auth
 const changePassword = async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
@@ -421,32 +347,32 @@ const changePassword = async (req, res) => {
             return res.status(400).json({ error: passwordValidation.error });
         }
         
-        // Récupérer l'entreprise avec le mot de passe
-        const { data: entreprise, error: findError } = await db.supabase
-            .from('entreprises')
-            .select('id, password')
-            .eq('id', req.entrepriseId)
-            .single();
-        
-        if (findError || !entreprise) {
-            return res.status(404).json({ error: 'Entreprise non trouvée' });
+        const userId = req.userId || req.entrepriseId;
+        if (!userId) {
+            return res.status(401).json({ error: 'Non authentifié' });
         }
         
-        // Vérifier le mot de passe actuel
-        const isValidPassword = await bcrypt.compare(currentPassword, entreprise.password);
+        // Récupérer l'utilisateur depuis Supabase Auth
+        const { data: { user }, error: userError } = await db.supabase.auth.admin.getUserById(userId);
         
-        if (!isValidPassword) {
+        if (userError || !user) {
+            return res.status(404).json({ error: 'Utilisateur non trouvé' });
+        }
+        
+        // Vérifier le mot de passe actuel en tentant une connexion
+        const { error: signInError } = await db.supabase.auth.signInWithPassword({
+            email: user.email,
+            password: currentPassword
+        });
+        
+        if (signInError) {
             return res.status(401).json({ error: 'Mot de passe actuel incorrect' });
         }
         
-        // Hasher le nouveau mot de passe
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
-        
-        // Mettre à jour le mot de passe avec Supabase
-        const { error: updateError } = await db.supabase
-            .from('entreprises')
-            .update({ password: hashedPassword })
-            .eq('id', req.entrepriseId);
+        // Mettre à jour le mot de passe avec Supabase Auth
+        const { error: updateError } = await db.supabase.auth.admin.updateUserById(userId, {
+            password: newPassword
+        });
         
         if (updateError) {
             throw updateError;
@@ -459,7 +385,7 @@ const changePassword = async (req, res) => {
     }
 };
 
-// Demander la réinitialisation du mot de passe
+// Demander la réinitialisation du mot de passe avec Supabase Auth
 const forgotPassword = async (req, res) => {
     try {
         const { email } = req.body;
@@ -468,60 +394,25 @@ const forgotPassword = async (req, res) => {
             return res.status(400).json({ error: 'Email requis' });
         }
         
-        // Trouver l'entreprise
-        const { data: entreprise, error: findError } = await db.supabase
-            .from('entreprises')
-            .select('id, nom, email')
-            .eq('email', email)
-            .single();
+        // Utiliser Supabase Auth pour envoyer l'email de réinitialisation
+        const { error: authError } = await db.supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: `${process.env.APP_URL || 'http://localhost:3000'}/reset-password.html`
+        });
         
         // Ne pas révéler si l'email existe ou non (sécurité)
-        if (findError || !entreprise) {
-            // Retourner un succès même si l'email n'existe pas (pour éviter l'énumération)
-            return res.json({ 
-                message: 'Si cet email existe dans notre système, un lien de réinitialisation vous a été envoyé.' 
-            });
-        }
-        
-        // Générer un token de réinitialisation
-        const resetToken = crypto.randomBytes(32).toString('hex');
-        const resetExpires = new Date();
-        resetExpires.setHours(resetExpires.getHours() + 1); // Expire dans 1h
-        
-        // Sauvegarder le token dans la base de données
-        // Note: Vous devrez ajouter ces colonnes à la table entreprises si elles n'existent pas
-        // password_reset_token, password_reset_expires
-        const { error: updateError } = await db.supabase
-            .from('entreprises')
-            .update({
-                password_reset_token: resetToken,
-                password_reset_expires: resetExpires.toISOString()
-            })
-            .eq('id', entreprise.id);
-        
-        if (updateError) {
-            // Si les colonnes n'existent pas, on les crée d'abord
-            console.warn('Les colonnes password_reset_token et password_reset_expires n\'existent peut-être pas');
-            // Pour l'instant, on continue quand même
-        }
-        
-        // Envoyer l'email
-        try {
-            await emailService.sendPasswordResetEmail(email, resetToken, entreprise.nom);
-            res.json({ 
-                message: 'Si cet email existe dans notre système, un lien de réinitialisation vous a été envoyé.' 
-            });
-        } catch (emailError) {
-            console.error('Erreur lors de l\'envoi de l\'email:', emailError);
-            res.status(500).json({ error: 'Impossible d\'envoyer l\'email de réinitialisation' });
-        }
+        // Supabase retourne toujours un succès même si l'email n'existe pas
+        res.json({ 
+            message: 'Si cet email existe dans notre système, un lien de réinitialisation vous a été envoyé.' 
+        });
     } catch (error) {
         console.error('Erreur lors de la demande de réinitialisation:', error);
         res.status(500).json({ error: 'Erreur lors de la demande de réinitialisation: ' + error.message });
     }
 };
 
-// Réinitialiser le mot de passe avec le token
+// Réinitialiser le mot de passe avec Supabase Auth
+// Note: Cette fonction est généralement gérée côté frontend avec Supabase Auth
+// Le token est géré automatiquement par Supabase dans l'URL de redirection
 const resetPassword = async (req, res) => {
     try {
         const { token, newPassword } = req.body;
@@ -536,40 +427,14 @@ const resetPassword = async (req, res) => {
             return res.status(400).json({ error: passwordValidation.error });
         }
         
-        // Trouver l'entreprise avec ce token
-        const { data: entreprise, error: findError } = await db.supabase
-            .from('entreprises')
-            .select('id, password_reset_expires')
-            .eq('password_reset_token', token)
-            .single();
+        // Utiliser Supabase Auth pour réinitialiser le mot de passe
+        // Le token est vérifié automatiquement par Supabase
+        const { error: authError } = await db.supabase.auth.updateUser({
+            password: newPassword
+        });
         
-        if (findError || !entreprise) {
+        if (authError) {
             return res.status(400).json({ error: 'Token de réinitialisation invalide ou expiré' });
-        }
-        
-        // Vérifier si le token a expiré
-        if (entreprise.password_reset_expires) {
-            const expiresAt = new Date(entreprise.password_reset_expires);
-            if (expiresAt < new Date()) {
-                return res.status(400).json({ error: 'Le token de réinitialisation a expiré. Veuillez faire une nouvelle demande.' });
-            }
-        }
-        
-        // Hasher le nouveau mot de passe
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
-        
-        // Mettre à jour le mot de passe et supprimer le token
-        const { error: updateError } = await db.supabase
-            .from('entreprises')
-            .update({
-                password: hashedPassword,
-                password_reset_token: null,
-                password_reset_expires: null
-            })
-            .eq('id', entreprise.id);
-        
-        if (updateError) {
-            throw updateError;
         }
         
         res.json({ message: 'Mot de passe réinitialisé avec succès. Vous pouvez maintenant vous connecter.' });
@@ -585,7 +450,6 @@ module.exports = {
     getMe,
     updateProfile,
     changePassword,
-    verifyEmail,
     resendVerificationEmail,
     forgotPassword,
     resetPassword

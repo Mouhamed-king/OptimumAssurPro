@@ -101,15 +101,12 @@ const getContractById = async (req, res) => {
                 clients!contrats_client_id_fkey (
                     nom,
                     prenom,
-                    telephone,
-                    email
+                    telephone
                 ),
                 vehicules!contrats_vehicule_id_fkey (
                     marque,
                     modele,
-                    immatriculation,
-                    annee,
-                    couleur
+                    immatriculation
                 )
             `)
             .eq('id', id)
@@ -130,12 +127,9 @@ const getContractById = async (req, res) => {
             client_nom: client.nom,
             client_prenom: client.prenom,
             client_telephone: client.telephone,
-            client_email: client.email,
             marque: vehicule.marque,
             modele: vehicule.modele,
             immatriculation: vehicule.immatriculation,
-            annee: vehicule.annee,
-            couleur: vehicule.couleur,
             jours_restants: joursRestants,
             est_expire: joursRestants < 0,
             alerte_renouvellement: joursRestants >= 0 && joursRestants <= 7

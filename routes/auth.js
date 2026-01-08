@@ -22,9 +22,6 @@ router.put('/profile', authenticateToken, authController.updateProfile);
 // Changer le mot de passe
 router.post('/change-password', authenticateToken, authController.changePassword);
 
-// Vérifier l'email
-router.get('/verify-email', authController.verifyEmail);
-
 // Renvoyer l'email de vérification
 router.post('/resend-verification', authController.resendVerificationEmail);
 

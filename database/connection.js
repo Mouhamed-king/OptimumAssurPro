@@ -99,45 +99,48 @@ async function createTablesIfNotExist() {
         await client.query('BEGIN');
         
         // Table des entreprises
+        // Note: L'ID utilise UUID pour correspondre à Supabase Auth (auth.users.id)
         await client.query(`
             CREATE TABLE IF NOT EXISTS entreprises (
-                id SERIAL PRIMARY KEY,
+                id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
                 nom VARCHAR(255) NOT NULL,
                 email VARCHAR(255) UNIQUE NOT NULL,
-                password VARCHAR(255) NOT NULL,
                 telephone VARCHAR(20),
                 adresse TEXT,
-                email_verified BOOLEAN DEFAULT FALSE,
-                email_verification_token VARCHAR(255),
-                email_verification_expires TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
         
-        // Ajouter les colonnes de vérification email et réinitialisation mot de passe si elles n'existent pas
+        // Migration: Si la table existe déjà avec SERIAL, créer une migration
+        // Note: Cette migration doit être exécutée manuellement pour les bases existantes
         await client.query(`
             DO $$ 
             BEGIN
-                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                              WHERE table_name='entreprises' AND column_name='email_verified') THEN
-                    ALTER TABLE entreprises ADD COLUMN email_verified BOOLEAN DEFAULT FALSE;
+                -- Supprimer les colonnes obsolètes si elles existent
+                IF EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='entreprises' AND column_name='password') THEN
+                    ALTER TABLE entreprises DROP COLUMN password;
                 END IF;
-                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                              WHERE table_name='entreprises' AND column_name='email_verification_token') THEN
-                    ALTER TABLE entreprises ADD COLUMN email_verification_token VARCHAR(255);
+                IF EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='entreprises' AND column_name='email_verified') THEN
+                    ALTER TABLE entreprises DROP COLUMN email_verified;
                 END IF;
-                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                              WHERE table_name='entreprises' AND column_name='email_verification_expires') THEN
-                    ALTER TABLE entreprises ADD COLUMN email_verification_expires TIMESTAMP;
+                IF EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='entreprises' AND column_name='email_verification_token') THEN
+                    ALTER TABLE entreprises DROP COLUMN email_verification_token;
                 END IF;
-                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                              WHERE table_name='entreprises' AND column_name='password_reset_token') THEN
-                    ALTER TABLE entreprises ADD COLUMN password_reset_token VARCHAR(255);
+                IF EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='entreprises' AND column_name='email_verification_expires') THEN
+                    ALTER TABLE entreprises DROP COLUMN email_verification_expires;
                 END IF;
-                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                              WHERE table_name='entreprises' AND column_name='password_reset_expires') THEN
-                    ALTER TABLE entreprises ADD COLUMN password_reset_expires TIMESTAMP;
+                IF EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='entreprises' AND column_name='password_reset_token') THEN
+                    ALTER TABLE entreprises DROP COLUMN password_reset_token;
+                END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='entreprises' AND column_name='password_reset_expires') THEN
+                    ALTER TABLE entreprises DROP COLUMN password_reset_expires;
                 END IF;
             END $$;
         `);
@@ -146,7 +149,7 @@ async function createTablesIfNotExist() {
         await client.query(`
             CREATE TABLE IF NOT EXISTS clients (
                 id SERIAL PRIMARY KEY,
-                entreprise_id INTEGER NOT NULL,
+                entreprise_id UUID NOT NULL,
                 nom VARCHAR(255) NOT NULL,
                 prenom VARCHAR(255) NOT NULL,
                 telephone VARCHAR(20) NOT NULL,
@@ -190,7 +193,7 @@ async function createTablesIfNotExist() {
                 id SERIAL PRIMARY KEY,
                 client_id INTEGER NOT NULL,
                 vehicule_id INTEGER NOT NULL,
-                entreprise_id INTEGER NOT NULL,
+                entreprise_id UUID NOT NULL,
                 numero_contrat VARCHAR(100) UNIQUE NOT NULL,
                 type_contrat VARCHAR(50) NOT NULL,
                 duree_mois INTEGER NOT NULL,
@@ -217,7 +220,7 @@ async function createTablesIfNotExist() {
         await client.query(`
             CREATE TABLE IF NOT EXISTS notifications (
                 id SERIAL PRIMARY KEY,
-                entreprise_id INTEGER NOT NULL,
+                entreprise_id UUID NOT NULL,
                 contrat_id INTEGER,
                 type VARCHAR(50) NOT NULL,
                 titre VARCHAR(255) NOT NULL,

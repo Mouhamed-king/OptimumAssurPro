@@ -74,6 +74,15 @@ app.get('/api/health', (req, res) => {
     });
 });
 
+// Route pour exposer la configuration Supabase au frontend
+// SUPABASE_ANON_KEY peut être exposé publiquement (sécurisé avec RLS dans Supabase)
+app.get('/api/config', (req, res) => {
+    res.json({
+        supabaseUrl: process.env.SUPABASE_URL,
+        supabaseAnonKey: process.env.SUPABASE_ANON_KEY
+    });
+});
+
 // Route pour servir le frontend
 // Cette route ne sera appelée QUE si express.static n'a pas trouvé de fichier correspondant
 app.get('*', (req, res) => {
@@ -126,51 +135,40 @@ app.use((err, req, res, next) => {
     });
 });
 
-// Démarrer le serveur uniquement si on n'est pas sur Vercel (serverless)
-if (process.env.VERCEL !== '1') {
-    db.connect()
-        .then(() => {
-            console.log('✅ Connexion à la base de données réussie');
-            const server = app.listen(PORT, '0.0.0.0', () => {
-                const env = process.env.NODE_ENV || 'development';
-                console.log(`🚀 Serveur démarré sur le port ${PORT}`);
-                console.log(`🌍 Environnement: ${env}`);
-                if (env === 'development') {
-                    console.log(`📱 Frontend disponible sur http://localhost:${PORT}`);
-                    console.log(`🔌 API disponible sur http://localhost:${PORT}/api`);
-                } else {
-                    console.log(`📱 Application disponible sur ${process.env.APP_URL || `http://localhost:${PORT}`}`);
-                }
-            });
-            
-            // Gérer les erreurs de port occupé
-            server.on('error', (error) => {
-                if (error.code === 'EADDRINUSE') {
-                    console.error(`❌ Le port ${PORT} est déjà utilisé.`);
-                    if (process.env.NODE_ENV === 'development') {
-                        console.error('💡 Solution: Arrêtez le processus qui utilise ce port ou changez le PORT dans .env');
-                    }
-                    process.exit(1);
-                } else {
-                    console.error('❌ Erreur serveur:', error);
-                    process.exit(1);
-                }
-            });
-        })
-        .catch((error) => {
-            console.error('❌ Erreur de connexion à la base de données:', error);
-            process.exit(1);
+// Démarrer le serveur
+db.connect()
+    .then(() => {
+        console.log('✅ Connexion à la base de données réussie');
+        const server = app.listen(PORT, '0.0.0.0', () => {
+            const env = process.env.NODE_ENV || 'development';
+            console.log(`🚀 Serveur démarré sur le port ${PORT}`);
+            console.log(`🌍 Environnement: ${env}`);
+            if (env === 'development') {
+                console.log(`📱 Frontend disponible sur http://localhost:${PORT}`);
+                console.log(`🔌 API disponible sur http://localhost:${PORT}/api`);
+            } else {
+                console.log(`📱 Application disponible sur ${process.env.APP_URL || `http://localhost:${PORT}`}`);
+            }
         });
-} else {
-    // Sur Vercel, initialiser la connexion mais ne pas démarrer le serveur
-    db.connect()
-        .then(() => {
-            console.log('✅ Connexion à la base de données réussie (Vercel)');
-        })
-        .catch((error) => {
-            console.error('❌ Erreur de connexion à la base de données:', error);
+        
+        // Gérer les erreurs de port occupé
+        server.on('error', (error) => {
+            if (error.code === 'EADDRINUSE') {
+                console.error(`❌ Le port ${PORT} est déjà utilisé.`);
+                if (process.env.NODE_ENV === 'development') {
+                    console.error('💡 Solution: Arrêtez le processus qui utilise ce port ou changez le PORT dans .env');
+                }
+                process.exit(1);
+            } else {
+                console.error('❌ Erreur serveur:', error);
+                process.exit(1);
+            }
         });
-}
+    })
+    .catch((error) => {
+        console.error('❌ Erreur de connexion à la base de données:', error);
+        process.exit(1);
+    });
 
 module.exports = app;
 

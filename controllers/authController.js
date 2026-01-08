@@ -378,27 +378,67 @@ const resendVerificationEmail = async (req, res) => {
 // Obtenir les informations de l'entreprise connectée
 const getMe = async (req, res) => {
     try {
+        console.log('📥 Requête getMe reçue');
+        console.log('   userId:', req.userId);
+        console.log('   entrepriseId:', req.entrepriseId);
+        console.log('   user:', req.user ? 'présent' : 'absent');
+        console.log('   entreprise:', req.entreprise ? 'présent' : 'absent');
+        
         // req.userId est défini par le middleware Supabase Auth
         const userId = req.userId || req.entrepriseId;
         
         if (!userId) {
+            console.error('❌ Aucun userId trouvé dans la requête');
             return res.status(401).json({ error: 'Non authentifié' });
         }
         
-        // Récupérer les informations depuis la table entreprises
+        // Si l'entreprise est déjà dans req (créée par le middleware), l'utiliser
+        if (req.entreprise) {
+            console.log('✅ Utilisation de l\'entreprise du middleware:', req.entreprise.id);
+            return res.json({ entreprise: req.entreprise });
+        }
+        
+        // Sinon, récupérer depuis la base de données
+        console.log('📡 Récupération de l\'entreprise depuis la base de données...');
         const { data: entreprise, error } = await db.supabase
             .from('entreprises')
-            .select('id, nom, email, telephone, adresse, created_at')
+            .select('id, nom, email, telephone, adresse, email_verified, created_at')
             .eq('id', userId)
             .single();
         
-        if (error || !entreprise) {
+        if (error) {
+            console.error('❌ Erreur lors de la récupération de l\'entreprise:', error);
+            // Si l'entreprise n'existe pas, créer un enregistrement minimal
+            if (error.code === 'PGRST116' && req.user) {
+                console.log('📝 Création d\'un enregistrement minimal pour getMe...');
+                const { data: newEntreprise } = await db.supabase
+                    .from('entreprises')
+                    .insert({
+                        id: req.user.id,
+                        nom: req.user.user_metadata?.nom || 'Utilisateur',
+                        email: req.user.email,
+                        email_verified: req.user.email_confirmed_at !== null
+                    })
+                    .select('id, nom, email, telephone, adresse, email_verified, created_at')
+                    .single();
+                
+                if (newEntreprise) {
+                    console.log('✅ Enregistrement créé:', newEntreprise.id);
+                    return res.json({ entreprise: newEntreprise });
+                }
+            }
             return res.status(404).json({ error: 'Entreprise non trouvée' });
         }
         
+        if (!entreprise) {
+            console.error('❌ Entreprise non trouvée dans la base de données');
+            return res.status(404).json({ error: 'Entreprise non trouvée' });
+        }
+        
+        console.log('✅ Entreprise récupérée:', entreprise.id);
         res.json({ entreprise });
     } catch (error) {
-        console.error('Erreur lors de la récupération des informations:', error);
+        console.error('❌ Erreur lors de la récupération des informations:', error);
         res.status(500).json({ error: 'Erreur lors de la récupération des informations: ' + error.message });
     }
 };

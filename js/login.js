@@ -72,13 +72,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 const data = await window.api.auth.login(email, password);
                 
                 // Stocker le token
+                console.log('💾 Stockage du token...');
+                console.log('   Token:', data.token ? data.token.substring(0, 20) + '...' : 'null');
+                console.log('   Remember:', remember);
+                
                 if (remember) {
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('entreprise', JSON.stringify(data.entreprise));
+                    console.log('✅ Token stocké dans localStorage');
                 } else {
                     sessionStorage.setItem('token', data.token);
                     sessionStorage.setItem('entreprise', JSON.stringify(data.entreprise));
+                    console.log('✅ Token stocké dans sessionStorage');
                 }
+                
+                // Vérifier que le token est bien stocké avant de rediriger
+                const storedToken = remember ? localStorage.getItem('token') : sessionStorage.getItem('token');
+                if (!storedToken) {
+                    console.error('❌ ERREUR: Le token n\'a pas été stocké correctement !');
+                    showToast('Erreur lors du stockage de la session', 'error');
+                    return;
+                }
+                
+                console.log('✅ Token vérifié après stockage');
+                console.log('🔄 Redirection vers index.html...');
                 
                 // Rediriger vers le dashboard
                 window.location.href = '/index.html';

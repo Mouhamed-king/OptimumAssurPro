@@ -13,6 +13,12 @@ function getAuthToken() {
 async function apiRequest(endpoint, options = {}) {
     const token = getAuthToken();
     
+    console.log('📡 Requête API:', endpoint);
+    console.log('   Token présent:', !!token);
+    if (token) {
+        console.log('   Token (premiers caractères):', token.substring(0, 20) + '...');
+    }
+    
     const defaultOptions = {
         headers: {
             'Content-Type': 'application/json',
@@ -21,6 +27,9 @@ async function apiRequest(endpoint, options = {}) {
     
     if (token) {
         defaultOptions.headers['Authorization'] = `Bearer ${token}`;
+        console.log('   Authorization header ajouté');
+    } else {
+        console.warn('⚠️ Aucun token disponible pour cette requête');
     }
     
     const finalOptions = {

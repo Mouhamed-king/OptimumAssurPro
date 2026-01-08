@@ -49,16 +49,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     console.log('✅ Token trouvé, chargement des données...');
-    console.log('   Token source:', localStorage.getItem('token') ? 'localStorage' : 'sessionStorage');
+    const tokenSource = localStorage.getItem('token') ? 'localStorage' : 'sessionStorage';
+    console.log('   Token source:', tokenSource);
+    console.log('   Token (premiers caractères):', token ? token.substring(0, 30) + '...' : 'null');
     
     // Attendre un peu pour s'assurer que l'API est chargée
     setTimeout(() => {
+        console.log('⏳ Démarrage du chargement des données après délai...');
         // Charger les données de l'entreprise
         loadEntrepriseInfo().catch(error => {
             // L'erreur est déjà gérée dans loadEntrepriseInfo()
-            console.error('Erreur capturée par le catch externe:', error.message);
+            console.error('❌ Erreur capturée par le catch externe:', error.message);
+            console.error('   Ne pas déconnecter automatiquement - laisser loadEntrepriseInfo gérer');
         });
-    }, 100);
+    }, 500); // Augmenter le délai pour être sûr que l'API est chargée
     
     // Charger le dashboard (page par défaut sur index.html)
     const dashboardPage = document.getElementById('dashboard-page');
@@ -396,15 +400,26 @@ async function loadEntrepriseInfo() {
             }
         }
         
-        // Si erreur d'authentification ET pas de données stockées, rediriger vers login
-        if (error.message && (error.message.includes('Token') || error.message.includes('authentification') || error.message.includes('401') || error.message.includes('403'))) {
-            console.warn('⚠️ Token invalide ou expiré, redirection vers login');
-            localStorage.removeItem('token');
-            localStorage.removeItem('entreprise');
-            sessionStorage.removeItem('token');
-            sessionStorage.removeItem('entreprise');
-            window.location.href = '/login.html';
-            return; // Arrêter l'exécution
+        // Vérifier le type d'erreur avant de déconnecter
+        const isAuthError = error.message && (
+            error.message.includes('Token') || 
+            error.message.includes('authentification') || 
+            error.message.includes('401') || 
+            error.message.includes('403')
+        );
+        
+        if (isAuthError) {
+            // Vérifier si c'est vraiment une erreur d'authentification ou juste un problème temporaire
+            console.warn('⚠️ Erreur d\'authentification détectée');
+            console.warn('   Message:', error.message);
+            console.warn('   Token présent:', !!token);
+            
+            // Ne déconnecter QUE si on est sûr que c'est une erreur d'authentification
+            // ET seulement après plusieurs tentatives échouées
+            // Pour l'instant, ne pas déconnecter automatiquement - laisser l'utilisateur essayer
+            console.warn('⚠️ Erreur d\'authentification, mais session maintenue pour permettre une nouvelle tentative');
+            // Ne pas déconnecter - laisser l'utilisateur voir l'erreur et réessayer
+            return;
         }
         
         // Pour les autres erreurs, ne pas déconnecter

@@ -10,16 +10,25 @@ const authenticateToken = async (req, res, next) => {
         const authHeader = req.headers['authorization'];
         const token = authHeader && authHeader.split(' ')[1]; // Format: "Bearer TOKEN"
         
+        console.log('🔐 Middleware authenticateToken appelé');
+        console.log('   Authorization header présent:', !!authHeader);
+        console.log('   Token extrait:', token ? token.substring(0, 20) + '...' : 'null');
+        
         if (!token) {
+            console.error('❌ Token manquant dans la requête');
             return res.status(401).json({ error: 'Token d\'authentification manquant' });
         }
         
         // Vérifier le token avec Supabase Auth
+        console.log('🔍 Vérification du token avec Supabase Auth...');
         const { data: { user }, error: authError } = await db.supabase.auth.getUser(token);
         
         if (authError || !user) {
+            console.error('❌ Erreur lors de la vérification du token:', authError?.message);
             return res.status(401).json({ error: 'Token invalide ou expiré' });
         }
+        
+        console.log('✅ Token vérifié, utilisateur:', user.id);
         
         // Vérifier que l'email est confirmé (email_confirmed_at)
         if (!user.email_confirmed_at) {

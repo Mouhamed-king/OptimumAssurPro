@@ -42,7 +42,7 @@ const authenticateToken = async (req, res, next) => {
             console.log('   User ID:', user.id);
             console.log('   Email:', user.email);
             
-            // Réessayer plusieurs fois car il peut y avoir un délai de propagation
+            // Réessayer plusieurs fois car il peut y avoir un délai de propagation ou problème RLS
             let newEntreprise = null;
             let insertError = null;
             const maxRetries = 3;
@@ -67,9 +67,9 @@ const authenticateToken = async (req, res, next) => {
                 
                 insertError = error;
                 
-                // Si c'est une erreur de clé étrangère ou de duplicate, arrêter
+                // Si c'est une erreur de duplicate, essayer de récupérer l'enregistrement existant
                 if (error.code === '23505' || error.message.includes('duplicate')) {
-                    // L'enregistrement existe peut-être déjà, essayer de le récupérer
+                    console.log('⚠️ Enregistrement déjà existant, récupération...');
                     const { data: existing } = await db.supabase
                         .from('entreprises')
                         .select('id, nom, email, email_verified')
@@ -78,17 +78,26 @@ const authenticateToken = async (req, res, next) => {
                     
                     if (existing) {
                         newEntreprise = existing;
-                        console.log('✅ Entreprise trouvée après tentative d\'insertion:', existing.id);
+                        console.log('✅ Entreprise trouvée:', existing.id);
                         break;
                     }
                 }
                 
-                // Si ce n'est pas une erreur de clé étrangère, arrêter
+                // Si c'est une erreur RLS, les politiques ne sont peut-être pas créées
+                if (error.code === '42501' || error.message.includes('row-level security') || error.message.includes('policy')) {
+                    console.error('❌ Erreur RLS détectée. Les politiques RLS ne sont peut-être pas créées.');
+                    console.error('   Exécutez le script database/fix-rls-entreprises.sql dans Supabase Dashboard');
+                    // Ne pas réessayer si c'est une erreur RLS
+                    break;
+                }
+                
+                // Si ce n'est pas une erreur de clé étrangère, arrêter après la première tentative
                 if (error.code !== '23503' || attempt >= maxRetries - 1) {
                     break;
                 }
                 
-                // Attendre un peu avant de réessayer
+                // Attendre un peu avant de réessayer (seulement pour erreur de clé étrangère)
+                console.warn(`⚠️ Tentative ${attempt + 1}/${maxRetries} - Réessai dans 300ms...`);
                 await new Promise(resolve => setTimeout(resolve, 300));
             }
             
@@ -101,7 +110,14 @@ const authenticateToken = async (req, res, next) => {
                 return;
             } else {
                 console.error('❌ Impossible de créer l\'enregistrement entreprise après', maxRetries, 'tentatives');
-                console.error('   Erreur:', insertError?.message || 'Inconnue');
+                console.error('   Code erreur:', insertError?.code);
+                console.error('   Message:', insertError?.message);
+                
+                // Si c'est une erreur RLS, donner des instructions claires
+                if (insertError?.code === '42501' || insertError?.message?.includes('row-level security')) {
+                    console.error('   ⚠️ ACTION REQUISE: Exécutez database/fix-rls-entreprises.sql dans Supabase Dashboard');
+                }
+                
                 // Ne pas bloquer la requête, créer un objet minimal
                 req.entreprise = {
                     id: user.id,

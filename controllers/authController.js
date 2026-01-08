@@ -103,30 +103,10 @@ const register = async (req, res) => {
         let retryCount = 0;
         const maxRetries = 3;
         
-        while (!userExists && retryCount < maxRetries) {
-            try {
-                // Utiliser admin API pour vérifier l'utilisateur
-                const { data: userCheck, error: checkError } = await db.supabase.auth.admin.getUserById(authData.user.id);
-                if (userCheck?.user && userCheck.user.id === authData.user.id) {
-                    userExists = true;
-                    console.log('✅ Utilisateur confirmé dans auth.users');
-                    break;
-                }
-            } catch (checkErr) {
-                console.warn(`⚠️ Tentative ${retryCount + 1}/${maxRetries} - Utilisateur pas encore disponible:`, checkErr.message);
-            }
-            
-            if (!userExists && retryCount < maxRetries - 1) {
-                // Attendre un peu avant de réessayer (délai de propagation Supabase)
-                await new Promise(resolve => setTimeout(resolve, 500));
-                retryCount++;
-            }
-        }
-        
-        if (!userExists) {
-            console.warn('⚠️ Utilisateur pas encore disponible dans auth.users, insertion différée');
-            console.warn('   L\'enregistrement sera créé lors de la première connexion');
-        }
+        // L'utilisateur vient d'être créé par Supabase Auth, il existe forcément
+        // Pas besoin de vérifier avec admin API (qui n'est pas toujours disponible)
+        userExists = true;
+        console.log('✅ Utilisateur créé par Supabase Auth, prêt pour insertion dans entreprises');
         
         // Créer l'enregistrement dans la table entreprises avec l'ID de Supabase Auth
         // IMPORTANT: Utiliser le token de l'utilisateur pour bypass RLS avec les politiques appropriées
@@ -267,26 +247,13 @@ const login = async (req, res) => {
             
             // Gérer les erreurs spécifiques Supabase
             if (authError.message.includes('Invalid login credentials') || authError.status === 400) {
-                // Vérifier si l'utilisateur existe mais n'a pas vérifié son email
-                // Utiliser admin API pour vérifier l'utilisateur
-                try {
-                    const { data: userCheck, error: checkError } = await db.supabase.auth.admin.getUserByEmail(email);
-                    console.log('🔍 Vérification utilisateur:', userCheck?.user ? 'Trouvé' : 'Non trouvé');
-                    
-                    if (userCheck?.user) {
-                        console.log('   Email confirmé:', userCheck.user.email_confirmed_at !== null);
-                        if (!userCheck.user.email_confirmed_at) {
-                            console.log('⚠️ Utilisateur trouvé mais email non vérifié');
-                            return res.status(403).json({ 
-                                error: 'Veuillez vérifier votre adresse email avant de vous connecter. Un email de vérification vous a été envoyé lors de l\'inscription.',
-                                code: 'EMAIL_NOT_CONFIRMED',
-                                email: email
-                            });
-                        }
-                    }
-                } catch (checkErr) {
-                    console.warn('⚠️ Impossible de vérifier l\'utilisateur:', checkErr.message);
-                    // Continuer avec l'erreur normale
+                // Vérifier si l'erreur indique un email non confirmé
+                if (authError.message.includes('email_not_confirmed') || authError.message.includes('Email not confirmed')) {
+                    return res.status(403).json({ 
+                        error: 'Veuillez vérifier votre adresse email avant de vous connecter. Un email de vérification vous a été envoyé lors de l\'inscription.',
+                        code: 'EMAIL_NOT_CONFIRMED',
+                        email: email
+                    });
                 }
                 
                 return res.status(401).json({ 

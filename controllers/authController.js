@@ -54,6 +54,15 @@ const register = async (req, res) => {
         
         // Utiliser Supabase Auth pour créer l'utilisateur
         // Supabase enverra automatiquement l'email de confirmation
+        const appUrl = process.env.APP_URL || process.env.RENDER_EXTERNAL_URL || 'http://localhost:3000';
+        const redirectUrl = `${appUrl}/verify-email.html`;
+        
+        console.log('📧 Tentative d\'inscription avec Supabase Auth:');
+        console.log('   Email:', email);
+        console.log('   URL de redirection:', redirectUrl);
+        console.log('   APP_URL:', process.env.APP_URL);
+        console.log('   RENDER_EXTERNAL_URL:', process.env.RENDER_EXTERNAL_URL);
+        
         const { data: authData, error: authError } = await db.supabase.auth.signUp({
             email,
             password,
@@ -63,52 +72,158 @@ const register = async (req, res) => {
                     telephone: telephone || null,
                     adresse: adresse || null
                 },
-                emailRedirectTo: `${process.env.APP_URL || 'http://localhost:3000'}/verify-email.html`
+                emailRedirectTo: redirectUrl
             }
         });
         
         if (authError) {
+            console.error('❌ Erreur Supabase Auth lors de l\'inscription:', authError);
             // Gérer les erreurs spécifiques Supabase
-            if (authError.message.includes('already registered')) {
+            if (authError.message.includes('already registered') || authError.message.includes('already exists')) {
                 return res.status(400).json({ error: 'Cet email est déjà utilisé' });
             }
             return res.status(400).json({ error: authError.message });
         }
         
         if (!authData.user) {
+            console.error('❌ Aucun utilisateur créé par Supabase Auth');
             return res.status(500).json({ error: 'Erreur lors de la création du compte' });
         }
         
+        console.log('✅ Utilisateur Supabase Auth créé:');
+        console.log('   ID:', authData.user.id);
+        console.log('   Email:', authData.user.email);
+        console.log('   Email confirmé:', authData.user.email_confirmed_at !== null);
+        console.log('   Session créée:', authData.session !== null);
+        
+        // Vérifier que l'utilisateur existe bien dans auth.users avant d'insérer
+        // Parfois il y a un délai entre la création Auth et la disponibilité dans la DB
+        console.log('🔍 Vérification de l\'existence de l\'utilisateur dans auth.users...');
+        let userExists = false;
+        let retryCount = 0;
+        const maxRetries = 3;
+        
+        while (!userExists && retryCount < maxRetries) {
+            try {
+                // Utiliser admin API pour vérifier l'utilisateur
+                const { data: userCheck, error: checkError } = await db.supabase.auth.admin.getUserById(authData.user.id);
+                if (userCheck?.user && userCheck.user.id === authData.user.id) {
+                    userExists = true;
+                    console.log('✅ Utilisateur confirmé dans auth.users');
+                    break;
+                }
+            } catch (checkErr) {
+                console.warn(`⚠️ Tentative ${retryCount + 1}/${maxRetries} - Utilisateur pas encore disponible:`, checkErr.message);
+            }
+            
+            if (!userExists && retryCount < maxRetries - 1) {
+                // Attendre un peu avant de réessayer (délai de propagation Supabase)
+                await new Promise(resolve => setTimeout(resolve, 500));
+                retryCount++;
+            }
+        }
+        
+        if (!userExists) {
+            console.warn('⚠️ Utilisateur pas encore disponible dans auth.users, insertion différée');
+            console.warn('   L\'enregistrement sera créé lors de la première connexion');
+        }
+        
         // Créer l'enregistrement dans la table entreprises avec l'ID de Supabase Auth
-        const { data: newEntreprise, error: insertError } = await db.supabase
-            .from('entreprises')
-            .insert({
-                id: authData.user.id, // Utiliser l'ID de Supabase Auth
-                nom,
-                email,
-                telephone: telephone || null,
-                adresse: adresse || null,
-                email_verified: authData.user.email_confirmed_at !== null // Synchroniser avec Supabase Auth
-            })
-            .select()
-            .single();
+        console.log('📝 Création de l\'enregistrement dans la table entreprises...');
+        let newEntreprise = null;
+        let insertError = null;
+        
+        // Réessayer l'insertion plusieurs fois si nécessaire
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            const { data, error } = await db.supabase
+                .from('entreprises')
+                .insert({
+                    id: authData.user.id, // Utiliser l'ID de Supabase Auth
+                    nom,
+                    email,
+                    telephone: telephone || null,
+                    adresse: adresse || null,
+                    email_verified: authData.user.email_confirmed_at !== null // Synchroniser avec Supabase Auth
+                })
+                .select()
+                .single();
+            
+            if (!error) {
+                newEntreprise = data;
+                console.log('✅ Entreprise créée dans la table:', newEntreprise?.id);
+                break;
+            }
+            
+            insertError = error;
+            
+            // Si c'est une erreur de clé étrangère, attendre et réessayer
+            if (error.code === '23503' && attempt < maxRetries - 1) {
+                console.warn(`⚠️ Tentative ${attempt + 1}/${maxRetries} - Erreur de clé étrangère, réessai dans 500ms...`);
+                await new Promise(resolve => setTimeout(resolve, 500));
+            } else {
+                break; // Autre erreur ou max tentatives atteint
+            }
+        }
         
         // Si l'insertion échoue mais que l'utilisateur Auth existe, continuer quand même
         // (l'utilisateur pourra compléter son profil plus tard)
-        if (insertError && !insertError.message.includes('duplicate')) {
-            console.warn('⚠️ Erreur lors de la création de l\'entreprise:', insertError);
-            // Ne pas bloquer l'inscription si c'est juste un problème de table
+        if (insertError) {
+            if (insertError.message.includes('duplicate') || insertError.code === '23505') {
+                console.warn('⚠️ Entreprise déjà existante, mise à jour...');
+                // Mettre à jour l'entreprise existante
+                const { data: updatedEntreprise } = await db.supabase
+                    .from('entreprises')
+                    .update({
+                        nom,
+                        email,
+                        telephone: telephone || null,
+                        adresse: adresse || null,
+                        email_verified: authData.user.email_confirmed_at !== null
+                    })
+                    .eq('id', authData.user.id)
+                    .select()
+                    .single();
+                console.log('✅ Entreprise mise à jour:', updatedEntreprise?.id);
+                newEntreprise = updatedEntreprise;
+            } else if (insertError.code === '23503') {
+                // Erreur de clé étrangère - l'utilisateur n'existe pas encore dans auth.users
+                console.warn('⚠️ Erreur de clé étrangère - l\'utilisateur sera créé lors de la première connexion');
+                console.warn('   L\'utilisateur Auth existe mais n\'est pas encore disponible dans la base de données');
+                // Ne pas bloquer l'inscription - l'enregistrement sera créé lors de la connexion
+            } else {
+                console.error('❌ Erreur lors de la création de l\'entreprise:', insertError);
+                console.error('   Code:', insertError.code);
+                console.error('   Message:', insertError.message);
+                console.error('   Détails:', JSON.stringify(insertError, null, 2));
+                // Ne pas bloquer l'inscription si c'est juste un problème de table
+            }
         }
         
         // Supabase Auth envoie automatiquement l'email de confirmation
         // Vérifier si l'email a été envoyé (dépend de la configuration Supabase)
+        // Si email_confirmed_at est null ET session est null, l'email devrait être envoyé
         const emailSent = authData.user.email_confirmed_at === null && authData.session === null;
+        
+        console.log('📧 Statut de l\'email:');
+        console.log('   Email confirmé:', authData.user.email_confirmed_at !== null);
+        console.log('   Session créée:', authData.session !== null);
+        console.log('   Email devrait être envoyé:', emailSent);
+        
+        // Avertissement si l'email n'est pas envoyé
+        if (!emailSent && authData.user.email_confirmed_at === null) {
+            console.warn('⚠️ ATTENTION: L\'email de confirmation pourrait ne pas être envoyé.');
+            console.warn('   Vérifiez la configuration Supabase:');
+            console.warn('   1. Authentication > Email Templates > Confirmation Signup');
+            console.warn('   2. Authentication > Settings > Enable email confirmations');
+            console.warn('   3. Project Settings > API > Site URL');
+        }
         
         res.status(201).json({
             message: emailSent 
                 ? 'Compte créé avec succès. Veuillez vérifier votre email pour activer votre compte.'
                 : 'Compte créé avec succès. Un email de confirmation vous a été envoyé.',
             emailSent: emailSent,
+            userId: authData.user.id, // Ajouter l'ID pour débogage
             entreprise: {
                 id: authData.user.id,
                 nom: nom,
@@ -140,17 +255,51 @@ const login = async (req, res) => {
         });
         
         if (authError) {
+            console.error('❌ Erreur Supabase Auth lors de la connexion:');
+            console.error('   Code:', authError.status);
+            console.error('   Message:', authError.message);
+            console.error('   Email tenté:', email);
+            
             // Gérer les erreurs spécifiques Supabase
-            if (authError.message.includes('Invalid login credentials')) {
-                return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
-            }
-            if (authError.message.includes('Email not confirmed')) {
-                return res.status(403).json({ 
-                    error: 'Veuillez vérifier votre adresse email avant de vous connecter. Un email de vérification vous a été envoyé lors de l\'inscription.',
-                    code: 'EMAIL_NOT_CONFIRMED'
+            if (authError.message.includes('Invalid login credentials') || authError.status === 400) {
+                // Vérifier si l'utilisateur existe mais n'a pas vérifié son email
+                // Utiliser admin API pour vérifier l'utilisateur
+                try {
+                    const { data: userCheck, error: checkError } = await db.supabase.auth.admin.getUserByEmail(email);
+                    console.log('🔍 Vérification utilisateur:', userCheck?.user ? 'Trouvé' : 'Non trouvé');
+                    
+                    if (userCheck?.user) {
+                        console.log('   Email confirmé:', userCheck.user.email_confirmed_at !== null);
+                        if (!userCheck.user.email_confirmed_at) {
+                            console.log('⚠️ Utilisateur trouvé mais email non vérifié');
+                            return res.status(403).json({ 
+                                error: 'Veuillez vérifier votre adresse email avant de vous connecter. Un email de vérification vous a été envoyé lors de l\'inscription.',
+                                code: 'EMAIL_NOT_CONFIRMED',
+                                email: email
+                            });
+                        }
+                    }
+                } catch (checkErr) {
+                    console.warn('⚠️ Impossible de vérifier l\'utilisateur:', checkErr.message);
+                    // Continuer avec l'erreur normale
+                }
+                
+                return res.status(401).json({ 
+                    error: 'Email ou mot de passe incorrect',
+                    code: 'INVALID_CREDENTIALS'
                 });
             }
-            return res.status(401).json({ error: authError.message });
+            if (authError.message.includes('Email not confirmed') || authError.message.includes('email_not_confirmed')) {
+                return res.status(403).json({ 
+                    error: 'Veuillez vérifier votre adresse email avant de vous connecter. Un email de vérification vous a été envoyé lors de l\'inscription.',
+                    code: 'EMAIL_NOT_CONFIRMED',
+                    email: email
+                });
+            }
+            return res.status(401).json({ 
+                error: authError.message,
+                code: 'AUTH_ERROR'
+            });
         }
         
         if (!authData.user) {

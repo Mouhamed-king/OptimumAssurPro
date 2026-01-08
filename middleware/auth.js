@@ -38,20 +38,77 @@ const authenticateToken = async (req, res, next) => {
         
         // Si l'entreprise n'existe pas, créer un enregistrement minimal
         if (entrepriseError && entrepriseError.code === 'PGRST116') {
-            console.warn('⚠️ Entreprise non trouvée dans la table, création d\'un enregistrement minimal');
-            const { data: newEntreprise } = await db.supabase
-                .from('entreprises')
-                .insert({
+            console.log('📝 Entreprise non trouvée dans la table, création d\'un enregistrement minimal');
+            console.log('   User ID:', user.id);
+            console.log('   Email:', user.email);
+            
+            // Réessayer plusieurs fois car il peut y avoir un délai de propagation
+            let newEntreprise = null;
+            let insertError = null;
+            const maxRetries = 3;
+            
+            for (let attempt = 0; attempt < maxRetries; attempt++) {
+                const { data, error } = await db.supabase
+                    .from('entreprises')
+                    .insert({
+                        id: user.id,
+                        nom: user.user_metadata?.nom || 'Utilisateur',
+                        email: user.email,
+                        email_verified: user.email_confirmed_at !== null
+                    })
+                    .select('id, nom, email, email_verified')
+                    .single();
+                
+                if (!error) {
+                    newEntreprise = data;
+                    console.log('✅ Entreprise créée avec succès:', newEntreprise.id);
+                    break;
+                }
+                
+                insertError = error;
+                
+                // Si c'est une erreur de clé étrangère ou de duplicate, arrêter
+                if (error.code === '23505' || error.message.includes('duplicate')) {
+                    // L'enregistrement existe peut-être déjà, essayer de le récupérer
+                    const { data: existing } = await db.supabase
+                        .from('entreprises')
+                        .select('id, nom, email, email_verified')
+                        .eq('id', user.id)
+                        .single();
+                    
+                    if (existing) {
+                        newEntreprise = existing;
+                        console.log('✅ Entreprise trouvée après tentative d\'insertion:', existing.id);
+                        break;
+                    }
+                }
+                
+                // Si ce n'est pas une erreur de clé étrangère, arrêter
+                if (error.code !== '23503' || attempt >= maxRetries - 1) {
+                    break;
+                }
+                
+                // Attendre un peu avant de réessayer
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
+            
+            if (newEntreprise) {
+                req.entreprise = newEntreprise;
+                req.entrepriseId = user.id;
+                req.userId = user.id;
+                req.emailVerified = user.email_confirmed_at !== null;
+                next();
+                return;
+            } else {
+                console.error('❌ Impossible de créer l\'enregistrement entreprise après', maxRetries, 'tentatives');
+                console.error('   Erreur:', insertError?.message || 'Inconnue');
+                // Ne pas bloquer la requête, créer un objet minimal
+                req.entreprise = {
                     id: user.id,
                     nom: user.user_metadata?.nom || 'Utilisateur',
                     email: user.email,
                     email_verified: user.email_confirmed_at !== null
-                })
-                .select('id, nom, email, email_verified')
-                .single();
-            
-            if (newEntreprise) {
-                req.entreprise = newEntreprise;
+                };
                 req.entrepriseId = user.id;
                 req.userId = user.id;
                 req.emailVerified = user.email_confirmed_at !== null;
@@ -61,7 +118,23 @@ const authenticateToken = async (req, res, next) => {
         }
         
         if (entrepriseError || !entreprise) {
-            return res.status(401).json({ error: 'Entreprise non trouvée' });
+            // Si l'erreur n'est pas "not found", retourner une erreur
+            if (entrepriseError && entrepriseError.code !== 'PGRST116') {
+                console.error('❌ Erreur lors de la récupération de l\'entreprise:', entrepriseError);
+                return res.status(500).json({ error: 'Erreur lors de la récupération de l\'entreprise' });
+            }
+            // Sinon, créer un objet minimal et continuer
+            req.entreprise = {
+                id: user.id,
+                nom: user.user_metadata?.nom || 'Utilisateur',
+                email: user.email,
+                email_verified: user.email_confirmed_at !== null
+            };
+            req.entrepriseId = user.id;
+            req.userId = user.id;
+            req.emailVerified = user.email_confirmed_at !== null;
+            next();
+            return;
         }
         
         // Synchroniser email_verified avec Supabase Auth si nécessaire

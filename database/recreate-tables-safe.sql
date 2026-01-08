@@ -156,18 +156,45 @@ CREATE INDEX idx_notifications_lu ON notifications(lu);
 CREATE INDEX idx_notifications_created_at ON notifications(created_at DESC);
 
 -- ============================================
--- TRIGGER POUR SYNCHRONISER email_verified
+-- FONCTIONS POUR GÉRER LES UTILISATEURS AUTH
 -- ============================================
--- Ce trigger met à jour email_verified dans entreprises quand email_confirmed_at change dans auth.users
--- Note: Supabase ne permet pas directement de créer des triggers sur auth.users
--- Cette synchronisation se fait dans le code backend lors de la connexion
+-- Ces fonctions créent/mettent à jour automatiquement les enregistrements dans entreprises
+-- Note: Les triggers sur auth.users nécessitent des permissions spéciales
+-- Le code backend gère déjà ces cas avec un mécanisme de retry
 
--- Fonction pour mettre à jour email_verified depuis auth.users
-CREATE OR REPLACE FUNCTION sync_email_verified()
+-- Fonction pour créer un enregistrement dans entreprises quand un utilisateur est créé
+CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- Mettre à jour email_verified dans entreprises quand email_confirmed_at change
-    UPDATE entreprises
+    INSERT INTO public.entreprises (
+        id,
+        nom,
+        email,
+        telephone,
+        adresse,
+        email_verified
+    )
+    VALUES (
+        NEW.id,
+        COALESCE(NEW.raw_user_meta_data->>'nom', 'Utilisateur'),
+        NEW.email,
+        NULLIF(NEW.raw_user_meta_data->>'telephone', ''),
+        NULLIF(NEW.raw_user_meta_data->>'adresse', ''),
+        (NEW.email_confirmed_at IS NOT NULL)
+    )
+    ON CONFLICT (id) DO UPDATE SET
+        email = NEW.email,
+        email_verified = (NEW.email_confirmed_at IS NOT NULL);
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Fonction pour mettre à jour email_verified quand l'email est confirmé
+CREATE OR REPLACE FUNCTION public.handle_email_confirmed()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE public.entreprises
     SET email_verified = (NEW.email_confirmed_at IS NOT NULL)
     WHERE id = NEW.id;
     
@@ -175,9 +202,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Note: Ce trigger nécessite des permissions spéciales sur auth.users
--- Pour l'instant, la synchronisation se fait dans le code backend
--- Vous pouvez créer ce trigger manuellement dans Supabase Dashboard si vous avez les permissions
+-- Note: Pour créer les triggers sur auth.users, vous devez avoir les permissions appropriées
+-- Sinon, le code backend gère ces cas avec un mécanisme de retry
+-- Voir database/trigger-create-entreprise.sql pour les instructions complètes
 
 -- ============================================
 -- VÉRIFICATION FINALE

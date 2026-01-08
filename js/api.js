@@ -37,20 +37,28 @@ async function apiRequest(endpoint, options = {}) {
         
         // Si le token est expiré ou invalide, nettoyer et rediriger
         if (response.status === 401 || response.status === 403) {
+            const errorData = await response.json().catch(() => ({}));
+            
             // Ne rediriger que si on n'est pas déjà sur une page publique
             const isPublicPage = window.location.pathname.includes('login.html') || 
                                 window.location.pathname.includes('register.html') ||
                                 window.location.pathname.includes('verify-email.html') ||
                                 window.location.pathname.includes('reset-password.html');
             
+            // Si c'est une erreur d'email non confirmé, ne pas déconnecter
+            if (errorData.code === 'EMAIL_NOT_CONFIRMED') {
+                throw new Error(errorData.error || 'Veuillez vérifier votre email');
+            }
+            
             if (!isPublicPage) {
+                // Nettoyer le stockage seulement si vraiment nécessaire
+                console.warn('⚠️ Token invalide ou expiré, nettoyage du stockage');
                 localStorage.removeItem('token');
                 localStorage.removeItem('entreprise');
                 sessionStorage.removeItem('token');
                 sessionStorage.removeItem('entreprise');
                 // Retourner une erreur claire au lieu de rediriger immédiatement
                 // Laisser le code appelant gérer la redirection
-                const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.error || 'Token d\'authentification manquant ou invalide');
             }
         }
@@ -102,6 +110,13 @@ const authAPI = {
         return await apiRequest('/auth/change-password', {
             method: 'POST',
             body: JSON.stringify({ currentPassword, newPassword })
+        });
+    },
+    
+    resendVerificationEmail: async (data) => {
+        return await apiRequest('/auth/resend-verification', {
+            method: 'POST',
+            body: JSON.stringify(data)
         });
     }
 };

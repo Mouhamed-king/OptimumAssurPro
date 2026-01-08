@@ -57,6 +57,45 @@ app.get('/js/:file', (req, res) => {
     res.sendFile(path.join(__dirname, 'js', req.params.file));
 });
 
+// Route de test pour vérifier la configuration Supabase
+app.get('/api/test-supabase', async (req, res) => {
+    try {
+        const { supabase } = require('./database/connection');
+        
+        // Test de connexion Supabase
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        
+        // Test de connexion à la base de données
+        const { data: testData, error: dbError } = await supabase
+            .from('entreprises')
+            .select('count')
+            .limit(1);
+        
+        res.json({
+            success: true,
+            supabase: {
+                url: process.env.SUPABASE_URL ? '✅ Configuré' : '❌ Manquant',
+                serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ? '✅ Configuré' : '❌ Manquant',
+                anonKey: process.env.SUPABASE_ANON_KEY ? '✅ Configuré' : '❌ Manquant',
+                appUrl: process.env.APP_URL || process.env.RENDER_EXTERNAL_URL || '❌ Non configuré',
+                connection: authError ? '❌ Erreur: ' + authError.message : '✅ Connecté',
+                database: dbError ? '❌ Erreur: ' + dbError.message : '✅ Accessible'
+            },
+            environment: {
+                nodeEnv: process.env.NODE_ENV,
+                port: process.env.PORT,
+                renderUrl: process.env.RENDER_EXTERNAL_URL
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
+    }
+});
+
 // Routes API
 app.use('/api/auth', authRoutes);
 app.use('/api/clients', clientRoutes);

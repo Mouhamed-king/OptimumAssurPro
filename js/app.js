@@ -51,11 +51,20 @@ document.addEventListener('DOMContentLoaded', function() {
     // Charger les données de l'entreprise
     loadEntrepriseInfo().catch(error => {
         console.error('Erreur lors du chargement des informations de l\'entreprise:', error);
+        console.error('   Message:', error.message);
+        console.error('   Token présent:', !!token);
+        
         // Si erreur d'authentification, rediriger vers login
-        if (error.message && error.message.includes('Token')) {
+        if (error.message && (error.message.includes('Token') || error.message.includes('authentification') || error.message.includes('401') || error.message.includes('403'))) {
+            console.warn('⚠️ Token invalide ou expiré, redirection vers login');
             localStorage.removeItem('token');
+            localStorage.removeItem('entreprise');
             sessionStorage.removeItem('token');
+            sessionStorage.removeItem('entreprise');
             window.location.href = '/login.html';
+        } else {
+            // Autre erreur, afficher un message mais ne pas déconnecter
+            console.warn('⚠️ Erreur lors du chargement, mais session maintenue');
         }
     });
     
@@ -324,6 +333,10 @@ document.head.appendChild(style);
 // ============================================
 
 async function loadEntrepriseInfo() {
+    console.log('📥 Chargement des informations de l\'entreprise...');
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    console.log('   Token présent:', !!token);
+    
     try {
         if (!window.api || !window.api.auth) {
             throw new Error('API non chargée');
@@ -331,20 +344,26 @@ async function loadEntrepriseInfo() {
         const data = await window.api.auth.getMe();
         const entreprise = data.entreprise;
         
+        console.log('✅ Informations de l\'entreprise chargées:', entreprise?.nom);
+        
         // Mettre à jour le nom de l'entreprise dans le header
         const userName = document.querySelector('.user-name');
         if (userName) {
             userName.textContent = entreprise.nom || 'Entreprise';
         }
     } catch (error) {
-        console.error('Erreur lors du chargement des informations de l\'entreprise:', error);
+        console.error('❌ Erreur lors du chargement des informations de l\'entreprise:', error);
+        console.error('   Message:', error.message);
+        
         // Si erreur d'authentification, rediriger vers login
-        if (error.message && (error.message.includes('Token') || error.message.includes('authentification'))) {
+        if (error.message && (error.message.includes('Token') || error.message.includes('authentification') || error.message.includes('401') || error.message.includes('403'))) {
+            console.warn('⚠️ Token invalide ou expiré, redirection vers login');
             localStorage.removeItem('token');
             localStorage.removeItem('entreprise');
             sessionStorage.removeItem('token');
             sessionStorage.removeItem('entreprise');
             window.location.href = '/login.html';
+            return; // Arrêter l'exécution
         }
         throw error; // Re-lancer l'erreur pour que le code appelant puisse la gérer
     }

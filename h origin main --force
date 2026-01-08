@@ -1,0 +1,53 @@
+ CONFIGURATION_SUPABASE_AUTH.md                    | 340 [31m--------[m
+ RAPPORT_OBSOLETE.md                               | 135 [32m+++[m
+ README.md                                         | 489 [32m+++++++++++[m
+ controllers/authController.js                     | 585 [32m+++++++++[m[31m----[m
+ controllers/clientController.js                   |  14 [32m+[m[31m-[m
+ controllers/contractController.js                 |  38 [32m+[m[31m-[m
+ controllers/reportController.js                   |  28 [32m+[m[31m-[m
+ database/INSTRUCTIONS_RECREATION_TABLES.md        | 170 [31m----[m
+ database/add-role-column.js                       |  84 [32m++[m
+ database/check-tables.sql                         |  45 [31m-[m
+ database/clean-test-data.js                       |  66 [32m++[m
+ database/connection.js                            |  53 [32m+[m[31m-[m
+ database/recreate-tables-safe.sql                 | 190 [31m-----[m
+ database/recreate-tables.sql                      | 207 [31m-----[m
+ database/seed.js                                  | 113 [32m+++[m
+ env.example                                       |  34 [31m-[m
+ js/register.js                                    | 270 [31m------[m
+ middleware/admin.js                               |  22 [32m+[m
+ middleware/auth.js                                |  77 [32m+[m[31m-[m
+ package.json                                      |  18 [32m+[m[31m-[m
+ public/admin.html                                 | 193 [32m+++++[m
+ public/admin/dashboard.html                       | 196 [32m+++++[m
+ public/css/admin.css                              | 899 [32m++++++++++++++++++++[m
+ {css => public/css}/login.css                     |   0
+ {css => public/css}/print.css                     |   0
+ {css => public/css}/style.css                     |   0
+ index.html => public/index.html                   |  54 [32m+[m[31m-[m
+ public/js/admin.js                                | 433 [32m++++++++++[m
+ {js => public/js}/api-config.js                   |   0
+ {js => public/js}/api.js                          |  18 [32m+[m
+ {js => public/js}/app.js                          | 970 [32m++++++++++++++[m[31m--------[m
+ public/js/auth-guard.js                           |  41 [32m+[m
+ {js => public/js}/bordereau.js                    |   0
+ {js => public/js}/login.js                        | 109 [32m++[m[31m-[m
+ {js => public/js}/modals.js                       |   0
+ {js => public/js}/parametres.js                   |   0
+ {js => public/js}/rapports.js                     |   0
+ public/js/register.js                             | 401 [32m+++++++++[m
+ public/js/role-guard.js                           | 171 [32m++++[m
+ {js => public/js}/utils.js                        |   0
+ login.html => public/login.html                   |   2 [32m+[m[31m-[m
+ register.html => public/register.html             |   2 [32m+[m[31m-[m
+ reset-password.html => public/reset-password.html |   0
+ public/user/dashboard.html                        | 794 [32m++++++++++++++++++[m
+ verify-email.html => public/verify-email.html     |  90 [32m+[m[31m-[m
+ render.yaml                                       |  14 [32m+[m[31m-[m
+ routes/auth.js                                    |   9 [32m+[m
+ routes/stats.js                                   |  11 [32m+[m[31m-[m
+ scripts/create-admin.js                           |  83 [32m++[m
+ scripts/test-smtp.js                              | 132 [32m+++[m
+ server.js                                         | 215 [32m+++[m[31m--[m
+ services/emailService.js                          | 445 [32m++++++++++[m
+ 52 files changed, 6190 insertions(+), 2070 deletions(-)

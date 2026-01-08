@@ -48,25 +48,17 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
     
-    // Charger les données de l'entreprise
-    loadEntrepriseInfo().catch(error => {
-        console.error('Erreur lors du chargement des informations de l\'entreprise:', error);
-        console.error('   Message:', error.message);
-        console.error('   Token présent:', !!token);
-        
-        // Si erreur d'authentification, rediriger vers login
-        if (error.message && (error.message.includes('Token') || error.message.includes('authentification') || error.message.includes('401') || error.message.includes('403'))) {
-            console.warn('⚠️ Token invalide ou expiré, redirection vers login');
-            localStorage.removeItem('token');
-            localStorage.removeItem('entreprise');
-            sessionStorage.removeItem('token');
-            sessionStorage.removeItem('entreprise');
-            window.location.href = '/login.html';
-        } else {
-            // Autre erreur, afficher un message mais ne pas déconnecter
-            console.warn('⚠️ Erreur lors du chargement, mais session maintenue');
-        }
-    });
+    console.log('✅ Token trouvé, chargement des données...');
+    console.log('   Token source:', localStorage.getItem('token') ? 'localStorage' : 'sessionStorage');
+    
+    // Attendre un peu pour s'assurer que l'API est chargée
+    setTimeout(() => {
+        // Charger les données de l'entreprise
+        loadEntrepriseInfo().catch(error => {
+            // L'erreur est déjà gérée dans loadEntrepriseInfo()
+            console.error('Erreur capturée par le catch externe:', error.message);
+        });
+    }, 100);
     
     // Charger le dashboard (page par défaut sur index.html)
     const dashboardPage = document.getElementById('dashboard-page');
@@ -336,13 +328,43 @@ async function loadEntrepriseInfo() {
     console.log('📥 Chargement des informations de l\'entreprise...');
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     console.log('   Token présent:', !!token);
+    console.log('   Token (premiers caractères):', token ? token.substring(0, 20) + '...' : 'null');
+    console.log('   API disponible:', !!window.api);
+    console.log('   API auth disponible:', !!window.api?.auth);
     
     try {
         if (!window.api || !window.api.auth) {
-            throw new Error('API non chargée');
+            console.error('❌ API non chargée, attente de 500ms...');
+            await new Promise(resolve => setTimeout(resolve, 500));
+            if (!window.api || !window.api.auth) {
+                throw new Error('API non chargée après attente');
+            }
         }
+        
+        console.log('📡 Appel API getMe...');
         const data = await window.api.auth.getMe();
+        console.log('✅ Réponse API reçue:', data);
+        
         const entreprise = data.entreprise;
+        
+        if (!entreprise) {
+            console.warn('⚠️ Aucune entreprise dans la réponse API');
+            // Ne pas déconnecter, utiliser les données du localStorage
+            const storedEntreprise = localStorage.getItem('entreprise') || sessionStorage.getItem('entreprise');
+            if (storedEntreprise) {
+                try {
+                    const parsed = JSON.parse(storedEntreprise);
+                    console.log('📦 Utilisation des données stockées:', parsed);
+                    const userName = document.querySelector('.user-name');
+                    if (userName) {
+                        userName.textContent = parsed.nom || 'Entreprise';
+                    }
+                    return;
+                } catch (e) {
+                    console.error('Erreur parsing entreprise stockée:', e);
+                }
+            }
+        }
         
         console.log('✅ Informations de l\'entreprise chargées:', entreprise?.nom);
         
@@ -353,9 +375,28 @@ async function loadEntrepriseInfo() {
         }
     } catch (error) {
         console.error('❌ Erreur lors du chargement des informations de l\'entreprise:', error);
+        console.error('   Type:', typeof error);
         console.error('   Message:', error.message);
+        console.error('   Stack:', error.stack);
         
-        // Si erreur d'authentification, rediriger vers login
+        // Ne pas déconnecter immédiatement, essayer d'utiliser les données stockées
+        const storedEntreprise = localStorage.getItem('entreprise') || sessionStorage.getItem('entreprise');
+        if (storedEntreprise) {
+            try {
+                const parsed = JSON.parse(storedEntreprise);
+                console.log('📦 Utilisation des données stockées en cas d\'erreur:', parsed);
+                const userName = document.querySelector('.user-name');
+                if (userName) {
+                    userName.textContent = parsed.nom || 'Entreprise';
+                }
+                // Ne pas déconnecter si on a des données stockées
+                return;
+            } catch (e) {
+                console.error('Erreur parsing entreprise stockée:', e);
+            }
+        }
+        
+        // Si erreur d'authentification ET pas de données stockées, rediriger vers login
         if (error.message && (error.message.includes('Token') || error.message.includes('authentification') || error.message.includes('401') || error.message.includes('403'))) {
             console.warn('⚠️ Token invalide ou expiré, redirection vers login');
             localStorage.removeItem('token');
@@ -365,7 +406,9 @@ async function loadEntrepriseInfo() {
             window.location.href = '/login.html';
             return; // Arrêter l'exécution
         }
-        throw error; // Re-lancer l'erreur pour que le code appelant puisse la gérer
+        
+        // Pour les autres erreurs, ne pas déconnecter
+        console.warn('⚠️ Erreur non-critique, session maintenue');
     }
 }
 

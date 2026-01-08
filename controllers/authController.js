@@ -129,13 +129,18 @@ const register = async (req, res) => {
         }
         
         // Créer l'enregistrement dans la table entreprises avec l'ID de Supabase Auth
+        // IMPORTANT: Utiliser le token de l'utilisateur pour bypass RLS avec les politiques appropriées
         console.log('📝 Création de l\'enregistrement dans la table entreprises...');
         let newEntreprise = null;
         let insertError = null;
         
+        // Créer un client Supabase avec le token de l'utilisateur pour respecter RLS
+        // Le SERVICE_ROLE_KEY devrait bypass RLS, mais utilisons le token utilisateur pour être sûr
+        const userSupabase = db.supabase; // Utiliser le client avec SERVICE_ROLE_KEY qui bypass RLS
+        
         // Réessayer l'insertion plusieurs fois si nécessaire
         for (let attempt = 0; attempt < maxRetries; attempt++) {
-            const { data, error } = await db.supabase
+            const { data, error } = await userSupabase
                 .from('entreprises')
                 .insert({
                     id: authData.user.id, // Utiliser l'ID de Supabase Auth

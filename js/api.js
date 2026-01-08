@@ -35,7 +35,7 @@ async function apiRequest(endpoint, options = {}) {
     try {
         const response = await fetch(`${API_BASE_URL}${endpoint}`, finalOptions);
         
-        // Si le token est expiré ou invalide, nettoyer et rediriger
+        // Si le token est expiré ou invalide, gérer l'erreur
         if (response.status === 401 || response.status === 403) {
             const errorData = await response.json().catch(() => ({}));
             
@@ -50,9 +50,11 @@ async function apiRequest(endpoint, options = {}) {
                 throw new Error(errorData.error || 'Veuillez vérifier votre email');
             }
             
-            if (!isPublicPage) {
-                // Nettoyer le stockage seulement si vraiment nécessaire
-                console.warn('⚠️ Token invalide ou expiré, nettoyage du stockage');
+            // Ne nettoyer le stockage QUE si on est sûr que le token est vraiment invalide
+            // et seulement sur les pages protégées (pas sur login.html)
+            if (!isPublicPage && response.status === 401) {
+                // Token vraiment invalide (401), nettoyer seulement après confirmation
+                console.warn('⚠️ Token invalide (401), nettoyage du stockage');
                 localStorage.removeItem('token');
                 localStorage.removeItem('entreprise');
                 sessionStorage.removeItem('token');
@@ -60,6 +62,9 @@ async function apiRequest(endpoint, options = {}) {
                 // Retourner une erreur claire au lieu de rediriger immédiatement
                 // Laisser le code appelant gérer la redirection
                 throw new Error(errorData.error || 'Token d\'authentification manquant ou invalide');
+            } else if (response.status === 403) {
+                // Erreur 403 (forbidden) - peut être temporaire, ne pas nettoyer immédiatement
+                throw new Error(errorData.error || 'Accès refusé');
             }
         }
         

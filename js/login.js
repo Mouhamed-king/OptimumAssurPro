@@ -34,6 +34,9 @@ if (typeof window.showToast !== 'function') {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    // NE PAS NETTOYER LE STOCKAGE ICI - Cela déconnecte l'utilisateur
+    // Le token doit être préservé pour maintenir la session
+    
     // Afficher le message si l'utilisateur vient de s'inscrire
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('message') === 'email-sent') {

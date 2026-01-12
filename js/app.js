@@ -90,8 +90,65 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Navigation entre les pages
 document.addEventListener('DOMContentLoaded', function() {
-    // Gestion de la navigation dans la sidebar
+    // Gestion du menu mobile
+    const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+    const mobileMenuClose = document.getElementById('mobileMenuClose');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    
+    function openMobileMenu() {
+        if (sidebar) {
+            sidebar.classList.add('mobile-open');
+        }
+        if (sidebarOverlay) {
+            sidebarOverlay.classList.add('active');
+        }
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeMobileMenu() {
+        if (sidebar) {
+            sidebar.classList.remove('mobile-open');
+        }
+        if (sidebarOverlay) {
+            sidebarOverlay.classList.remove('active');
+        }
+        document.body.style.overflow = '';
+    }
+    
+    if (mobileMenuToggle) {
+        mobileMenuToggle.addEventListener('click', openMobileMenu);
+    }
+    
+    if (mobileMenuClose) {
+        mobileMenuClose.addEventListener('click', closeMobileMenu);
+    }
+    
+    if (sidebarOverlay) {
+        sidebarOverlay.addEventListener('click', closeMobileMenu);
+    }
+    
+    // Fermer le menu lors du clic sur un élément de navigation sur mobile
     const navItems = document.querySelectorAll('.nav-item');
+    navItems.forEach(item => {
+        item.addEventListener('click', function() {
+            // Fermer le menu mobile après un court délai pour permettre la navigation
+            setTimeout(() => {
+                if (window.innerWidth <= 768) {
+                    closeMobileMenu();
+                }
+            }, 100);
+        });
+    });
+    
+    // Fermer le menu lors du redimensionnement vers desktop
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 768) {
+            closeMobileMenu();
+        }
+    });
+    
+    // Gestion de la navigation dans la sidebar
     const pages = document.querySelectorAll('.page');
     
     navItems.forEach(item => {

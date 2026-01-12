@@ -110,6 +110,28 @@ body {
 .header-left {
     display: flex;
     align-items: center;
+    gap: var(--spacing-md);
+}
+
+.mobile-menu-toggle {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--color-text);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: var(--spacing-sm);
+    border-radius: var(--border-radius);
+    transition: background 0.3s;
+}
+
+.mobile-menu-toggle:hover {
+    background: var(--color-background);
+}
+
+.mobile-menu-toggle:focus {
+    outline: 2px solid var(--color-secondary);
+    outline-offset: 2px;
 }
 
 .logo {
@@ -204,6 +226,31 @@ body {
     overflow-y: auto;
     position: sticky;
     top: 70px;
+    transition: transform 0.3s ease-in-out;
+}
+
+.sidebar-overlay {
+    display: none;
+}
+
+.sidebar-header-mobile {
+    display: none;
+}
+
+.mobile-menu-close {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--color-text);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: var(--spacing-sm);
+    border-radius: var(--border-radius);
+    transition: background 0.3s;
+}
+
+.mobile-menu-close:hover {
+    background: var(--color-background);
 }
 
 .sidebar-nav {
@@ -807,6 +854,16 @@ body {
     }
 }
 
+@media (max-width: 900px) {
+    .content-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
 @media (max-width: 768px) {
     body {
         grid-template-areas:
@@ -817,8 +874,67 @@ body {
         grid-template-rows: 70px 1fr 50px;
     }
     
+    .mobile-menu-toggle {
+        display: block;
+    }
+    
     .sidebar {
-        display: none;
+        position: fixed;
+        top: 70px;
+        left: 0;
+        width: 280px;
+        height: calc(100vh - 70px);
+        z-index: 999;
+        transform: translateX(-100%);
+        box-shadow: var(--shadow-lg);
+        border-right: 1px solid var(--color-border);
+        padding: 0;
+    }
+    
+    .sidebar.mobile-open {
+        transform: translateX(0);
+    }
+    
+    .sidebar-overlay {
+        display: block;
+        position: fixed;
+        top: 70px;
+        left: 0;
+        width: 100%;
+        height: calc(100vh - 70px);
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 998;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+    }
+    
+    .sidebar-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+    
+    .sidebar-header-mobile {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--spacing-lg);
+        border-bottom: 1px solid var(--color-border);
+        background: var(--color-white);
+    }
+    
+    .sidebar-header-mobile .logo {
+        font-size: 18px;
+    }
+    
+    .mobile-menu-close {
+        display: block;
+    }
+    
+    .sidebar-nav {
+        padding: var(--spacing-md);
+        height: calc(100% - 80px);
+        overflow-y: auto;
     }
     
     .stats-grid {
@@ -842,6 +958,10 @@ body {
     
     .contracts-grid {
         grid-template-columns: 1fr;
+    }
+    
+    .user-name {
+        display: none;
     }
 }
 

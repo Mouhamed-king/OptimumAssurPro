@@ -182,6 +182,11 @@ const createContract = async (req, res) => {
         const dateDebut = moment(date_debut);
         const dateFin = dateDebut.clone().add(duree_mois, 'months');
         
+        // Déterminer le statut du contrat en fonction de la date d'échéance
+        const today = moment().startOf('day');
+        const dateFinMoment = moment(dateFin).startOf('day');
+        const statut = dateFinMoment.isBefore(today) ? 'expire' : 'actif';
+        
         // Utiliser le numéro de police fourni ou générer un numéro de contrat unique
         const numeroPolice = req.body.numero_police || `CONT-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
         
@@ -198,7 +203,7 @@ const createContract = async (req, res) => {
                 date_debut: dateDebut.format('YYYY-MM-DD'),
                 date_fin: dateFin.format('YYYY-MM-DD'),
                 montant,
-                statut: 'actif'
+                statut: statut
             })
             .select(`
                 *,

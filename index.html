@@ -20,6 +20,9 @@
     <!-- Header -->
     <header class="header">
         <div class="header-left">
+            <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Menu">
+                <i class="fas fa-bars"></i>
+            </button>
             <div class="logo">
                 <i class="fas fa-shield-alt"></i>
                 <span>OptimumAssurPro</span>
@@ -41,8 +44,18 @@
     </header>
 
     <!-- Sidebar -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
         <nav class="sidebar-nav">
+            <div class="sidebar-header-mobile">
+                <div class="logo">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>OptimumAssurPro</span>
+                </div>
+                <button class="mobile-menu-close" id="mobileMenuClose" aria-label="Fermer le menu">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
             <a href="index.html" class="nav-item active" data-page="dashboard">
                 <i class="fas fa-home"></i>
                 <span>Dashboard</span>

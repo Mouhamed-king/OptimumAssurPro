@@ -172,6 +172,13 @@ const createClient = async (req, res) => {
         const montantPaye = contrat.montant_paye || 0;
         const montantRestant = contrat.montant_restant || 0;
         
+        // Déterminer le statut du contrat en fonction de la date d'échéance
+        const dateFin = new Date(contrat.date_fin);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Réinitialiser l'heure pour comparer uniquement les dates
+        dateFin.setHours(0, 0, 0, 0);
+        const statut = dateFin < today ? 'expire' : 'actif';
+        
         // Créer le contrat
         const { data: newContrat, error: contratError } = await db.supabase
             .from('contrats')
@@ -187,7 +194,7 @@ const createClient = async (req, res) => {
                 montant: contrat.montant,
                 montant_paye: montantPaye,
                 montant_restant: montantRestant,
-                statut: 'actif'
+                statut: statut
             })
             .select('id')
             .single();

@@ -7,7 +7,7 @@ const db = require('../database/connection');
 // Obtenir tous les clients de l'entreprise
 const getAllClients = async (req, res) => {
     try {
-        const { search, statut } = req.query;
+        const { search, statut, categorie } = req.query;
         
         // Construire la requête Supabase - récupérer tous les clients pour pouvoir chercher dans les immatriculations
         let query = db.supabase
@@ -15,12 +15,12 @@ const getAllClients = async (req, res) => {
             .select(`
                 *,
                 vehicules (*),
-                contrats (id, numero_contrat, date_fin, statut)
+                contrats (id, numero_contrat, date_fin, statut, categorie_vehicule)
             `)
             .eq('entreprise_id', req.entrepriseId);
         
-        // Ne pas filtrer dans Supabase si on cherche, car on doit aussi chercher dans les immatriculations
-        // On filtrera après avoir récupéré toutes les données
+        // Ne pas filtrer par catégorie dans Supabase car on doit filtrer après avoir récupéré les données
+        // pour gérer correctement les relations imbriquées
         
         const { data: clients, error } = await query.order('created_at', { ascending: false });
         
@@ -30,15 +30,21 @@ const getAllClients = async (req, res) => {
         
         // Enrichir les données avec les statistiques
         let enrichedClients = clients.map(client => {
-            const nombre_contrats = client.contrats?.length || 0;
-            const dernier_contrat = client.contrats?.length > 0 
-                ? client.contrats.reduce((latest, c) => {
+            // Filtrer les contrats par catégorie si fournie
+            let contratsFiltered = client.contrats || [];
+            if (categorie && (categorie === 'TPV' || categorie === 'VP/CI')) {
+                contratsFiltered = contratsFiltered.filter(c => c.categorie_vehicule === categorie);
+            }
+            
+            const nombre_contrats = contratsFiltered.length;
+            const dernier_contrat = contratsFiltered.length > 0 
+                ? contratsFiltered.reduce((latest, c) => {
                     return new Date(c.date_fin) > new Date(latest.date_fin) ? c : latest;
-                }, client.contrats[0])
+                }, contratsFiltered[0])
                 : null;
             
-            // Déterminer le statut du client basé sur ses contrats
-            const hasActiveContract = client.contrats?.some(c => c.statut === 'actif') || false;
+            // Déterminer le statut du client basé sur ses contrats filtrés
+            const hasActiveContract = contratsFiltered.some(c => c.statut === 'actif') || false;
             const clientStatut = hasActiveContract ? 'actif' : 'inactif';
             
             return {
@@ -72,6 +78,14 @@ const getAllClients = async (req, res) => {
         // Filtrer par statut si fourni
         if (statut) {
             enrichedClients = enrichedClients.filter(client => client.client_statut === statut);
+        }
+        
+        // Filtrer par catégorie si fournie (après avoir enrichi les données)
+        if (categorie && (categorie === 'TPV' || categorie === 'VP/CI')) {
+            enrichedClients = enrichedClients.filter(client => {
+                // Garder seulement les clients qui ont au moins un contrat de la catégorie demandée
+                return client.contrats && client.contrats.some(c => c.categorie_vehicule === categorie);
+            });
         }
         
         res.json({ clients: enrichedClients });
@@ -194,7 +208,8 @@ const createClient = async (req, res) => {
                 montant: contrat.montant,
                 montant_paye: montantPaye,
                 montant_restant: montantRestant,
-                statut: statut
+                statut: statut,
+                categorie_vehicule: contrat.categorie_vehicule || 'VP/CI'
             })
             .select('id')
             .single();
@@ -326,7 +341,8 @@ const updateClient = async (req, res) => {
                         montant: contrat.montant,
                         montant_paye: montantPaye,
                         montant_restant: montantRestant,
-                        statut: statut
+                        statut: statut,
+                        categorie_vehicule: contrat.categorie_vehicule || 'VP/CI'
                     })
                     .eq('id', existingContrats[0].id);
                 
@@ -374,7 +390,8 @@ const updateClient = async (req, res) => {
                         montant: contrat.montant,
                         montant_paye: montantPaye,
                         montant_restant: montantRestant,
-                        statut: statut
+                        statut: statut,
+                        categorie_vehicule: contrat.categorie_vehicule || 'VP/CI'
                     });
                 
                 if (contratError) {

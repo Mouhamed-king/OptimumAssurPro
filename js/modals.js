@@ -144,6 +144,7 @@ async function saveClient(event) {
     const telephone = document.getElementById('clientTelephone').value.trim();
     const numeroPolice = document.getElementById('contractNumeroPolice').value.trim();
     const immatriculation = document.getElementById('vehiculeImmatriculation').value.trim();
+    const categorieVehicule = document.getElementById('categorieVehicule').value;
     const dateEffet = document.getElementById('contractDateEffet').value;
     const dateEcheance = document.getElementById('contractDateEcheance').value;
     const primeNette = parseFloat(document.getElementById('contractPrimeNette').value);
@@ -151,7 +152,7 @@ async function saveClient(event) {
     const montantRestant = parseFloat(document.getElementById('contractMontantRestant').value) || 0;
     
     // Validation
-    if (!nom || !telephone || !numeroPolice || !immatriculation || !dateEffet || !dateEcheance || !primeNette || primeNette <= 0) {
+    if (!nom || !telephone || !numeroPolice || !immatriculation || !categorieVehicule || !dateEffet || !dateEcheance || !primeNette || primeNette <= 0) {
         (typeof window.showToast === 'function' ? window.showToast : console.log)('Veuillez remplir tous les champs obligatoires', 'error');
         return;
     }
@@ -190,7 +191,8 @@ async function saveClient(event) {
             duree_mois: diffMonths,
             montant: primeNette,
             montant_paye: montantPaye,
-            montant_restant: montantRestant
+            montant_restant: montantRestant,
+            categorie_vehicule: categorieVehicule
         }
     };
     

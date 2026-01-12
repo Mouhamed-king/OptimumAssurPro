@@ -180,16 +180,28 @@
                 </button>
             </div>
 
+            <!-- Sous-onglets pour les catégories -->
+            <div class="category-tabs" style="margin-bottom: 1.5rem;">
+                <button class="category-tab active" data-category="TPV" onclick="switchClientCategory('TPV')">
+                    <i class="fas fa-bus"></i>
+                    TPV (Transport Public de Voyageurs)
+                </button>
+                <button class="category-tab" data-category="VP/CI" onclick="switchClientCategory('VP/CI')">
+                    <i class="fas fa-car"></i>
+                    VP/CI (Véhicule Particulier/Camionnette)
+                </button>
+            </div>
+
             <div class="card">
                 <div class="card-header">
                     <div class="search-box">
                         <i class="fas fa-search"></i>
-                        <input type="text" placeholder="Rechercher un client...">
+                        <input type="text" id="clientSearchInput" placeholder="Rechercher un client...">
                     </div>
                     <div class="filter-buttons">
-                        <button class="btn-filter active">Tous</button>
-                        <button class="btn-filter">Actifs</button>
-                        <button class="btn-filter">Inactifs</button>
+                        <button class="btn-filter active" data-filter="all">Tous</button>
+                        <button class="btn-filter" data-filter="actif">Actifs</button>
+                        <button class="btn-filter" data-filter="inactif">Inactifs</button>
                     </div>
                 </div>
                 <div class="card-body">
@@ -204,7 +216,7 @@
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="clientsTableBody">
                             <!-- Les clients seront chargés dynamiquement depuis la base de données -->
                         </tbody>
                     </table>
@@ -217,6 +229,10 @@
             <div class="page-header">
                 <h1>Bordereau d'assurance</h1>
                 <div style="display: flex; gap: 1rem; align-items: center;">
+                    <select id="bordereauCategorie" class="btn-secondary" style="padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--color-border);" onchange="loadBordereau()">
+                        <option value="TPV">TPV</option>
+                        <option value="VP/CI" selected>VP/CI</option>
+                    </select>
                     <span class="badge badge-success" style="display: flex; align-items: center; gap: 0.5rem;">
                         <i class="fas fa-lock"></i>
                         Secure Access
@@ -238,7 +254,7 @@
                     <div style="text-align: center; margin-bottom: 2rem; border-bottom: 2px solid var(--color-primary); padding-bottom: 1rem;">
                         <h2 style="color: var(--color-primary); margin-bottom: 0.5rem;">BORDEREAU D'ASSURANCE</h2>
                         <p style="color: var(--color-text-secondary); margin: 0;">
-                            Catégorie: <strong>AC</strong> | 
+                            Catégorie: <strong id="bordereauCategorieDisplay">VP/CI</strong> | 
                             AU: <strong id="bordereauDate">30/06/2025</strong> | 
                             CODE: <strong id="bordereauCode">-</strong>
                         </p>
@@ -284,7 +300,12 @@
             <div class="page-header">
                 <h1>Rapports et Statistiques</h1>
                 <div style="display: flex; gap: 1rem; align-items: center;">
-                    <select id="rapportPeriode" class="btn-secondary" style="padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--color-border);">
+                    <select id="rapportCategorie" class="btn-secondary" style="padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--color-border);" onchange="loadRapports()">
+                        <option value="">Toutes les catégories</option>
+                        <option value="TPV">TPV</option>
+                        <option value="VP/CI">VP/CI</option>
+                    </select>
+                    <select id="rapportPeriode" class="btn-secondary" style="padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--color-border);" onchange="loadRapports()">
                         <option value="mois">Ce mois</option>
                         <option value="trimestre">Ce trimestre</option>
                         <option value="annee" selected>Cette année</option>
@@ -612,6 +633,17 @@
                             Immatriculation *
                         </label>
                         <input type="text" id="vehiculeImmatriculation" name="immatriculation" required placeholder="Ex: AA127QE" oninput="updateBordereau()">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="categorieVehicule">
+                            <i class="fas fa-tags"></i>
+                            Catégorie de véhicule *
+                        </label>
+                        <select id="categorieVehicule" name="categorie_vehicule" required>
+                            <option value="VP/CI">VP/CI (Véhicule Particulier/Camionnette)</option>
+                            <option value="TPV">TPV (Transport Public de Voyageurs)</option>
+                        </select>
                     </div>
                     
                     <div class="form-group">

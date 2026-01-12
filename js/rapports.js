@@ -15,13 +15,19 @@ async function loadRapports() {
         }
         
         const periode = document.getElementById('rapportPeriode')?.value || 'annee';
+        const categorie = document.getElementById('rapportCategorie')?.value || '';
         
         // Charger les statistiques
         const stats = await window.api.stats.getDashboard();
         
         // Charger tous les contrats
         const contractsData = await window.api.contracts.getAll();
-        const contrats = contractsData.contrats || [];
+        let contrats = contractsData.contrats || [];
+        
+        // Filtrer par catégorie si sélectionnée
+        if (categorie && (categorie === 'TPV' || categorie === 'VP/CI')) {
+            contrats = contrats.filter(c => c.categorie_vehicule === categorie || (!c.categorie_vehicule && categorie === 'VP/CI'));
+        }
         
         // Filtrer par période
         const contratsFiltres = filtrerParPeriode(contrats, periode);

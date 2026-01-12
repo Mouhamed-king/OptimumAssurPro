@@ -265,8 +265,21 @@ async function loadBordereau() {
             throw new Error('API non chargée');
         }
         
+        // Récupérer la catégorie sélectionnée
+        const categorieSelect = document.getElementById('bordereauCategorie');
+        const categorie = categorieSelect ? categorieSelect.value : 'VP/CI';
+        
+        // Mettre à jour l'affichage de la catégorie
+        const categorieDisplay = document.getElementById('bordereauCategorieDisplay');
+        if (categorieDisplay) {
+            categorieDisplay.textContent = categorie;
+        }
+        
         const data = await window.api.contracts.getAll();
-        const contrats = data.contrats || [];
+        const contrats = (data.contrats || []).filter(contrat => {
+            // Filtrer par catégorie si disponible
+            return contrat.categorie_vehicule === categorie || (!contrat.categorie_vehicule && categorie === 'VP/CI');
+        });
         
         const tbody = document.getElementById('bordereauTableBody');
         if (!tbody) return;

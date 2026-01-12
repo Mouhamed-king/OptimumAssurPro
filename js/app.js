@@ -645,9 +645,37 @@ async function loadDashboard() {
 // GESTION DES CLIENTS
 // ============================================
 
+// Variable globale pour la catégorie actuelle
+let currentClientCategory = 'TPV';
+
+// Fonction pour changer de catégorie
+function switchClientCategory(category) {
+    currentClientCategory = category;
+    
+    // Mettre à jour les onglets actifs
+    document.querySelectorAll('.category-tab').forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.getAttribute('data-category') === category) {
+            tab.classList.add('active');
+        }
+    });
+    
+    // Recharger les clients avec la nouvelle catégorie
+    loadClients();
+}
+
 async function loadClients() {
     try {
-        const data = await window.api.clients.getAll();
+        // Récupérer le filtre de statut actif
+        const activeFilter = document.querySelector('#clients-page .btn-filter.active');
+        const statut = activeFilter ? (activeFilter.getAttribute('data-filter') === 'actif' ? 'actif' : activeFilter.getAttribute('data-filter') === 'inactif' ? 'inactif' : '') : '';
+        
+        // Récupérer le terme de recherche
+        const searchInput = document.getElementById('clientSearchInput');
+        const searchTerm = searchInput ? searchInput.value : '';
+        
+        // Charger les clients avec la catégorie actuelle
+        const data = await window.api.clients.getAll(searchTerm, statut, currentClientCategory);
         const clients = data.clients || [];
         
         // Rendre le tableau des clients
@@ -659,7 +687,7 @@ async function loadClients() {
 }
 
 function renderClientsTable(clients) {
-    const tbody = document.querySelector('#clients-page tbody');
+    const tbody = document.getElementById('clientsTableBody');
     if (!tbody) return;
     
     tbody.innerHTML = '';
@@ -867,8 +895,8 @@ function setupSearch() {
                     try {
                         // Récupérer le filtre actif
                         const activeFilter = document.querySelector('#clients-page .btn-filter.active');
-                        const statut = activeFilter ? (activeFilter.textContent.trim().toLowerCase() === 'actifs' ? 'actif' : activeFilter.textContent.trim().toLowerCase() === 'inactifs' ? 'inactif' : '') : '';
-                        const data = await window.api.clients.getAll(searchTerm, statut);
+                        const statut = activeFilter ? (activeFilter.getAttribute('data-filter') === 'actif' ? 'actif' : activeFilter.getAttribute('data-filter') === 'inactif' ? 'inactif' : '') : '';
+                        const data = await window.api.clients.getAll(searchTerm, statut, currentClientCategory);
                         renderClientsTable(data.clients || []);
                     } catch (error) {
                         console.error('Erreur de recherche:', error);
@@ -876,7 +904,7 @@ function setupSearch() {
                     }
                 }
                 // Si on est sur la page contrats
-                else if (document.getElementById('contrats-page').classList.contains('active')) {
+                else if (document.getElementById('contrats-page') && document.getElementById('contrats-page').classList.contains('active')) {
                     try {
                         if (!window.api || !window.api.contracts) {
                             throw new Error('API non chargée');
@@ -912,17 +940,15 @@ function setupFilters() {
             // Ajouter la classe active au bouton cliqué
             this.classList.add('active');
             
-            const filter = this.textContent.trim().toLowerCase();
-            
             // Filtrer les clients
             if (document.getElementById('clients-page') && document.getElementById('clients-page').classList.contains('active')) {
                 try {
                     // Récupérer la valeur de recherche actuelle
-                    const searchInput = document.querySelector('#clients-page .search-box input');
+                    const searchInput = document.getElementById('clientSearchInput');
                     const searchTerm = searchInput ? searchInput.value : '';
                     
-                    const statut = filter === 'actifs' ? 'actif' : filter === 'inactifs' ? 'inactif' : '';
-                    const data = await window.api.clients.getAll(searchTerm, statut);
+                    const statut = this.getAttribute('data-filter') === 'actif' ? 'actif' : this.getAttribute('data-filter') === 'inactif' ? 'inactif' : '';
+                    const data = await window.api.clients.getAll(searchTerm, statut, currentClientCategory);
                     renderClientsTable(data.clients || []);
                 } catch (error) {
                     console.error('Erreur de filtrage:', error);
@@ -1146,4 +1172,5 @@ function goToRapportsWithRenewals() {
 window.showAllNotifications = showAllNotifications;
 window.markNotificationAsRead = markNotificationAsRead;
 window.goToRapportsWithRenewals = goToRapportsWithRenewals;
+window.switchClientCategory = switchClientCategory;
 

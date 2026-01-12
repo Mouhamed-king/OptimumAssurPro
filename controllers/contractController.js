@@ -26,7 +26,8 @@ const getAllContracts = async (req, res) => {
                     immatriculation
                 )
             `)
-            .eq('entreprise_id', req.entrepriseId);
+            .eq('entreprise_id', req.entrepriseId)
+            .order('date_fin', { ascending: true });
         
         // Filtrer par statut si fourni
         if (statut) {
@@ -40,7 +41,7 @@ const getAllContracts = async (req, res) => {
             query = query.or(`numero_contrat.ilike.%${search}%`);
         }
         
-        const { data: contrats, error } = await query.order('date_fin', { ascending: true });
+        const { data: contrats, error } = await query;
         
         if (error) {
             throw error;
@@ -203,7 +204,8 @@ const createContract = async (req, res) => {
                 date_debut: dateDebut.format('YYYY-MM-DD'),
                 date_fin: dateFin.format('YYYY-MM-DD'),
                 montant,
-                statut: statut
+                statut: statut,
+                categorie_vehicule: req.body.categorie_vehicule || 'VP/CI'
             })
             .select(`
                 *,

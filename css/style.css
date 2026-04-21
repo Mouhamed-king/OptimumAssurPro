@@ -125,8 +125,10 @@ body {
     transition: background 0.3s;
 }
 
-.mobile-menu-toggle:hover {
-    background: var(--color-background);
+@media (hover: hover) and (pointer: fine) {
+    .mobile-menu-toggle:hover {
+        background: var(--color-background);
+    }
 }
 
 .mobile-menu-toggle:focus {
@@ -192,9 +194,7 @@ body {
     transition: background 0.3s;
 }
 
-.user-menu:hover {
-    background: var(--color-background);
-}
+
 
 .user-avatar {
     width: 36px;
@@ -230,7 +230,51 @@ body {
 }
 
 .sidebar-overlay {
-    display: none;
+    display: none !important;
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+    .nav-item, .btn-primary, .btn-secondary, .btn-filter,
+    .stat-card, .activity-item, .contract-item, .contract-card,
+    .data-table tbody tr, .settings-accordion, .settings-accordion-header,
+    .category-tab, .mobile-menu-toggle, .mobile-menu-close, .user-menu,
+    .notifications, .modal-close {
+        -webkit-tap-highlight-color: transparent;
+    }
+    
+    /* Remove hover effects on touch devices */
+    .nav-item:hover,
+    .btn-primary:hover,
+    .btn-secondary:hover,
+    .btn-icon:hover,
+    .btn-filter:hover,
+    .stat-card:hover,
+    .activity-item:hover,
+    .contract-item:hover,
+    .data-table tbody tr:hover,
+    .contract-card:hover,
+    .modal-close:hover,
+    .settings-accordion:hover,
+    .settings-accordion-header:hover,
+    .category-tab:hover,
+    .mobile-menu-toggle:hover,
+    .mobile-menu-close:hover,
+    .user-menu:hover,
+    .notifications:hover {
+        background: inherit;
+        color: inherit;
+        transform: none;
+        box-shadow: none;
+    }
+    
+    /* Active/focus states for touch */
+    .nav-item:active,
+    .btn-primary:active,
+    .btn-secondary:active,
+    .btn-filter:active {
+        opacity: 0.8;
+    }
 }
 
 .sidebar-header-mobile {
@@ -249,8 +293,10 @@ body {
     transition: background 0.3s;
 }
 
-.mobile-menu-close:hover {
-    background: var(--color-background);
+@media (hover: hover) and (pointer: fine) {
+    .mobile-menu-close:hover {
+        background: var(--color-background);
+    }
 }
 
 .sidebar-nav {
@@ -279,10 +325,7 @@ body {
     font-size: 18px;
 }
 
-.nav-item:hover {
-    background: var(--color-background);
-    color: var(--color-secondary);
-}
+
 
 .nav-item.active {
     background: var(--color-secondary);
@@ -884,23 +927,25 @@ body {
         left: 0;
         width: 280px;
         height: calc(100vh - 70px);
-        z-index: 999;
+        z-index: 9999;
         transform: translateX(-100%);
         box-shadow: var(--shadow-lg);
         border-right: 1px solid var(--color-border);
         padding: 0;
+        -webkit-transform: translateX(-100%);
     }
     
     .sidebar.mobile-open {
         transform: translateX(0);
+        -webkit-transform: translateX(0);
     }
     
-    .sidebar-overlay {
+    /* .sidebar-overlay {
         display: block;
         position: fixed;
         top: 70px;
-        left: 0;
-        width: 100%;
+        left: 280px;
+        width: calc(100% - 280px);
         height: calc(100vh - 70px);
         background: rgba(0, 0, 0, 0.5);
         z-index: 900;
@@ -912,7 +957,7 @@ body {
     .sidebar-overlay.active {
         opacity: 1;
         visibility: visible;
-    }
+    } */
     
     .sidebar-header-mobile {
         display: flex;
@@ -935,6 +980,12 @@ body {
         padding: var(--spacing-md);
         height: calc(100% - 80px);
         overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .nav-item {
+        min-height: 48px;
+        -webkit-tap-highlight-color: transparent;
     }
     
     .stats-grid {

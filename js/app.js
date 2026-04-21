@@ -94,14 +94,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const mobileMenuToggle = document.getElementById('mobileMenuToggle');
     const mobileMenuClose = document.getElementById('mobileMenuClose');
     const sidebar = document.getElementById('sidebar');
-    const sidebarOverlay = document.getElementById('sidebarOverlay');
     
     function openMobileMenu() {
         if (sidebar) {
             sidebar.classList.add('mobile-open');
-        }
-        if (sidebarOverlay) {
-            sidebarOverlay.classList.add('active');
         }
         document.body.style.overflow = 'hidden';
     }
@@ -109,9 +105,6 @@ document.addEventListener('DOMContentLoaded', function() {
     function closeMobileMenu() {
         if (sidebar) {
             sidebar.classList.remove('mobile-open');
-        }
-        if (sidebarOverlay) {
-            sidebarOverlay.classList.remove('active');
         }
         document.body.style.overflow = '';
     }
@@ -124,9 +117,7 @@ document.addEventListener('DOMContentLoaded', function() {
         mobileMenuClose.addEventListener('click', closeMobileMenu);
     }
     
-    if (sidebarOverlay) {
-        sidebarOverlay.addEventListener('click', closeMobileMenu);
-    }
+
     
     // Fermer le menu lors du clic sur un élément de navigation sur mobile
     const navItems = document.querySelectorAll('.nav-item');

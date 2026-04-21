@@ -56,6 +56,19 @@ body {
     color: var(--color-text);
     background-color: var(--color-background);
     line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Prevent Android input zoom */
+input, select, textarea, button {
+    font-size: 16px !important;
+    max-height: 999999px;
+}
+
+select {
+    appearance: none;
+    -webkit-appearance: none;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -233,8 +246,29 @@ body {
     display: none !important;
 }
 
+/* Android specific fixes */
+html {
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* Android Chrome specific fixes */
+@media screen and (-webkit-min-device-pixel-ratio:0) {
+    html {
+        font-size: 16px;
+    }
+}
+
 /* Touch device optimizations */
 @media (hover: none) and (pointer: coarse) {
+    html {
+        touch-action: manipulation;
+    }
+    
     .nav-item, .btn-primary, .btn-secondary, .btn-filter,
     .stat-card, .activity-item, .contract-item, .contract-card,
     .data-table tbody tr, .settings-accordion, .settings-accordion-header,

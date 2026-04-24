@@ -638,6 +638,11 @@ async function loadDashboard() {
 
 // Variable globale pour la catégorie actuelle
 let currentClientCategory = 'TPV';
+// Variable globale pour la pagination
+let currentPage = 1;
+const clientsPerPage = 25;
+// Variable globale pour le filtre d'expiration
+let showExpiredOnly = false;
 
 // Fonction pour changer de catégorie
 function switchClientCategory(category) {
@@ -660,17 +665,14 @@ async function loadClients() {
         // Récupérer le filtre de statut actif
         const activeFilter = document.querySelector('#clients-page .btn-filter.active');
         const statut = activeFilter ? (activeFilter.getAttribute('data-filter') === 'actif' ? 'actif' : activeFilter.getAttribute('data-filter') === 'inactif' ? 'inactif' : '') : '';
+        const filterType = activeFilter ? activeFilter.getAttribute('data-filter') : 'all';
         
         // Récupérer le terme de recherche
         const searchInput = document.getElementById('clientSearchInput');
         const searchTerm = searchInput ? searchInput.value : '';
         
-        // Charger les clients avec la catégorie actuelle
-        const data = await window.api.clients.getAll(searchTerm, statut, currentClientCategory);
-        const clients = data.clients || [];
-        
-        // Rendre le tableau des clients
-        renderClientsTable(clients);
+        // Charger les clients avec le filtre approprié
+        await loadClientsWithFilter(searchTerm, statut, filterType);
     } catch (error) {
         console.error('Erreur lors du chargement des clients:', error);
         showToast('Erreur lors du chargement des clients', 'error');
@@ -931,6 +933,9 @@ function setupFilters() {
             // Ajouter la classe active au bouton cliqué
             this.classList.add('active');
             
+            // Réinitialiser la pagination lors du changement de filtre
+            currentPage = 1;
+            
             // Filtrer les clients
             if (document.getElementById('clients-page') && document.getElementById('clients-page').classList.contains('active')) {
                 try {
@@ -938,9 +943,14 @@ function setupFilters() {
                     const searchInput = document.getElementById('clientSearchInput');
                     const searchTerm = searchInput ? searchInput.value : '';
                     
-                    const statut = this.getAttribute('data-filter') === 'actif' ? 'actif' : this.getAttribute('data-filter') === 'inactif' ? 'inactif' : '';
-                    const data = await window.api.clients.getAll(searchTerm, statut, currentClientCategory);
-                    renderClientsTable(data.clients || []);
+                    let statut = '';
+                    const filterType = this.getAttribute('data-filter');
+                    if (filterType === 'actif') statut = 'actif';
+                    else if (filterType === 'inactif') statut = 'inactif';
+                    // Pour le filtre 'expire', on gère cela dans loadClients avec un paramètre spécial
+                    
+                    // Charger les clients avec les paramètres appropriés
+                    await loadClientsWithFilter(searchTerm, statut, filterType);
                 } catch (error) {
                     console.error('Erreur de filtrage:', error);
                     showToast('Erreur lors du filtrage', 'error');
@@ -948,6 +958,39 @@ function setupFilters() {
             }
         });
     });
+}
+
+// Nouvelle fonction pour charger les clients avec gestion des filtres spéciaux
+async function loadClientsWithFilter(searchTerm = '', statut = '', filterType = '') {
+    try {
+        // Calculer l'offset pour la pagination
+        const offset = (currentPage - 1) * clientsPerPage;
+        
+        // Préparer les paramètres pour l'appel API
+        let categorie = currentClientCategory;
+        let expireFilter = false;
+        
+        // Gérer le filtre d'expiration
+        if (filterType === 'expire') {
+            expireFilter = true;
+            // On ne filtre pas par statut ici car on veut voir les contrats échus
+            statut = '';
+        }
+        
+        // Charger les clients avec la catégorie actuelle, la recherche, le statut et la pagination
+        const data = await window.api.clients.getAll(searchTerm, statut, categorie, offset, clientsPerPage, expireFilter);
+        const clients = data.clients || [];
+        const total = data.total || 0;
+        
+        // Rendre le tableau des clients
+        renderClientsTable(clients);
+        
+        // Mettre à jour la pagination
+        updatePagination(total);
+    } catch (error) {
+        console.error('Erreur lors du chargement des clients avec filtre:', error);
+        showToast('Erreur lors du chargement des clients', 'error');
+    }
 }
 
 // Initialiser les filtres au chargement
@@ -1164,4 +1207,49 @@ window.showAllNotifications = showAllNotifications;
 window.markNotificationAsRead = markNotificationAsRead;
 window.goToRapportsWithRenewals = goToRapportsWithRenewals;
 window.switchClientCategory = switchClientCategory;
+
+// Fonctions de pagination
+function updatePagination(total) {
+    const totalPages = Math.ceil(total / clientsPerPage);
+    const pageInfo = document.getElementById('pageInfo');
+    const prevBtn = document.getElementById('prevPage');
+    const nextBtn = document.getElementById('nextPage');
+    
+    if (pageInfo) {
+        pageInfo.textContent = `Page ${currentPage} sur ${totalPages}`;
+    }
+    
+    if (prevBtn) {
+        prevBtn.disabled = currentPage <= 1;
+    }
+    
+    if (nextBtn) {
+        nextBtn.disabled = currentPage >= totalPages || totalPages === 0;
+    }
+}
+
+// Gestionnaires d'événements pour la pagination
+document.addEventListener('DOMContentLoaded', function() {
+    const prevBtn = document.getElementById('prevPage');
+    const nextBtn = document.getElementById('nextPage');
+    
+    if (prevBtn) {
+        prevBtn.addEventListener('click', function() {
+            if (currentPage > 1) {
+                currentPage--;
+                loadClients();
+            }
+        });
+    }
+    
+    if (nextBtn) {
+        nextBtn.addEventListener('click', function() {
+            const totalPages = Math.ceil((document.getElementById('clientsTableBody')?.rows.length || 0) / clientsPerPage) + 1; // Approximation
+            if (currentPage < totalPages) {
+                currentPage++;
+                loadClients();
+            }
+        });
+    }
+});
 

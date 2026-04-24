@@ -200,29 +200,40 @@
                         <i class="fas fa-search"></i>
                         <input type="text" id="clientSearchInput" placeholder="Rechercher un client...">
                     </div>
-                    <div class="filter-buttons">
-                        <button class="btn-filter active" data-filter="all">Tous</button>
-                        <button class="btn-filter" data-filter="actif">Actifs</button>
-                        <button class="btn-filter" data-filter="inactif">Inactifs</button>
-                    </div>
+<div class="filter-buttons">
+    <button class="btn-filter active" data-filter="all">Tous</button>
+    <button class="btn-filter" data-filter="actif">Actifs</button>
+    <button class="btn-filter" data-filter="inactif">Inactifs</button>
+    <button class="btn-filter" data-filter="expire">Échues</button>
+</div>
                 </div>
-                <div class="card-body">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Nom</th>
-                                <th>Téléphone</th>
-                                <th>Immatriculation</th>
-                                <th>Date d'échéance</th>
-                                <th>Statut</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="clientsTableBody">
-                            <!-- Les clients seront chargés dynamiquement depuis la base de données -->
-                        </tbody>
-                    </table>
-                </div>
+                 <div class="card-body">
+                     <table class="data-table">
+                         <thead>
+                             <tr>
+                                 <th>Nom</th>
+                                 <th>Téléphone</th>
+                                 <th>Immatriculation</th>
+                                 <th>Date d'échéance</th>
+                                 <th>Statut</th>
+                                 <th>Actions</th>
+                             </tr>
+                         </thead>
+                         <tbody id="clientsTableBody">
+                             <!-- Les clients seront chargés dynamiquement depuis la base de données -->
+                         </tbody>
+                     </table>
+                 </div>
+                 <!-- Pagination Controls -->
+                 <div class="pagination-controls" style="display: flex; justify-content: center; align-items: center; margin-top: 1.5rem; gap: 0.5rem; flex-wrap: wrap;">
+                     <button class="btn-secondary pagination-btn" id="prevPage" disabled>
+                         <i class="fas fa-chevron-left"></i> Précédent
+                     </button>
+                     <span id="pageInfo" style="min-width: 100px; text-align: center;">Page 1 sur 1</span>
+                     <button class="btn-secondary pagination-btn" id="nextPage" disabled>
+                         Suivant <i class="fas fa-chevron-right"></i>
+                     </button>
+                 </div>
             </div>
         </div>
 

@@ -146,7 +146,7 @@ const authAPI = {
 // ============================================
 
 const clientsAPI = {
-    getAll: async (search = '', statut = '', categorie = '', offset = 0, limit = 25, expire = false, expiringSoon = false) => {
+    getAll: async (search = '', statut = '', categorie = '', offset = 0, limit = 25, expire = false, expiringSoon = false, vehicleType = '') => {
         const params = new URLSearchParams();
         if (search) params.append('search', search);
         if (statut) params.append('statut', statut);
@@ -155,6 +155,7 @@ const clientsAPI = {
         if (limit !== 25) params.append('limit', limit);
         if (expire) params.append('expire', expire.toString());
         if (expiringSoon) params.append('expiringSoon', expiringSoon.toString());
+        if (vehicleType) params.append('vehicleType', vehicleType);
         
         const queryString = params.toString();
         return await apiRequest(`/clients${queryString ? '?' + queryString : ''}`);

@@ -4,13 +4,50 @@
 
 const db = require('../database/connection');
 
+function normalizeVehicleType(rawVehicule = {}) {
+    const combined = [
+        rawVehicule.type_vehicule,
+        rawVehicule.modele,
+        rawVehicule.marque
+    ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+    if (!combined) return 'non_renseigne';
+    if (combined.includes('moto')) return 'moto';
+    if (combined.includes('camionnette') || combined.includes('pickup') || combined.includes('pick-up')) return 'camionnette';
+    if (combined.includes('camion') || combined.includes('truck')) return 'camion';
+    if (combined.includes('break') || combined.includes('wagon')) return 'break';
+    if (combined.includes('particulier') || combined.includes('berline') || combined.includes('suv') || combined.includes('citadine')) return 'particulier';
+
+    return 'particulier';
+}
+
+function getClientContractsForCategory(client, categorie) {
+    const contrats = client.contrats || [];
+    if (!categorie) {
+        return contrats;
+    }
+
+    return contrats.filter(contrat => contrat.categorie_vehicule === categorie);
+}
+
+function getClientLatestContract(contrats = []) {
+    if (!contrats.length) return null;
+
+    return contrats.reduce((latest, current) => {
+        return new Date(current.date_fin) > new Date(latest.date_fin) ? current : latest;
+    }, contrats[0]);
+}
+
 // Obtenir tous les clients de l'entreprise
 const getAllClients = async (req, res) => {
     try {
-        const { search, statut, categorie, offset = 0, limit = 25, expire, expiringSoon } = req.query;
+        const { search, statut, categorie, offset = 0, limit = 25, expire, expiringSoon, vehicleType } = req.query;
         const parsedOffset = Math.max(parseInt(offset, 10) || 0, 0);
         const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 25, 1), 100);
-        const requiresInMemoryFiltering = Boolean(search || statut || categorie || expire === 'true' || expiringSoon === 'true');
+        const requiresInMemoryFiltering = Boolean(search || statut || categorie || expire === 'true' || expiringSoon === 'true' || vehicleType);
         
         // Quand aucun filtre relationnel n'est applique, on pagine directement en base.
         let query = db.supabase
@@ -31,32 +68,42 @@ const getAllClients = async (req, res) => {
         if (error) {
             throw error;
         }
-        
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const nextWeek = new Date(today);
+        nextWeek.setDate(today.getDate() + 7);
+
         // Enrichir les données avec les statistiques
         let enrichedClients = clients.map(client => {
-            // Filtrer les contrats par catégorie si fournie
-            let contratsFiltered = client.contrats || [];
-            if (categorie && (categorie === 'TPV' || categorie === 'VP/CI')) {
-                contratsFiltered = contratsFiltered.filter(c => c.categorie_vehicule === categorie);
-            }
-            
+            const vehicules = client.vehicules || [];
+            const contratsFiltered = getClientContractsForCategory(client, categorie);
             const nombre_contrats = contratsFiltered.length;
-            const dernier_contrat = contratsFiltered.length > 0 
-                ? contratsFiltered.reduce((latest, c) => {
-                    return new Date(c.date_fin) > new Date(latest.date_fin) ? c : latest;
-                }, contratsFiltered[0])
-                : null;
-            
-            // Déterminer le statut du client basé sur ses contrats filtrés
-            const hasActiveContract = contratsFiltered.some(c => c.statut === 'actif') || false;
-            const clientStatut = hasActiveContract ? 'actif' : 'inactif';
-            
+            const latestContract = getClientLatestContract(contratsFiltered);
+            const latestContractDate = latestContract?.date_fin ? new Date(latestContract.date_fin) : null;
+
+            if (latestContractDate) {
+                latestContractDate.setHours(0, 0, 0, 0);
+            }
+
+            const hasActiveAttestation = contratsFiltered.some(contrat => {
+                if (!contrat.date_fin) return false;
+                const endDate = new Date(contrat.date_fin);
+                endDate.setHours(0, 0, 0, 0);
+                return endDate >= today;
+            });
+
+            const clientStatut = hasActiveAttestation ? 'actif' : 'inactif';
+            const vehiculePrincipal = vehicules[0] || {};
+
             return {
                 ...client,
                 nombre_contrats,
-                dernier_contrat: dernier_contrat ? dernier_contrat.date_fin : null,
+                dernier_contrat: latestContract ? latestContract.date_fin : null,
                 client_statut: clientStatut,
-                vehicules: client.vehicules || []
+                contrats: contratsFiltered,
+                vehicules,
+                vehicle_type: normalizeVehicleType(vehiculePrincipal)
             };
         });
         
@@ -79,54 +126,41 @@ const getAllClients = async (req, res) => {
             });
         }
         
-        // Filtrer par statut si fourni
-        if (statut) {
-            // Normaliser le statut pour éviter les problèmes de casse ou d'espaces
-            const normalizedStatut = statut.toLowerCase().trim();
-            
-            if (normalizedStatut === 'expire') {
-                // Filtrer spécifiquement pour les clients ayant au moins un contrat échu
-                enrichedClients = enrichedClients.filter(client => {
-                    return client.contrats && client.contrats.some(c => c.statut === 'expire');
-                });
-            } else {
-                // Pour les autres statuts (actif, inactif), filtrer sur le statut du client
-                enrichedClients = enrichedClients.filter(client => {
-                    const clientStatut = client.client_statut ? client.client_statut.toLowerCase().trim() : '';
-                    return clientStatut === normalizedStatut;
-                });
-            }
+        if (vehicleType && vehicleType !== 'all') {
+            enrichedClients = enrichedClients.filter(client => client.vehicle_type === vehicleType);
         }
-        
-        // Filtrer par contrats échus si demandé (paramètre expire)
+
+        if (statut) {
+            const normalizedStatut = statut.toLowerCase().trim();
+            enrichedClients = enrichedClients.filter(client => {
+                const clientStatut = client.client_statut ? client.client_statut.toLowerCase().trim() : '';
+                return clientStatut === normalizedStatut;
+            });
+        }
+
         if (expire === 'true' || expire === true) {
             enrichedClients = enrichedClients.filter(client => {
-                return client.contrats && client.contrats.some(c => c.statut === 'expire');
+                const latestContract = getClientLatestContract(client.contrats || []);
+                if (!latestContract?.date_fin) return false;
+                const endDate = new Date(latestContract.date_fin);
+                endDate.setHours(0, 0, 0, 0);
+                return endDate < today;
             });
         }
-        
-        // Filtrer par catégorie si fournie (après avoir enrichi les données)
+
         if (categorie && (categorie === 'TPV' || categorie === 'VP/CI')) {
             enrichedClients = enrichedClients.filter(client => {
-                // Garder seulement les clients qui ont au moins un contrat de la catégorie demandée
-                return client.contrats && client.contrats.some(c => c.categorie_vehicule === categorie);
+                return client.contrats && client.contrats.length > 0;
             });
         }
-        
-        // Filtrer par contrats qui expirent bientôt (dans la semaine) si demandé
+
         if (expiringSoon === 'true') {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            
-            const oneWeekLater = new Date(today);
-            oneWeekLater.setDate(today.getDate() + 7);
-            
             enrichedClients = enrichedClients.filter(client => {
-                // Garder seulement les clients qui ont au moins un contrat actif qui expire dans la semaine
                 return client.contrats && client.contrats.some(c => {
+                    if (!c.date_fin) return false;
                     const dateFin = new Date(c.date_fin);
                     dateFin.setHours(0, 0, 0, 0);
-                    return dateFin >= today && dateFin <= oneWeekLater && c.statut === 'actif';
+                    return dateFin >= today && dateFin <= nextWeek;
                 });
             });
         }

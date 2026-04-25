@@ -5,6 +5,8 @@
 let evolutionChart = null;
 let repartitionChart = null;
 let beneficeChart = null;
+let rapportsCurrentPage = 1;
+const rapportsClientsPerPage = 25;
 
 function getReportFilterParams() {
     const periode = document.getElementById('rapportPeriode')?.value || 'annee';

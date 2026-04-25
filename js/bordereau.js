@@ -253,10 +253,7 @@ function updateBordereauTotals() {
                 if (cells[7]) cells[7].textContent = formatNumber(totalNetAVerser);
             } catch (error) {
                 console.error('Erreur lors de la mise à jour des totaux:', error);
-                console.error('Cells:', cells, 'Length:', cells ? cells.length : 0);
             }
-        } else {
-            console.warn('La ligne de totaux n\'a pas le bon nombre de cellules:', cells ? cells.length : 0);
         }
     }
 }
@@ -289,7 +286,12 @@ async function loadBordereau() {
         const offset = (bordereauCurrentPage - 1) * bordereauClientsPerPage;
         
         // Récupérer tous les contrats (on fera la pagination côté client pour le bordereau)
-        const data = await window.api.contracts.getAll('', '', dateDebut, dateFin);
+        const data = await window.api.contracts.getAll({
+            dateDebut,
+            dateFin,
+            offset: 0,
+            limit: 1000
+        });
         let contrats = (data.contrats || []).filter(contrat => {
             // Filtrer par catégorie si disponible
             return contrat.categorie_vehicule === categorie || (!contrat.categorie_vehicule && categorie === 'VP/CI');
@@ -433,4 +435,3 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
-

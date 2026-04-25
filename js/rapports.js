@@ -6,117 +6,77 @@ let evolutionChart = null;
 let repartitionChart = null;
 let beneficeChart = null;
 
+function getReportFilterParams() {
+    const periode = document.getElementById('rapportPeriode')?.value || 'annee';
+    const categorie = document.getElementById('rapportCategorie')?.value || '';
+    const filterMap = {
+        mois: 'month',
+        trimestre: 'quarter',
+        annee: 'year',
+        tout: 'all'
+    };
+
+    return {
+        periode,
+        categorie,
+        filter: filterMap[periode] || 'year'
+    };
+}
+
 // Charger les rapports avec pagination
 async function loadRapports() {
     try {
-        // Vérifier que l'API est chargée
-        if (!window.api || !window.api.stats || !window.api.contracts) {
+        if (!window.api || !window.api.reports) {
             throw new Error('API non chargée');
         }
-        
-        const periode = document.getElementById('rapportPeriode')?.value || 'annee';
-        const categorie = document.getElementById('rapportCategorie')?.value || '';
-        
-        // Calculer l'offset pour la pagination
+
         const offset = (rapportsCurrentPage - 1) * rapportsClientsPerPage;
-        
-        // Charger les statistiques (pas besoin de pagination pour les stats globales)
-        const stats = await window.api.stats.getDashboard();
-        
-        // Charger tous les contrats avec pagination
-        const contractsData = await window.api.contracts.getAll('', '', offset, rapportsClientsPerPage);
-        let contrats = contractsData.contrats || [];
-        const totalContrats = contractsData.total || 0;
-        
-        // Filtrer par catégorie si sélectionnée
-        if (categorie && (categorie === 'TPV' || categorie === 'VP/CI')) {
-            contrats = contrats.filter(c => c.categorie_vehicule === categorie || (!c.categorie_vehicule && categorie === 'VP/CI'));
-        }
-        
-        // Filtrer par période
-        const contratsFiltres = filtrerParPeriode(contrats, periode);
-        
-        // Pour les stats globales, on a besoin de tous les contrats filtrés (pas paginés)
-        // On va donc recharger tous les contrats pour les stats mais garder la pagination pour l'affichage
-        const allContractsData = await window.api.contracts.getAll();
-        let allContrats = allContractsData.contrats || [];
-        
-        // Filtrer par catégorie si sélectionnée (pour les stats)
-        if (categorie && (categorie === 'TPV' || categorie === 'VP/CI')) {
-            allContrats = allContrats.filter(c => c.categorie_vehicule === categorie || (!c.categorie_vehicule && categorie === 'VP/CI'));
-        }
-        
-        // Filtrer par période (pour les stats)
-        const allContratsFiltres = filtrerParPeriode(allContrats, periode);
-        
-        // Calculer les statistiques sur tous les contrats filtrés
-        const chiffreAffaires = allContratsFiltres.reduce((sum, c) => {
-            const montant = parseFloat(c.montant) || 0;
-            return sum + montant;
-        }, 0);
-        const montantEncaisse = allContratsFiltres.reduce((sum, c) => {
-            const paye = parseFloat(c.montant_paye);
-            return sum + (isNaN(paye) ? 0 : paye);
-        }, 0);
-        const montantRestant = allContratsFiltres.reduce((sum, c) => {
-            const restant = parseFloat(c.montant_restant);
-            return sum + (isNaN(restant) ? 0 : restant);
-        }, 0);
-        const montantNetAVerser = allContratsFiltres.reduce((sum, c) => {
-            const montant = parseFloat(c.montant) || 0;
-            return sum + montant;
-        }, 0); // Prime nette totale
-        const beneficeTotal = montantEncaisse - montantNetAVerser; // Bénéfice = montant payé - net à verser
-        const contratsTotal = allContratsFiltres.length;
-        const clientsTotal = new Set(allContratsFiltres.map(c => c.client_id)).size;
-        
-        // Mettre à jour les cartes de statistiques
+        const { categorie, filter } = getReportFilterParams();
+        const summary = await window.api.reports.getSummary({
+            filter,
+            categorie,
+            offset,
+            limit: rapportsClientsPerPage
+        });
+
         const chiffreAffairesEl = document.getElementById('rapportChiffreAffaires');
-        if (chiffreAffairesEl) chiffreAffairesEl.textContent = formatMoney(chiffreAffaires);
-        
+        if (chiffreAffairesEl) chiffreAffairesEl.textContent = formatMoney(summary.totalRevenue || 0);
+
         const montantEncaisseEl = document.getElementById('rapportMontantEncaisse');
-        if (montantEncaisseEl) montantEncaisseEl.textContent = formatMoney(montantEncaisse);
-        
+        if (montantEncaisseEl) montantEncaisseEl.textContent = formatMoney(summary.totalPaid || 0);
+
         const montantRestantEl = document.getElementById('rapportMontantRestant');
-        if (montantRestantEl) montantRestantEl.textContent = formatMoney(montantRestant);
-        
+        if (montantRestantEl) montantRestantEl.textContent = formatMoney(summary.totalRemaining || 0);
+
         const beneficeEl = document.getElementById('rapportBenefice');
         if (beneficeEl) {
-            beneficeEl.textContent = formatMoney(beneficeTotal);
-            // Colorier en vert si bénéfice positif, rouge si négatif
-            beneficeEl.style.color = beneficeTotal >= 0 ? '#10B981' : '#EF4444';
+            const totalProfit = summary.totalProfit || 0;
+            beneficeEl.textContent = formatMoney(totalProfit);
+            beneficeEl.style.color = totalProfit >= 0 ? '#10B981' : '#EF4444';
         }
-        
+
         const contratsTotalEl = document.getElementById('rapportContratsTotal');
-        if (contratsTotalEl) contratsTotalEl.textContent = contratsTotal;
-        
+        if (contratsTotalEl) contratsTotalEl.textContent = summary.totalContracts || 0;
+
         const clientsTotalEl = document.getElementById('rapportClientsTotal');
-        if (clientsTotalEl) clientsTotalEl.textContent = clientsTotal;
-        
-        // Calculer le taux de renouvellement (approximation)
-        const tauxRenouvellement = contratsTotal > 0 ? Math.round((allContratsFiltres.filter(c => c.statut === 'actif').length / contratsTotal) * 100) : 0;
+        if (clientsTotalEl) clientsTotalEl.textContent = summary.totalClients || 0;
+
         const tauxRenouvellementEl = document.getElementById('rapportTauxRenouvellement');
-        if (tauxRenouvellementEl) tauxRenouvellementEl.textContent = tauxRenouvellement + '%';
-        
-        // Créer les graphiques (vérifier que Chart.js est disponible)
+        if (tauxRenouvellementEl) tauxRenouvellementEl.textContent = `${summary.renewalRate || 0}%`;
+
         if (typeof Chart !== 'undefined') {
-            creerGraphiqueEvolution(allContratsFiltres);
-            creerGraphiqueRepartition(allContratsFiltres);
-            creerGraphiquePaiements(allContratsFiltres);
-            creerGraphiqueBenefice(allContratsFiltres);
+            creerGraphiqueEvolution(summary.contractsEvolution || []);
+            creerGraphiqueRepartition(summary.contractTypeDistribution || []);
+            creerGraphiquePaiements(summary.totalPaid || 0, summary.totalRemaining || 0);
+            creerGraphiqueBenefice(summary.profitEvolution || []);
         } else {
             console.warn('Chart.js n\'est pas chargé. Les graphiques ne seront pas affichés.');
         }
-        
-        // Remplir le tableau avec les contrats paginés
-        remplirTableauRapports(contratsFiltres);
-        
-        // Mettre à jour la pagination
-        updateRapportsPagination(totalContrats);
-        
+
+        remplirTableauRapports(summary.detailedContracts || []);
+        updateRapportsPagination(summary.detailedContractsTotal || 0);
     } catch (error) {
         console.error('Erreur lors du chargement des rapports:', error);
-        console.error('Détails de l\'erreur:', error.stack);
         if (typeof window.showToast === 'function') {
             window.showToast('Erreur lors du chargement des rapports: ' + (error.message || 'Erreur inconnue'), 'error');
         }
@@ -150,7 +110,7 @@ function filtrerParPeriode(contrats, periode) {
 }
 
 // Créer le graphique d'évolution mensuelle
-function creerGraphiqueEvolution(contrats) {
+function creerGraphiqueEvolution(evolutionData) {
     try {
         if (typeof Chart === 'undefined') {
             console.warn('Chart.js n\'est pas disponible');
@@ -163,22 +123,8 @@ function creerGraphiqueEvolution(contrats) {
             return;
         }
         
-        // Grouper par mois
-        const donneesParMois = {};
-        contrats.forEach(contrat => {
-            const date = new Date(contrat.date_debut || contrat.created_at);
-            const mois = date.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' });
-            
-            if (!donneesParMois[mois]) {
-                donneesParMois[mois] = 0;
-            }
-            donneesParMois[mois]++;
-        });
-        
-        const labels = Object.keys(donneesParMois).sort((a, b) => {
-            return new Date(a) - new Date(b);
-        });
-        const donnees = labels.map(label => donneesParMois[label]);
+        const labels = evolutionData.map(item => item.month);
+        const donnees = evolutionData.map(item => item.count);
         
         if (evolutionChart) {
             evolutionChart.destroy();
@@ -223,7 +169,7 @@ function creerGraphiqueEvolution(contrats) {
 }
 
 // Créer le graphique de répartition par type
-function creerGraphiqueRepartition(contrats) {
+function creerGraphiqueRepartition(distributionData) {
     try {
         if (typeof Chart === 'undefined') {
             console.warn('Chart.js n\'est pas disponible');
@@ -236,15 +182,8 @@ function creerGraphiqueRepartition(contrats) {
             return;
         }
         
-        // Grouper par type de contrat
-        const repartition = {};
-        contrats.forEach(contrat => {
-            const type = contrat.type_contrat || 'Non spécifié';
-            repartition[type] = (repartition[type] || 0) + 1;
-        });
-        
-        const labels = Object.keys(repartition);
-        const donnees = Object.values(repartition);
+        const labels = distributionData.map(item => item.type || 'Non specifie');
+        const donnees = distributionData.map(item => item.count || 0);
         const couleurs = ['#2563EB', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
         
         if (repartitionChart) {
@@ -280,22 +219,13 @@ function creerGraphiqueRepartition(contrats) {
 }
 
 // Créer le graphique des paiements (encaissés vs restants)
-function creerGraphiquePaiements(contrats) {
+function creerGraphiquePaiements(montantEncaisse, montantRestant) {
     try {
         const ctx = document.getElementById('paiementsChart');
         if (!ctx) {
             console.warn('Canvas paiementsChart non trouvé');
             return;
         }
-        
-        const montantEncaisse = contrats.reduce((sum, c) => {
-            const paye = parseFloat(c.montant_paye);
-            return sum + (isNaN(paye) ? 0 : paye);
-        }, 0);
-        const montantRestant = contrats.reduce((sum, c) => {
-            const restant = parseFloat(c.montant_restant);
-            return sum + (isNaN(restant) ? 0 : restant);
-        }, 0);
         
         // Détruire le graphique existant s'il existe
         if (window.paiementsChart) {
@@ -338,7 +268,7 @@ function creerGraphiquePaiements(contrats) {
 }
 
 // Créer le graphique de bénéfice (montant payé - net à verser)
-function creerGraphiqueBenefice(contrats) {
+function creerGraphiqueBenefice(profitEvolution) {
     try {
         if (typeof Chart === 'undefined') {
             console.warn('Chart.js n\'est pas disponible');
@@ -351,35 +281,8 @@ function creerGraphiqueBenefice(contrats) {
             return;
         }
         
-        // Grouper par mois et calculer le bénéfice mensuel
-        const beneficeParMois = {};
-        contrats.forEach(contrat => {
-            try {
-                const date = new Date(contrat.date_debut || contrat.created_at);
-                if (isNaN(date.getTime())) {
-                    console.warn('Date invalide pour le contrat:', contrat.id);
-                    return;
-                }
-                
-                const mois = date.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' });
-                
-                const montantPaye = parseFloat(contrat.montant_paye) || 0;
-                const montantNet = parseFloat(contrat.montant) || 0; // Prime nette (net à verser)
-                const benefice = montantPaye - montantNet;
-                
-                if (!beneficeParMois[mois]) {
-                    beneficeParMois[mois] = 0;
-                }
-                beneficeParMois[mois] += benefice;
-            } catch (err) {
-                console.warn('Erreur lors du traitement du contrat:', contrat.id, err);
-            }
-        });
-        
-        // Si aucun bénéfice, créer un graphique vide
-        if (Object.keys(beneficeParMois).length === 0) {
+        if (!profitEvolution.length) {
             console.warn('Aucun bénéfice à afficher');
-            // Détruire le graphique existant s'il existe
             if (beneficeChart) {
                 beneficeChart.destroy();
                 beneficeChart = null;
@@ -387,25 +290,8 @@ function creerGraphiqueBenefice(contrats) {
             return;
         }
         
-        // Trier les labels par date (utiliser la date réelle pour le tri)
-        const moisAvecDates = Object.keys(beneficeParMois).map(mois => {
-            // Trouver un contrat de ce mois pour obtenir la date réelle
-            const contratDuMois = contrats.find(c => {
-                const date = new Date(c.date_debut || c.created_at);
-                const moisContrat = date.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' });
-                return moisContrat === mois;
-            });
-            
-            if (contratDuMois) {
-                const date = new Date(contratDuMois.date_debut || contratDuMois.created_at);
-                return { mois, date, benefice: beneficeParMois[mois] };
-            }
-            return { mois, date: new Date(), benefice: beneficeParMois[mois] };
-        });
-        
-        moisAvecDates.sort((a, b) => a.date - b.date);
-        const labels = moisAvecDates.map(item => item.mois);
-        const donnees = moisAvecDates.map(item => item.benefice);
+        const labels = profitEvolution.map(item => item.month);
+        const donnees = profitEvolution.map(item => item.amount);
         
         // Détruire le graphique existant s'il existe
         if (beneficeChart) {
@@ -522,10 +408,8 @@ function formatMoney(amount) {
 
 // Exporter le rapport en CSV
 async function exportRapport() {
-    console.log('exportRapport appelée');
     try {
-        if (!window.api || !window.api.stats || !window.api.contracts) {
-            console.error('API non disponible', window.api);
+        if (!window.api || !window.api.reports) {
             if (typeof window.showToast === 'function') {
                 window.showToast('API non disponible', 'error');
             } else {
@@ -534,17 +418,14 @@ async function exportRapport() {
             return;
         }
         
-        const periode = document.getElementById('rapportPeriode')?.value || 'annee';
-        
-        // Charger tous les contrats
-        const contractsData = await window.api.contracts.getAll();
-        const contrats = contractsData.contrats || [];
-        
-        // Filtrer par période
-        if (typeof filtrerParPeriode !== 'function') {
-            throw new Error('La fonction filtrerParPeriode n\'est pas définie');
-        }
-        const contratsFiltres = filtrerParPeriode(contrats, periode);
+        const { periode, categorie, filter } = getReportFilterParams();
+        const summary = await window.api.reports.getSummary({
+            filter,
+            categorie,
+            offset: 0,
+            limit: 1000
+        });
+        const contratsFiltres = summary.detailedContracts || [];
         
         if (contratsFiltres.length === 0) {
             if (typeof window.showToast === 'function') {
@@ -570,13 +451,13 @@ async function exportRapport() {
         
         const csvRows = contratsFiltres.map(contrat => {
             const clientNom = contrat.client_nom ? `${contrat.client_nom} ${contrat.client_prenom || ''}`.trim() : '-';
-            const vehicule = contrat.vehicules?.immatriculation || '-';
+            const vehicule = contrat.vehicule_immatriculation || '-';
             const dateDebut = contrat.date_debut ? new Date(contrat.date_debut).toLocaleDateString('fr-FR') : '-';
             const dateFin = contrat.date_fin ? new Date(contrat.date_fin).toLocaleDateString('fr-FR') : '-';
             const primeNette = (parseFloat(contrat.montant) || 0).toLocaleString('fr-FR');
             const montantPaye = (parseFloat(contrat.montant_paye) || 0).toLocaleString('fr-FR');
             const montantRestant = (parseFloat(contrat.montant_restant) || 0).toLocaleString('fr-FR');
-            const statut = contrat.actif ? 'Actif' : 'Inactif';
+            const statut = contrat.statut || '-';
             
             return [
                 contrat.numero_contrat || '-',
@@ -643,7 +524,7 @@ window.exportRapport = exportRapport;
 
 // Fonction de mise à jour de la pagination des rapports
 function updateRapportsPagination(total) {
-    const totalPages = Math.ceil(total / rapportsClientsPerPage);
+    const totalPages = Math.max(Math.ceil(total / rapportsClientsPerPage), 1);
     const pageInfo = document.getElementById('rapportsPageInfo');
     const prevBtn = document.getElementById('rapportsPrevPage');
     const nextBtn = document.getElementById('rapportsNextPage');
@@ -671,6 +552,14 @@ document.addEventListener('DOMContentLoaded', function() {
             loadRapports();
         });
     }
+
+    const categorieSelect = document.getElementById('rapportCategorie');
+    if (categorieSelect) {
+        categorieSelect.addEventListener('change', function() {
+            rapportsCurrentPage = 1;
+            loadRapports();
+        });
+    }
     
     const prevBtn = document.getElementById('rapportsPrevPage');
     const nextBtn = document.getElementById('rapportsNextPage');
@@ -693,4 +582,3 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
-

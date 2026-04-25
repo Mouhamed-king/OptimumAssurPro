@@ -4,6 +4,14 @@
 
 const db = require('../database/connection');
 
+const debugEnabled = process.env.DEBUG_LOGS === 'true';
+
+function debugLog(...args) {
+    if (debugEnabled) {
+        console.log(...args);
+    }
+}
+
 // Validation de l'email
 function validateEmail(email) {
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -57,11 +65,7 @@ const register = async (req, res) => {
         const appUrl = process.env.APP_URL || process.env.RENDER_EXTERNAL_URL || 'http://localhost:3000';
         const redirectUrl = `${appUrl}/verify-email.html`;
         
-        console.log('📧 Tentative d\'inscription avec Supabase Auth:');
-        console.log('   Email:', email);
-        console.log('   URL de redirection:', redirectUrl);
-        console.log('   APP_URL:', process.env.APP_URL);
-        console.log('   RENDER_EXTERNAL_URL:', process.env.RENDER_EXTERNAL_URL);
+        debugLog('Supabase signup attempt', { email, redirectUrl });
         
         const { data: authData, error: authError } = await db.supabase.auth.signUp({
             email,
@@ -90,15 +94,14 @@ const register = async (req, res) => {
             return res.status(500).json({ error: 'Erreur lors de la création du compte' });
         }
         
-        console.log('✅ Utilisateur Supabase Auth créé:');
-        console.log('   ID:', authData.user.id);
-        console.log('   Email:', authData.user.email);
-        console.log('   Email confirmé:', authData.user.email_confirmed_at !== null);
-        console.log('   Session créée:', authData.session !== null);
+        debugLog('Supabase user created', {
+            userId: authData.user.id,
+            emailConfirmed: authData.user.email_confirmed_at !== null,
+            hasSession: authData.session !== null
+        });
         
         // Vérifier que l'utilisateur existe bien dans auth.users avant d'insérer
         // Parfois il y a un délai entre la création Auth et la disponibilité dans la DB
-        console.log('🔍 Vérification de l\'existence de l\'utilisateur dans auth.users...');
         let userExists = false;
         let retryCount = 0;
         const maxRetries = 3;
@@ -106,11 +109,11 @@ const register = async (req, res) => {
         // L'utilisateur vient d'être créé par Supabase Auth, il existe forcément
         // Pas besoin de vérifier avec admin API (qui n'est pas toujours disponible)
         userExists = true;
-        console.log('✅ Utilisateur créé par Supabase Auth, prêt pour insertion dans entreprises');
+        debugLog('User created in auth and ready for entreprises insert');
         
         // Créer l'enregistrement dans la table entreprises avec l'ID de Supabase Auth
         // IMPORTANT: Utiliser le token de l'utilisateur pour bypass RLS avec les politiques appropriées
-        console.log('📝 Création de l\'enregistrement dans la table entreprises...');
+        debugLog('Creating entreprises record');
         let newEntreprise = null;
         let insertError = null;
         
@@ -135,7 +138,7 @@ const register = async (req, res) => {
             
             if (!error) {
                 newEntreprise = data;
-                console.log('✅ Entreprise créée dans la table:', newEntreprise?.id);
+                debugLog('Entreprise created in table', newEntreprise?.id);
                 break;
             }
             
@@ -189,10 +192,11 @@ const register = async (req, res) => {
         // Si email_confirmed_at est null ET session est null, l'email devrait être envoyé
         const emailSent = authData.user.email_confirmed_at === null && authData.session === null;
         
-        console.log('📧 Statut de l\'email:');
-        console.log('   Email confirmé:', authData.user.email_confirmed_at !== null);
-        console.log('   Session créée:', authData.session !== null);
-        console.log('   Email devrait être envoyé:', emailSent);
+        debugLog('Signup email status', {
+            emailConfirmed: authData.user.email_confirmed_at !== null,
+            hasSession: authData.session !== null,
+            emailSent
+        });
         
         // Avertissement si l'email n'est pas envoyé
         if (!emailSent && authData.user.email_confirmed_at === null) {
@@ -378,11 +382,12 @@ const resendVerificationEmail = async (req, res) => {
 // Obtenir les informations de l'entreprise connectée
 const getMe = async (req, res) => {
     try {
-        console.log('📥 Requête getMe reçue');
-        console.log('   userId:', req.userId);
-        console.log('   entrepriseId:', req.entrepriseId);
-        console.log('   user:', req.user ? 'présent' : 'absent');
-        console.log('   entreprise:', req.entreprise ? 'présent' : 'absent');
+        debugLog('getMe request received', {
+            userId: req.userId,
+            entrepriseId: req.entrepriseId,
+            hasUser: !!req.user,
+            hasEntreprise: !!req.entreprise
+        });
         
         // req.userId est défini par le middleware Supabase Auth
         const userId = req.userId || req.entrepriseId;
@@ -394,12 +399,11 @@ const getMe = async (req, res) => {
         
         // Si l'entreprise est déjà dans req (créée par le middleware), l'utiliser
         if (req.entreprise) {
-            console.log('✅ Utilisation de l\'entreprise du middleware:', req.entreprise.id);
+            debugLog('Using entreprise from middleware', req.entreprise.id);
             return res.json({ entreprise: req.entreprise });
         }
         
         // Sinon, récupérer depuis la base de données
-        console.log('📡 Récupération de l\'entreprise depuis la base de données...');
         const { data: entreprise, error } = await db.supabase
             .from('entreprises')
             .select('id, nom, email, telephone, adresse, email_verified, created_at')
@@ -410,7 +414,7 @@ const getMe = async (req, res) => {
             console.error('❌ Erreur lors de la récupération de l\'entreprise:', error);
             // Si l'entreprise n'existe pas, créer un enregistrement minimal
             if (error.code === 'PGRST116' && req.user) {
-                console.log('📝 Création d\'un enregistrement minimal pour getMe...');
+                debugLog('Creating minimal entreprise during getMe');
                 const { data: newEntreprise } = await db.supabase
                     .from('entreprises')
                     .insert({
@@ -423,7 +427,7 @@ const getMe = async (req, res) => {
                     .single();
                 
                 if (newEntreprise) {
-                    console.log('✅ Enregistrement créé:', newEntreprise.id);
+                    debugLog('Entreprise created during getMe', newEntreprise.id);
                     return res.json({ entreprise: newEntreprise });
                 }
             }
@@ -435,7 +439,7 @@ const getMe = async (req, res) => {
             return res.status(404).json({ error: 'Entreprise non trouvée' });
         }
         
-        console.log('✅ Entreprise récupérée:', entreprise.id);
+        debugLog('Entreprise fetched successfully', entreprise.id);
         res.json({ entreprise });
     } catch (error) {
         console.error('❌ Erreur lors de la récupération des informations:', error);

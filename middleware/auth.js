@@ -4,15 +4,21 @@
 
 const db = require('../database/connection');
 
+const debugEnabled = process.env.DEBUG_LOGS === 'true';
+
+function debugLog(...args) {
+    if (debugEnabled) {
+        console.log(...args);
+    }
+}
+
 // Middleware pour vérifier le token Supabase Auth
 const authenticateToken = async (req, res, next) => {
     try {
         const authHeader = req.headers['authorization'];
         const token = authHeader && authHeader.split(' ')[1]; // Format: "Bearer TOKEN"
         
-        console.log('🔐 Middleware authenticateToken appelé');
-        console.log('   Authorization header présent:', !!authHeader);
-        console.log('   Token extrait:', token ? token.substring(0, 20) + '...' : 'null');
+        debugLog('authenticateToken called', { hasAuthorizationHeader: !!authHeader, hasToken: !!token });
         
         if (!token) {
             console.error('❌ Token manquant dans la requête');
@@ -20,7 +26,7 @@ const authenticateToken = async (req, res, next) => {
         }
         
         // Vérifier le token avec Supabase Auth
-        console.log('🔍 Vérification du token avec Supabase Auth...');
+        debugLog('Verifying token with Supabase Auth');
         const { data: { user }, error: authError } = await db.supabase.auth.getUser(token);
         
         if (authError || !user) {
@@ -28,7 +34,7 @@ const authenticateToken = async (req, res, next) => {
             return res.status(401).json({ error: 'Token invalide ou expiré' });
         }
         
-        console.log('✅ Token vérifié, utilisateur:', user.id);
+        debugLog('Token verified for user', user.id);
         
         // Vérifier que l'email est confirmé (email_confirmed_at)
         if (!user.email_confirmed_at) {
@@ -47,9 +53,7 @@ const authenticateToken = async (req, res, next) => {
         
         // Si l'entreprise n'existe pas, créer un enregistrement minimal
         if (entrepriseError && entrepriseError.code === 'PGRST116') {
-            console.log('📝 Entreprise non trouvée dans la table, création d\'un enregistrement minimal');
-            console.log('   User ID:', user.id);
-            console.log('   Email:', user.email);
+            debugLog('Entreprise missing, creating minimal record', { userId: user.id });
             
             // Réessayer plusieurs fois car il peut y avoir un délai de propagation ou problème RLS
             let newEntreprise = null;
@@ -70,7 +74,7 @@ const authenticateToken = async (req, res, next) => {
                 
                 if (!error) {
                     newEntreprise = data;
-                    console.log('✅ Entreprise créée avec succès:', newEntreprise.id);
+                    debugLog('Entreprise created successfully', newEntreprise.id);
                     break;
                 }
                 
@@ -78,7 +82,7 @@ const authenticateToken = async (req, res, next) => {
                 
                 // Si c'est une erreur de duplicate, essayer de récupérer l'enregistrement existant
                 if (error.code === '23505' || error.message.includes('duplicate')) {
-                    console.log('⚠️ Enregistrement déjà existant, récupération...');
+                    debugLog('Entreprise already existed, fetching existing record');
                     const { data: existing } = await db.supabase
                         .from('entreprises')
                         .select('id, nom, email, email_verified')
@@ -87,7 +91,7 @@ const authenticateToken = async (req, res, next) => {
                     
                     if (existing) {
                         newEntreprise = existing;
-                        console.log('✅ Entreprise trouvée:', existing.id);
+                        debugLog('Existing entreprise found', existing.id);
                         break;
                     }
                 }
@@ -106,7 +110,9 @@ const authenticateToken = async (req, res, next) => {
                 }
                 
                 // Attendre un peu avant de réessayer (seulement pour erreur de clé étrangère)
-                console.warn(`⚠️ Tentative ${attempt + 1}/${maxRetries} - Réessai dans 300ms...`);
+                if (debugEnabled) {
+                    console.warn(`Tentative ${attempt + 1}/${maxRetries} - reessai creation entreprise`);
+                }
                 await new Promise(resolve => setTimeout(resolve, 300));
             }
             
@@ -189,4 +195,3 @@ const authenticateToken = async (req, res, next) => {
 module.exports = {
     authenticateToken
 };
-

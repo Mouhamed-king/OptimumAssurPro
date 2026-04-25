@@ -4,6 +4,16 @@
 
 const API_BASE_URL = window.location.origin + '/api';
 
+function isDebugEnabled() {
+    return localStorage.getItem('debug') === 'true';
+}
+
+function debugLog(...args) {
+    if (isDebugEnabled()) {
+        console.log(...args);
+    }
+}
+
 // Fonction pour obtenir le token d'authentification
 function getAuthToken() {
     return localStorage.getItem('token') || sessionStorage.getItem('token');
@@ -12,12 +22,8 @@ function getAuthToken() {
 // Fonction pour faire une requête API
 async function apiRequest(endpoint, options = {}) {
     const token = getAuthToken();
-    
-    console.log('📡 Requête API:', endpoint);
-    console.log('   Token présent:', !!token);
-    if (token) {
-        console.log('   Token (premiers caractères):', token.substring(0, 20) + '...');
-    }
+
+    debugLog('API request:', endpoint, { hasToken: !!token });
     
     const defaultOptions = {
         headers: {
@@ -27,9 +33,6 @@ async function apiRequest(endpoint, options = {}) {
     
     if (token) {
         defaultOptions.headers['Authorization'] = `Bearer ${token}`;
-        console.log('   Authorization header ajouté');
-    } else {
-        console.warn('⚠️ Aucun token disponible pour cette requête');
     }
     
     const finalOptions = {
@@ -63,7 +66,6 @@ async function apiRequest(endpoint, options = {}) {
             // et seulement sur les pages protégées (pas sur login.html)
             if (!isPublicPage && response.status === 401) {
                 // Token vraiment invalide (401), nettoyer seulement après confirmation
-                console.warn('⚠️ Token invalide (401), nettoyage du stockage');
                 localStorage.removeItem('token');
                 localStorage.removeItem('entreprise');
                 sessionStorage.removeItem('token');
@@ -121,9 +123,13 @@ const authAPI = {
     },
     
     changePassword: async (currentPassword, newPassword) => {
+        const payload = typeof currentPassword === 'object'
+            ? currentPassword
+            : { currentPassword, newPassword };
+
         return await apiRequest('/auth/change-password', {
             method: 'POST',
-            body: JSON.stringify({ currentPassword, newPassword })
+            body: JSON.stringify(payload)
         });
     },
     
@@ -184,7 +190,27 @@ const clientsAPI = {
 // ============================================
 
 const contractsAPI = {
-    getAll: async (statut = '', search = '', dateDebut = '', dateFin = '', offset = 0, limit = 25) => {
+    getAll: async (...args) => {
+        let statut = '';
+        let search = '';
+        let dateDebut = '';
+        let dateFin = '';
+        let offset = 0;
+        let limit = 25;
+
+        if (args.length === 1 && typeof args[0] === 'object' && args[0] !== null) {
+            ({
+                statut = '',
+                search = '',
+                dateDebut = '',
+                dateFin = '',
+                offset = 0,
+                limit = 25
+            } = args[0]);
+        } else {
+            [statut = '', search = '', dateDebut = '', dateFin = '', offset = 0, limit = 25] = args;
+        }
+
         const params = new URLSearchParams();
         if (statut) params.append('statut', statut);
         if (search) params.append('search', search);
@@ -239,6 +265,28 @@ const statsAPI = {
     }
 };
 
+const reportsAPI = {
+    getSummary: async ({
+        filter = '',
+        dateDebut = '',
+        dateFin = '',
+        categorie = '',
+        offset = 0,
+        limit = 25
+    } = {}) => {
+        const params = new URLSearchParams();
+        if (filter) params.append('filter', filter);
+        if (dateDebut) params.append('dateDebut', dateDebut);
+        if (dateFin) params.append('dateFin', dateFin);
+        if (categorie) params.append('categorie', categorie);
+        if (offset !== 0) params.append('offset', offset);
+        if (limit !== 25) params.append('limit', limit);
+
+        const queryString = params.toString();
+        return await apiRequest(`/reports/summary${queryString ? '?' + queryString : ''}`);
+    }
+};
+
 // ============================================
 // API NOTIFICATIONS
 // ============================================
@@ -265,6 +313,6 @@ window.api = {
     clients: clientsAPI,
     contracts: contractsAPI,
     stats: statsAPI,
-    notifications: notificationsAPI
+    notifications: notificationsAPI,
+    reports: reportsAPI
 };
-

@@ -8,21 +8,25 @@ const db = require('../database/connection');
 const getAllClients = async (req, res) => {
     try {
         const { search, statut, categorie, offset = 0, limit = 25, expire, expiringSoon } = req.query;
+        const parsedOffset = Math.max(parseInt(offset, 10) || 0, 0);
+        const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 25, 1), 100);
+        const requiresInMemoryFiltering = Boolean(search || statut || categorie || expire === 'true' || expiringSoon === 'true');
         
-        // Construire la requête Supabase - récupérer tous les clients pour pouvoir chercher dans les immatriculations
+        // Quand aucun filtre relationnel n'est applique, on pagine directement en base.
         let query = db.supabase
             .from('clients')
             .select(`
                 *,
                 vehicules (*),
                 contrats (id, numero_contrat, date_fin, statut, categorie_vehicule)
-            `)
+            `, { count: 'exact' })
             .eq('entreprise_id', req.entrepriseId);
-        
-        // Ne pas filtrer par catégorie dans Supabase car on doit filtrer après avoir récupéré les données
-        // pour gérer correctement les relations imbriquées
-        
-        const { data: clients, error } = await query.order('created_at', { ascending: false });
+
+        if (!requiresInMemoryFiltering) {
+            query = query.range(parsedOffset, parsedOffset + parsedLimit - 1);
+        }
+
+        const { data: clients, error, count } = await query.order('created_at', { ascending: false });
         
         if (error) {
             throw error;
@@ -127,12 +131,22 @@ const getAllClients = async (req, res) => {
             });
         }
         
-        // Appliquer la pagination
-        const paginatedClients = enrichedClients.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
-        
-        res.json({ 
+        if (!requiresInMemoryFiltering) {
+            return res.json({
+                clients: enrichedClients,
+                total: count || 0,
+                offset: parsedOffset,
+                limit: parsedLimit
+            });
+        }
+
+        const paginatedClients = enrichedClients.slice(parsedOffset, parsedOffset + parsedLimit);
+
+        res.json({
             clients: paginatedClients,
-            total: enrichedClients.length
+            total: enrichedClients.length,
+            offset: parsedOffset,
+            limit: parsedLimit
         });
     } catch (error) {
         console.error('Erreur lors de la récupération des clients:', error);

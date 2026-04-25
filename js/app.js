@@ -2,6 +2,16 @@
 // NAVIGATION ET INTERACTIVITÉ
 // ============================================
 
+function appDebugEnabled() {
+    return localStorage.getItem('debug') === 'true';
+}
+
+function appDebugLog(...args) {
+    if (appDebugEnabled()) {
+        console.log(...args);
+    }
+}
+
 // Vérifier l'authentification au chargement
 document.addEventListener('DOMContentLoaded', function() {
     // Vérifier si l'utilisateur est connecté
@@ -48,19 +58,11 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
     
-    console.log('✅ Token trouvé, chargement des données...');
-    const tokenSource = localStorage.getItem('token') ? 'localStorage' : 'sessionStorage';
-    console.log('   Token source:', tokenSource);
-    console.log('   Token (premiers caractères):', token ? token.substring(0, 30) + '...' : 'null');
-    
     // Attendre un peu pour s'assurer que l'API est chargée
     setTimeout(() => {
-        console.log('⏳ Démarrage du chargement des données après délai...');
         // Charger les données de l'entreprise
         loadEntrepriseInfo().catch(error => {
-            // L'erreur est déjà gérée dans loadEntrepriseInfo()
-            console.error('❌ Erreur capturée par le catch externe:', error.message);
-            console.error('   Ne pas déconnecter automatiquement - laisser loadEntrepriseInfo gérer');
+            console.error('Erreur lors du chargement des informations entreprise:', error.message);
         });
     }, 500); // Augmenter le délai pour être sûr que l'API est chargée
     
@@ -377,36 +379,27 @@ document.head.appendChild(style);
 // ============================================
 
 async function loadEntrepriseInfo() {
-    console.log('📥 Chargement des informations de l\'entreprise...');
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    console.log('   Token présent:', !!token);
-    console.log('   Token (premiers caractères):', token ? token.substring(0, 20) + '...' : 'null');
-    console.log('   API disponible:', !!window.api);
-    console.log('   API auth disponible:', !!window.api?.auth);
     
     try {
         if (!window.api || !window.api.auth) {
-            console.error('❌ API non chargée, attente de 500ms...');
+            appDebugLog('API auth not ready yet, waiting 500ms');
             await new Promise(resolve => setTimeout(resolve, 500));
             if (!window.api || !window.api.auth) {
                 throw new Error('API non chargée après attente');
             }
         }
         
-        console.log('📡 Appel API getMe...');
         const data = await window.api.auth.getMe();
-        console.log('✅ Réponse API reçue:', data);
         
         const entreprise = data.entreprise;
         
         if (!entreprise) {
-            console.warn('⚠️ Aucune entreprise dans la réponse API');
             // Ne pas déconnecter, utiliser les données du localStorage
             const storedEntreprise = localStorage.getItem('entreprise') || sessionStorage.getItem('entreprise');
             if (storedEntreprise) {
                 try {
                     const parsed = JSON.parse(storedEntreprise);
-                    console.log('📦 Utilisation des données stockées:', parsed);
                     const userName = document.querySelector('.user-name');
                     if (userName) {
                         userName.textContent = parsed.nom || 'Entreprise';
@@ -418,25 +411,19 @@ async function loadEntrepriseInfo() {
             }
         }
         
-        console.log('✅ Informations de l\'entreprise chargées:', entreprise?.nom);
-        
         // Mettre à jour le nom de l'entreprise dans le header
         const userName = document.querySelector('.user-name');
         if (userName) {
             userName.textContent = entreprise.nom || 'Entreprise';
         }
     } catch (error) {
-        console.error('❌ Erreur lors du chargement des informations de l\'entreprise:', error);
-        console.error('   Type:', typeof error);
-        console.error('   Message:', error.message);
-        console.error('   Stack:', error.stack);
+        console.error('Erreur lors du chargement des informations de l\'entreprise:', error);
         
         // Ne pas déconnecter immédiatement, essayer d'utiliser les données stockées
         const storedEntreprise = localStorage.getItem('entreprise') || sessionStorage.getItem('entreprise');
         if (storedEntreprise) {
             try {
                 const parsed = JSON.parse(storedEntreprise);
-                console.log('📦 Utilisation des données stockées en cas d\'erreur:', parsed);
                 const userName = document.querySelector('.user-name');
                 if (userName) {
                     userName.textContent = parsed.nom || 'Entreprise';
@@ -458,20 +445,15 @@ async function loadEntrepriseInfo() {
         
         if (isAuthError) {
             // Vérifier si c'est vraiment une erreur d'authentification ou juste un problème temporaire
-            console.warn('⚠️ Erreur d\'authentification détectée');
-            console.warn('   Message:', error.message);
-            console.warn('   Token présent:', !!token);
-            
-            // Ne déconnecter QUE si on est sûr que c'est une erreur d'authentification
-            // ET seulement après plusieurs tentatives échouées
-            // Pour l'instant, ne pas déconnecter automatiquement - laisser l'utilisateur essayer
-            console.warn('⚠️ Erreur d\'authentification, mais session maintenue pour permettre une nouvelle tentative');
+            appDebugLog('Authentication-related error while loading entreprise info', {
+                message: error.message,
+                hasToken: !!token
+            });
             // Ne pas déconnecter - laisser l'utilisateur voir l'erreur et réessayer
             return;
         }
         
-        // Pour les autres erreurs, ne pas déconnecter
-        console.warn('⚠️ Erreur non-critique, session maintenue');
+        appDebugLog('Non-critical error while loading entreprise info, session kept');
     }
 }
 
@@ -1281,4 +1263,3 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
-

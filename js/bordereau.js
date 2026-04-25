@@ -279,11 +279,17 @@ async function loadBordereau() {
             categorieDisplay.textContent = categorie;
         }
         
+        // Récupérer les dates de filtre
+        const dateDebutInput = document.getElementById('bordereauDateDebut');
+        const dateFinInput = document.getElementById('bordereauDateFin');
+        const dateDebut = dateDebutInput ? dateDebutInput.value : '';
+        const dateFin = dateFinInput ? dateFinInput.value : '';
+        
         // Calculer l'offset pour la pagination
         const offset = (bordereauCurrentPage - 1) * bordereauClientsPerPage;
         
         // Récupérer tous les contrats (on fera la pagination côté client pour le bordereau)
-        const data = await window.api.contracts.getAll();
+        const data = await window.api.contracts.getAll('', '', dateDebut, dateFin);
         let contrats = (data.contrats || []).filter(contrat => {
             // Filtrer par catégorie si disponible
             return contrat.categorie_vehicule === categorie || (!contrat.categorie_vehicule && categorie === 'VP/CI');

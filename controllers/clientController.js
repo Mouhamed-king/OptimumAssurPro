@@ -77,7 +77,28 @@ const getAllClients = async (req, res) => {
         
         // Filtrer par statut si fourni
         if (statut) {
-            enrichedClients = enrichedClients.filter(client => client.client_statut === statut);
+            // Normaliser le statut pour éviter les problèmes de casse ou d'espaces
+            const normalizedStatut = statut.toLowerCase().trim();
+            
+            if (normalizedStatut === 'expire') {
+                // Filtrer spécifiquement pour les clients ayant au moins un contrat échu
+                enrichedClients = enrichedClients.filter(client => {
+                    return client.contrats && client.contrats.some(c => c.statut === 'expire');
+                });
+            } else {
+                // Pour les autres statuts (actif, inactif), filtrer sur le statut du client
+                enrichedClients = enrichedClients.filter(client => {
+                    const clientStatut = client.client_statut ? client.client_statut.toLowerCase().trim() : '';
+                    return clientStatut === normalizedStatut;
+                });
+            }
+        }
+        
+        // Filtrer par contrats échus si demandé (paramètre expire)
+        if (expire === 'true' || expire === true) {
+            enrichedClients = enrichedClients.filter(client => {
+                return client.contrats && client.contrats.some(c => c.statut === 'expire');
+            });
         }
         
         // Filtrer par catégorie si fournie (après avoir enrichi les données)
@@ -85,14 +106,6 @@ const getAllClients = async (req, res) => {
             enrichedClients = enrichedClients.filter(client => {
                 // Garder seulement les clients qui ont au moins un contrat de la catégorie demandée
                 return client.contrats && client.contrats.some(c => c.categorie_vehicule === categorie);
-            });
-        }
-        
-        // Filtrer par contrats échus si demandé
-        if (expire === 'true') {
-            enrichedClients = enrichedClients.filter(client => {
-                // Garder seulement les clients qui ont au moins un contrat échu
-                return client.contrats && client.contrats.some(c => c.statut === 'expire');
             });
         }
         

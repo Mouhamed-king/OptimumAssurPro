@@ -640,7 +640,7 @@ async function loadDashboard() {
 let currentClientCategory = 'TPV';
 // Variable globale pour la pagination
 let currentPage = 1;
-const clientsPerPage = 25;
+const clientsPerPage = 20;
 // Variable globale pour le filtre d'expiration
 let showExpiredOnly = false;
 

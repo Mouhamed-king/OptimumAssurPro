@@ -183,10 +183,12 @@ const clientsAPI = {
 // ============================================
 
 const contractsAPI = {
-    getAll: async (statut = '', search = '', offset = 0, limit = 25) => {
+    getAll: async (statut = '', search = '', dateDebut = '', dateFin = '', offset = 0, limit = 25) => {
         const params = new URLSearchParams();
         if (statut) params.append('statut', statut);
         if (search) params.append('search', search);
+        if (dateDebut) params.append('dateDebut', dateDebut);
+        if (dateFin) params.append('dateFin', dateFin);
         if (offset !== 0) params.append('offset', offset);
         if (limit !== 25) params.append('limit', limit);
         

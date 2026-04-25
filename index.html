@@ -242,7 +242,10 @@
         <div id="bordereaux-page" class="page">
             <div class="page-header">
                 <h1>Bordereau d'assurance</h1>
-                <div style="display: flex; gap: 1rem; align-items: center;">
+                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                    <input type="date" id="bordereauDateDebut" class="form-input" placeholder="Date début" onchange="loadBordereau()" style="padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--color-border);">
+                    <span style="color: var(--color-text-secondary);">à</span>
+                    <input type="date" id="bordereauDateFin" class="form-input" placeholder="Date fin" onchange="loadBordereau()" style="padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--color-border);">
                     <select id="bordereauCategorie" class="btn-secondary" style="padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--color-border);" onchange="loadBordereau()">
                         <option value="TPV">TPV</option>
                         <option value="VP/CI" selected>VP/CI</option>
@@ -319,28 +322,7 @@
             </div>
         </div>
 
-        <!-- Rapports Page -->
-        <div id="rapports-page" class="page">
-            <div class="page-header">
-                <h1>Rapports et Statistiques</h1>
-                <div style="display: flex; gap: 1rem; align-items: center;">
-                    <select id="rapportCategorie" class="btn-secondary" style="padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--color-border);" onchange="loadRapports()">
-                        <option value="">Toutes les catégories</option>
-                        <option value="TPV">TPV</option>
-                        <option value="VP/CI">VP/CI</option>
-                    </select>
-                    <select id="rapportPeriode" class="btn-secondary" style="padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--color-border);" onchange="loadRapports()">
-                        <option value="mois">Ce mois</option>
-                        <option value="trimestre">Ce trimestre</option>
-                        <option value="annee" selected>Cette année</option>
-                        <option value="tout">Tout</option>
-                    </select>
-                    <button class="btn-primary" onclick="exportRapport()">
-                        <i class="fas fa-download"></i>
-                        Exporter
-                    </button>
-                </div>
-            </div>
+
 
             <!-- Statistiques générales -->
             <div class="stats-grid" style="margin-bottom: 2rem;">

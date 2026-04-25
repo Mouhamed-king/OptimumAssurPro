@@ -8,12 +8,18 @@ const moment = require('moment');
 const getSummary = async (req, res) => {
     try {
         const entrepriseId = req.entrepriseId;
-        const { filter } = req.query; // 'all', 'month', 'quarter', 'year'
+        const { filter, dateDebut, dateFin } = req.query; // 'all', 'month', 'quarter', 'year'
 
         let dateFilter = {};
         const today = moment();
 
-        if (filter === 'month') {
+        // Utiliser les dates personnalisées si fournies
+        if (dateDebut || dateFin) {
+            dateFilter = {
+                gte: dateDebut || today.startOf('year').format('YYYY-MM-DD'),
+                lte: dateFin || today.endOf('year').format('YYYY-MM-DD')
+            };
+        } else if (filter === 'month') {
             dateFilter = {
                 gte: today.startOf('month').format('YYYY-MM-DD'),
                 lte: today.endOf('month').format('YYYY-MM-DD')

@@ -8,7 +8,7 @@ const moment = require('moment');
 // Obtenir tous les contrats de l'entreprise
 const getAllContracts = async (req, res) => {
     try {
-        const { statut, search } = req.query;
+        const { statut, search, dateDebut, dateFin } = req.query;
         
         // Construire la requête Supabase avec jointures
         let query = db.supabase
@@ -32,6 +32,16 @@ const getAllContracts = async (req, res) => {
         // Filtrer par statut si fourni
         if (statut) {
             query = query.eq('statut', statut);
+        }
+        
+        // Filtrer par date de début si fournie
+        if (dateDebut) {
+            query = query.gte('date_debut', dateDebut);
+        }
+        
+        // Filtrer par date de fin si fournie
+        if (dateFin) {
+            query = query.lte('date_fin', dateFin);
         }
         
         // Ajouter la recherche si fournie

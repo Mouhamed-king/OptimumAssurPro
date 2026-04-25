@@ -7,7 +7,7 @@ const db = require('../database/connection');
 // Obtenir tous les clients de l'entreprise
 const getAllClients = async (req, res) => {
     try:
-        const { search, statut, categorie, offset = 0, limit = 25, expire } = req.query;
+        const { search, statut, categorie, offset = 0, limit = 25, expire, expiringSoon } = req.query;
         
         // Construire la requête Supabase - récupérer tous les clients pour pouvoir chercher dans les immatriculations
         let query = db.supabase
@@ -93,6 +93,24 @@ const getAllClients = async (req, res) => {
             enrichedClients = enrichedClients.filter(client => {
                 // Garder seulement les clients qui ont au moins un contrat échu
                 return client.contrats && client.contrats.some(c => c.statut === 'expire');
+            });
+        }
+        
+        // Filtrer par contrats qui expirent bientôt (dans la semaine) si demandé
+        if (expiringSoon === 'true') {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            const oneWeekLater = new Date(today);
+            oneWeekLater.setDate(today.getDate() + 7);
+            
+            enrichedClients = enrichedClients.filter(client => {
+                // Garder seulement les clients qui ont au moins un contrat qui expire dans la semaine
+                return client.contrats && client.contrats.some(c => {
+                    const dateFin = new Date(c.date_fin);
+                    dateFin.setHours(0, 0, 0, 0);
+                    return dateFin >= today && dateFin <= oneWeekLater && c.statut === 'actif';
+                });
             });
         }
         

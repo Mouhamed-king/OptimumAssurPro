@@ -6,7 +6,7 @@ let evolutionChart = null;
 let repartitionChart = null;
 let beneficeChart = null;
 
-// Charger les rapports
+// Charger les rapports avec pagination
 async function loadRapports() {
     try {
         // Vérifier que l'API est chargée
@@ -17,12 +17,16 @@ async function loadRapports() {
         const periode = document.getElementById('rapportPeriode')?.value || 'annee';
         const categorie = document.getElementById('rapportCategorie')?.value || '';
         
-        // Charger les statistiques
+        // Calculer l'offset pour la pagination
+        const offset = (rapportsCurrentPage - 1) * rapportsClientsPerPage;
+        
+        // Charger les statistiques (pas besoin de pagination pour les stats globales)
         const stats = await window.api.stats.getDashboard();
         
-        // Charger tous les contrats
-        const contractsData = await window.api.contracts.getAll();
+        // Charger tous les contrats avec pagination
+        const contractsData = await window.api.contracts.getAll('', '', offset, rapportsClientsPerPage);
         let contrats = contractsData.contrats || [];
+        const totalContrats = contractsData.total || 0;
         
         // Filtrer par catégorie si sélectionnée
         if (categorie && (categorie === 'TPV' || categorie === 'VP/CI')) {
@@ -32,26 +36,39 @@ async function loadRapports() {
         // Filtrer par période
         const contratsFiltres = filtrerParPeriode(contrats, periode);
         
-        // Calculer les statistiques
-        const chiffreAffaires = contratsFiltres.reduce((sum, c) => {
+        // Pour les stats globales, on a besoin de tous les contrats filtrés (pas paginés)
+        // On va donc recharger tous les contrats pour les stats mais garder la pagination pour l'affichage
+        const allContractsData = await window.api.contracts.getAll();
+        let allContrats = allContractsData.contrats || [];
+        
+        // Filtrer par catégorie si sélectionnée (pour les stats)
+        if (categorie && (categorie === 'TPV' || categorie === 'VP/CI')) {
+            allContrats = allContrats.filter(c => c.categorie_vehicule === categorie || (!c.categorie_vehicule && categorie === 'VP/CI'));
+        }
+        
+        // Filtrer par période (pour les stats)
+        const allContratsFiltres = filtrerParPeriode(allContrats, periode);
+        
+        // Calculer les statistiques sur tous les contrats filtrés
+        const chiffreAffaires = allContratsFiltres.reduce((sum, c) => {
             const montant = parseFloat(c.montant) || 0;
             return sum + montant;
         }, 0);
-        const montantEncaisse = contratsFiltres.reduce((sum, c) => {
+        const montantEncaisse = allContratsFiltres.reduce((sum, c) => {
             const paye = parseFloat(c.montant_paye);
             return sum + (isNaN(paye) ? 0 : paye);
         }, 0);
-        const montantRestant = contratsFiltres.reduce((sum, c) => {
+        const montantRestant = allContratsFiltres.reduce((sum, c) => {
             const restant = parseFloat(c.montant_restant);
             return sum + (isNaN(restant) ? 0 : restant);
         }, 0);
-        const montantNetAVerser = contratsFiltres.reduce((sum, c) => {
+        const montantNetAVerser = allContratsFiltres.reduce((sum, c) => {
             const montant = parseFloat(c.montant) || 0;
             return sum + montant;
         }, 0); // Prime nette totale
         const beneficeTotal = montantEncaisse - montantNetAVerser; // Bénéfice = montant payé - net à verser
-        const contratsTotal = contratsFiltres.length;
-        const clientsTotal = new Set(contratsFiltres.map(c => c.client_id)).size;
+        const contratsTotal = allContratsFiltres.length;
+        const clientsTotal = new Set(allContratsFiltres.map(c => c.client_id)).size;
         
         // Mettre à jour les cartes de statistiques
         const chiffreAffairesEl = document.getElementById('rapportChiffreAffaires');
@@ -77,22 +94,25 @@ async function loadRapports() {
         if (clientsTotalEl) clientsTotalEl.textContent = clientsTotal;
         
         // Calculer le taux de renouvellement (approximation)
-        const tauxRenouvellement = contratsTotal > 0 ? Math.round((contratsFiltres.filter(c => c.statut === 'actif').length / contratsTotal) * 100) : 0;
+        const tauxRenouvellement = contratsTotal > 0 ? Math.round((allContratsFiltres.filter(c => c.statut === 'actif').length / contratsTotal) * 100) : 0;
         const tauxRenouvellementEl = document.getElementById('rapportTauxRenouvellement');
         if (tauxRenouvellementEl) tauxRenouvellementEl.textContent = tauxRenouvellement + '%';
         
         // Créer les graphiques (vérifier que Chart.js est disponible)
         if (typeof Chart !== 'undefined') {
-            creerGraphiqueEvolution(contratsFiltres);
-            creerGraphiqueRepartition(contratsFiltres);
-            creerGraphiquePaiements(contratsFiltres);
-            creerGraphiqueBenefice(contratsFiltres);
+            creerGraphiqueEvolution(allContratsFiltres);
+            creerGraphiqueRepartition(allContratsFiltres);
+            creerGraphiquePaiements(allContratsFiltres);
+            creerGraphiqueBenefice(allContratsFiltres);
         } else {
             console.warn('Chart.js n\'est pas chargé. Les graphiques ne seront pas affichés.');
         }
         
-        // Remplir le tableau
+        // Remplir le tableau avec les contrats paginés
         remplirTableauRapports(contratsFiltres);
+        
+        // Mettre à jour la pagination
+        updateRapportsPagination(totalContrats);
         
     } catch (error) {
         console.error('Erreur lors du chargement des rapports:', error);
@@ -621,11 +641,54 @@ async function exportRapport() {
 window.loadRapports = loadRapports;
 window.exportRapport = exportRapport;
 
-// Écouter les changements de période
+// Fonction de mise à jour de la pagination des rapports
+function updateRapportsPagination(total) {
+    const totalPages = Math.ceil(total / rapportsClientsPerPage);
+    const pageInfo = document.getElementById('rapportsPageInfo');
+    const prevBtn = document.getElementById('rapportsPrevPage');
+    const nextBtn = document.getElementById('rapportsNextPage');
+    
+    if (pageInfo) {
+        pageInfo.textContent = `Page ${rapportsCurrentPage} sur ${totalPages}`;
+    }
+    
+    if (prevBtn) {
+        prevBtn.disabled = rapportsCurrentPage <= 1;
+    }
+    
+    if (nextBtn) {
+        nextBtn.disabled = rapportsCurrentPage >= totalPages || totalPages === 0;
+    }
+}
+
+// Gestionnaires d'événements pour la pagination des rapports
 document.addEventListener('DOMContentLoaded', function() {
     const periodeSelect = document.getElementById('rapportPeriode');
     if (periodeSelect) {
         periodeSelect.addEventListener('change', function() {
+            // Réinitialiser la pagination lorsqu'on change de période
+            rapportsCurrentPage = 1;
+            loadRapports();
+        });
+    }
+    
+    const prevBtn = document.getElementById('rapportsPrevPage');
+    const nextBtn = document.getElementById('rapportsNextPage');
+    
+    if (prevBtn) {
+        prevBtn.addEventListener('click', function() {
+            if (rapportsCurrentPage > 1) {
+                rapportsCurrentPage--;
+                loadRapports();
+            }
+        });
+    }
+    
+    if (nextBtn) {
+        nextBtn.addEventListener('click', function() {
+            // On ne peut pas connaître le total exact sans recharger, donc on autorise le clic
+            // La désactivation sera gérée dans updateRapportsPagination
+            rapportsCurrentPage++;
             loadRapports();
         });
     }

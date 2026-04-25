@@ -183,10 +183,12 @@ const clientsAPI = {
 // ============================================
 
 const contractsAPI = {
-    getAll: async (statut = '', search = '') => {
+    getAll: async (statut = '', search = '', offset = 0, limit = 25) => {
         const params = new URLSearchParams();
         if (statut) params.append('statut', statut);
         if (search) params.append('search', search);
+        if (offset !== 0) params.append('offset', offset);
+        if (limit !== 25) params.append('limit', limit);
         
         const queryString = params.toString();
         return await apiRequest(`/contracts${queryString ? '?' + queryString : ''}`);

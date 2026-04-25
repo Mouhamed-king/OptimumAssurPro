@@ -969,6 +969,7 @@ async function loadClientsWithFilter(searchTerm = '', statut = '', filterType = 
         // Préparer les paramètres pour l'appel API
         let categorie = currentClientCategory;
         let expireFilter = false;
+        let expiringSoonFilter = false;
         
         // Gérer le filtre d'expiration
         if (filterType === 'expire') {
@@ -977,8 +978,15 @@ async function loadClientsWithFilter(searchTerm = '', statut = '', filterType = 
             statut = '';
         }
         
+        // Gérer le filtre pour les contrats qui expirent bientôt (dans la semaine)
+        if (filterType === 'expirant_soon') {
+            expiringSoonFilter = true;
+            // On ne filtre pas par statut ici car on veut voir les contrats qui expirent bientôt
+            statut = '';
+        }
+        
         // Charger les clients avec la catégorie actuelle, la recherche, le statut et la pagination
-        const data = await window.api.clients.getAll(searchTerm, statut, categorie, offset, clientsPerPage, expireFilter);
+        const data = await window.api.clients.getAll(searchTerm, statut, categorie, offset, clientsPerPage, expireFilter, expiringSoonFilter);
         const clients = data.clients || [];
         const total = data.total || 0;
         

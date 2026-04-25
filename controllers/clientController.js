@@ -6,7 +6,7 @@ const db = require('../database/connection');
 
 // Obtenir tous les clients de l'entreprise
 const getAllClients = async (req, res) => {
-    try:
+    try {
         const { search, statut, categorie, offset = 0, limit = 25, expire, expiringSoon } = req.query;
         
         // Construire la requête Supabase - récupérer tous les clients pour pouvoir chercher dans les immatriculations
@@ -126,46 +126,7 @@ const getAllClients = async (req, res) => {
         res.status(500).json({ error: 'Erreur lors de la récupération des clients: ' + error.message });
     }
 };
-        });
-        
-        // Filtrer par recherche (nom, téléphone, immatriculation) si nécessaire
-        if (search) {
-            const searchLower = search.toLowerCase().trim();
-            enrichedClients = enrichedClients.filter(client => {
-                // Recherche dans le nom du client
-                const matchesNom = client.nom?.toLowerCase().includes(searchLower) || false;
-                
-                // Recherche dans le téléphone
-                const matchesTelephone = client.telephone?.toLowerCase().includes(searchLower) || false;
-                
-                // Recherche dans les immatriculations des véhicules
-                const matchesImmatriculation = client.vehicules?.some(vehicule => 
-                    vehicule.immatriculation?.toLowerCase().includes(searchLower)
-                ) || false;
-                
-                return matchesNom || matchesTelephone || matchesImmatriculation;
-            });
-        }
-        
-        // Filtrer par statut si fourni
-        if (statut) {
-            enrichedClients = enrichedClients.filter(client => client.client_statut === statut);
-        }
-        
-        // Filtrer par catégorie si fournie (après avoir enrichi les données)
-        if (categorie && (categorie === 'TPV' || categorie === 'VP/CI')) {
-            enrichedClients = enrichedClients.filter(client => {
-                // Garder seulement les clients qui ont au moins un contrat de la catégorie demandée
-                return client.contrats && client.contrats.some(c => c.categorie_vehicule === categorie);
-            });
-        }
-        
-        res.json({ clients: enrichedClients });
-    } catch (error) {
-        console.error('Erreur lors de la récupération des clients:', error);
-        res.status(500).json({ error: 'Erreur lors de la récupération des clients: ' + error.message });
-    }
-};
+
 
 // Obtenir un client par ID
 const getClientById = async (req, res) => {

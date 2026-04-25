@@ -118,7 +118,7 @@ const getAllClients = async (req, res) => {
             oneWeekLater.setDate(today.getDate() + 7);
             
             enrichedClients = enrichedClients.filter(client => {
-                // Garder seulement les clients qui ont au moins un contrat qui expire dans la semaine
+                // Garder seulement les clients qui ont au moins un contrat actif qui expire dans la semaine
                 return client.contrats && client.contrats.some(c => {
                     const dateFin = new Date(c.date_fin);
                     dateFin.setHours(0, 0, 0, 0);

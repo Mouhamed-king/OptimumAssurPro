@@ -664,8 +664,16 @@ async function loadClients() {
     try {
         // Récupérer le filtre de statut actif
         const activeFilter = document.querySelector('#clients-page .btn-filter.active');
-        const statut = activeFilter ? (activeFilter.getAttribute('data-filter') === 'actif' ? 'actif' : activeFilter.getAttribute('data-filter') === 'inactif' ? 'inactif' : '') : '';
         const filterType = activeFilter ? activeFilter.getAttribute('data-filter') : 'all';
+        let statut = '';
+        
+        // Déterminer le statut en fonction du type de filtre
+        if (filterType === 'actif') {
+            statut = 'actif';
+        } else if (filterType === 'inactif') {
+            statut = 'inactif';
+        }
+        // Pour 'expire' et 'expirant_soon', on garde statut vide car ces filtres sont gérés séparément
         
         // Récupérer le terme de recherche
         const searchInput = document.getElementById('clientSearchInput');
@@ -888,9 +896,13 @@ function setupSearch() {
                     try {
                         // Récupérer le filtre actif
                         const activeFilter = document.querySelector('#clients-page .btn-filter.active');
-                        const statut = activeFilter ? (activeFilter.getAttribute('data-filter') === 'actif' ? 'actif' : activeFilter.getAttribute('data-filter') === 'inactif' ? 'inactif' : '') : '';
-                        const data = await window.api.clients.getAll(searchTerm, statut, currentClientCategory);
-                        renderClientsTable(data.clients || []);
+                        const filterType = activeFilter ? activeFilter.getAttribute('data-filter') : 'all';
+                        let statut = '';
+                        if (filterType === 'actif') statut = 'actif';
+                        else if (filterType === 'inactif') statut = 'inactif';
+                        
+                        // Utiliser loadClientsWithFilter pour une gestion cohérente
+                        await loadClientsWithFilter(searchTerm, statut, filterType);
                     } catch (error) {
                         console.error('Erreur de recherche:', error);
                         showToast('Erreur lors de la recherche', 'error');
@@ -947,7 +959,7 @@ function setupFilters() {
                     const filterType = this.getAttribute('data-filter');
                     if (filterType === 'actif') statut = 'actif';
                     else if (filterType === 'inactif') statut = 'inactif';
-                    // Pour le filtre 'expire', on gère cela dans loadClients avec un paramètre spécial
+                    // Pour les filtres 'expire' et 'expirant_soon', on gère cela dans loadClients avec des paramètres spéciaux
                     
                     // Charger les clients avec les paramètres appropriés
                     await loadClientsWithFilter(searchTerm, statut, filterType);
@@ -993,7 +1005,7 @@ async function loadClientsWithFilter(searchTerm = '', statut = '', filterType = 
         // Rendre le tableau des clients
         renderClientsTable(clients);
         
-        // Mettre à jour la pagination
+        // Mettre à jour la pagination avec le total réel
         updatePagination(total);
     } catch (error) {
         console.error('Erreur lors du chargement des clients avec filtre:', error);
@@ -1252,7 +1264,16 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (nextBtn) {
         nextBtn.addEventListener('click', function() {
-            const totalPages = Math.ceil((document.getElementById('clientsTableBody')?.rows.length || 0) / clientsPerPage) + 1; // Approximation
+            // Utiliser le total global pour calculer les pages
+            // Le total est stocké dans une variable globale ou on peut le récupérer du DOM
+            const pageInfo = document.getElementById('pageInfo');
+            let totalPages = 1;
+            if (pageInfo) {
+                const match = pageInfo.textContent.match(/Page \d+ sur (\d+)/);
+                if (match) {
+                    totalPages = parseInt(match[1]) || 1;
+                }
+            }
             if (currentPage < totalPages) {
                 currentPage++;
                 loadClients();

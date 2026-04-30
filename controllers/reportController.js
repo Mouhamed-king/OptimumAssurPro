@@ -70,7 +70,6 @@ const getSummary = async (req, res) => {
                 id,
                 client_id,
                 numero_contrat,
-                numero_police,
                 montant,
                 montant_paye,
                 montant_restant,
@@ -149,7 +148,6 @@ const getSummary = async (req, res) => {
         let detailedContractsQuery = applyContractFilters(
             db.supabase.from('contrats').select(`
                 numero_contrat,
-                numero_police,
                 montant,
                 montant_paye,
                 montant_restant,
@@ -177,7 +175,6 @@ const getSummary = async (req, res) => {
 
         const formattedDetailedContracts = detailedContracts.map(contract => ({
             numero_contrat: contract.numero_contrat,
-            numero_police: contract.numero_police,
             montant: contract.montant,
             montant_paye: contract.montant_paye,
             montant_restant: contract.montant_restant,

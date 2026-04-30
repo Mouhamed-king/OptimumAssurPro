@@ -836,6 +836,12 @@ html {
     border-collapse: collapse;
 }
 
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
 .data-table thead {
     background: var(--color-background);
 }

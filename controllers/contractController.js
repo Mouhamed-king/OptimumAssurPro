@@ -49,9 +49,9 @@ const getAllContracts = async (req, res) => {
             query = query.gte('date_debut', dateDebut);
         }
         
-        // Filtrer par date de fin si fournie
+        // Filtrer par date de fin (qui correspond en fait à la borne sup de la date d'effet)
         if (dateFin) {
-            query = query.lte('date_fin', dateFin);
+            query = query.lte('date_debut', dateFin);
         }
         
         // Ajouter la recherche si fournie

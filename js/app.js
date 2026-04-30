@@ -581,9 +581,11 @@ function getDashboardStatEntries(type) {
     if (type === 'expires_ce_mois') {
         return contracts
             .filter(contract => {
-                if (contract.statut !== 'expire' || !contract.date_fin) return false;
+                if (!contract.date_fin) return false;
                 const endDate = new Date(contract.date_fin);
-                return endDate.getMonth() === currentMonth && endDate.getFullYear() === currentYear;
+                return endDate.getMonth() === currentMonth && 
+                       endDate.getFullYear() === currentYear &&
+                       (contract.statut === 'actif' || contract.statut === 'expire');
             })
             .map(contract => ({
                 clientId: contract.client_id,
@@ -755,38 +757,20 @@ function renderDashboardAlert(stats) {
     if (!alertCard) return;
 
     if ((stats.renouvellements_a_venir ?? 0) > 0) {
-        // Construire la liste cliquable des contrats à renouveler
-        const contratsRenouvellement = stats.contrats_renouvellement || [];
-        let contratsHtml = '';
-        if (contratsRenouvellement.length > 0) {
-            contratsHtml = `
-                <div class="renewal-clients-list" style="margin-top: 1rem; max-height: 200px; overflow-y: auto;">
-                    ${contratsRenouvellement.map(contrat => {
-                const clientNom = `${contrat.clients?.nom || ''} ${contrat.clients?.prenom || ''}`.trim();
-                const dateFin = formatDate(contrat.date_fin);
-                const clientId = contrat.clients?.id || contrat.client_id;
-                return `
-                            <div class="renewal-client-card" onclick="showClientDetails(${clientId})" style="cursor: pointer; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; margin-bottom: 0.5rem; background: #f9fafb; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#eef2ff'" onmouseout="this.style.backgroundColor='#f9fafb'">
-                                <div style="font-weight: 500; color: #1f2937;">${clientNom || 'Client inconnu'}</div>
-                                <div style="font-size: 0.875rem; color: #6b7280;">Échéance: ${dateFin}</div>
-                            </div>
-                        `;
-            }).join('')}
-                </div>
-            `;
-        }
-
         alertCard.innerHTML = `
-            <div class="alert-icon">
+            <div class="alert-icon" style="background-color: #FEF3C7; color: #D97706;">
                 <i class="fas fa-exclamation-circle"></i>
             </div>
             <div class="alert-content">
-                <h4>Renouvellement à venir</h4>
-                <p>${stats.renouvellements_a_venir} contrat${stats.renouvellements_a_venir > 1 ? 's arrivent' : ' arrive'} à échéance dans les 7 prochains jours</p>
-                ${contratsHtml}
+                <h4 style="color: #92400E; margin-bottom: 0.25rem;">Renouvellement à venir</h4>
+                <p>${stats.renouvellements_a_venir} contrat${stats.renouvellements_a_venir > 1 ? 's arrivent' : ' arrive'} à échéance dans les 7 prochains jours.</p>
             </div>
-            <button class="btn-primary" onclick="goToRapportsWithRenewals()">Voir tous les détails</button>
         `;
+        alertCard.style.cursor = 'pointer';
+        alertCard.onclick = () => {
+            const statBtn = document.querySelector('[data-stat-type="renouvellements_a_venir"]');
+            if (statBtn) statBtn.click();
+        };
         return;
     }
 

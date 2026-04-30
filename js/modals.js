@@ -17,14 +17,14 @@ function openAddClientModal() {
     
     // Réinitialiser les champs du contrat avec dates par défaut
     const today = new Date();
-    const nextYear = new Date();
-    nextYear.setFullYear(today.getFullYear() + 1);
+    const nextMonth = new Date();
+    nextMonth.setMonth(today.getMonth() + 1);
     
     if (document.getElementById('contractDateEffet')) {
         document.getElementById('contractDateEffet').valueAsDate = today;
     }
     if (document.getElementById('contractDateEcheance')) {
-        document.getElementById('contractDateEcheance').valueAsDate = nextYear;
+        document.getElementById('contractDateEcheance').valueAsDate = nextMonth;
     }
     
     // Réinitialiser les champs de paiement
@@ -271,9 +271,15 @@ async function viewClient(id) {
                         Montant restant: <span style="color: ${hasRestant ? '#F59E0B' : '#10B981'};">${montantRestant.toLocaleString()} FCFA</span>
                     </div>
                     Statut: <span class="badge badge-${c.statut === 'actif' ? 'success' : c.statut === 'expire' ? 'danger' : 'warning'}">${c.statut}</span>
-                    <br><br><button class="btn-primary" onclick="updatePayment(${c.id}, ${montantTotal}, ${montantPaye}, ${montantRestant})" style="width: 100%; margin-top: 0.5rem;">
-                        <i class="fas fa-money-bill-wave"></i> Mettre à jour le paiement
-                    </button>
+                    <br><br>
+                    <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                        <button class="btn-primary" onclick="updatePayment(${c.id}, ${montantTotal}, ${montantPaye}, ${montantRestant})" style="flex: 1;">
+                            <i class="fas fa-money-bill-wave"></i> Paiement
+                        </button>
+                        <button class="btn-secondary" onclick="openEditContractModal(${c.id})" style="flex: 1; background-color: var(--color-accent); color: white; border: none;">
+                            <i class="fas fa-edit"></i> Modifier / Renouveler
+                        </button>
+                    </div>
                 </div>
             `;
             }).join('')
@@ -411,6 +417,63 @@ async function openAddContractModal() {
     }
 }
 
+async function openEditContractModal(contractId) {
+    currentEditingContractId = contractId;
+    document.getElementById('contractModalTitle').textContent = 'Modifier le contrat / Renouveler';
+    document.getElementById('contractForm').reset();
+    
+    try {
+        if (!window.api || !window.api.contracts) throw new Error('API non chargée');
+        
+        const data = await window.api.contracts.getById(contractId);
+        const contrat = data.contrat;
+        
+        // Charger la liste des clients et sélectionner le bon
+        const clientsData = await window.api.clients.getAll();
+        const clientSelect = document.getElementById('contractClient');
+        clientSelect.innerHTML = '<option value="">Sélectionner un client</option>';
+        clientsData.clients.forEach(client => {
+            const option = document.createElement('option');
+            option.value = client.id;
+            option.textContent = `${client.nom} ${client.prenom}`;
+            if (client.id === contrat.client_id) option.selected = true;
+            clientSelect.appendChild(option);
+        });
+        
+        // Charger la liste des véhicules pour ce client et sélectionner le bon
+        await loadClientVehicules(contrat.client_id);
+        const vehiculeSelect = document.getElementById('contractVehicule');
+        for (let i = 0; i < vehiculeSelect.options.length; i++) {
+            if (parseInt(vehiculeSelect.options[i].value) === contrat.vehicule_id) {
+                vehiculeSelect.selectedIndex = i;
+                break;
+            }
+        }
+        
+        // Remplir les autres champs
+        document.getElementById('contractId').value = contrat.id;
+        document.getElementById('contractType').value = contrat.type_contrat;
+        document.getElementById('contractDuree').value = contrat.duree_mois;
+        
+        // Formater date
+        if (contrat.date_debut) {
+            const date = new Date(contrat.date_debut);
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            document.getElementById('contractDateDebut').value = `${year}-${month}-${day}`;
+        }
+        
+        document.getElementById('contractMontant').value = contrat.montant;
+        
+        // Cacher le modal viewClient s'il est ouvert
+        document.getElementById('viewClientModal').classList.remove('show');
+        document.getElementById('contractModal').classList.add('show');
+    } catch (error) {
+        (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur lors du chargement du contrat: ' + error.message, 'error');
+    }
+}
+
 async function loadClientVehicules(clientId) {
     const vehiculeSelect = document.getElementById('contractVehicule');
     
@@ -539,6 +602,7 @@ window.viewClient = viewClient;
 window.closeViewClientModal = closeViewClientModal;
 window.updatePayment = updatePayment;
 window.openAddContractModal = openAddContractModal;
+window.openEditContractModal = openEditContractModal;
 window.loadClientVehicules = loadClientVehicules;
 window.closeContractModal = closeContractModal;
 window.saveContract = saveContract;

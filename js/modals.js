@@ -547,7 +547,7 @@ window.closeViewContractModal = closeViewContractModal;
 
 // Fermer les modaux en cliquant en dehors
 window.onclick = function(event) {
-    const modals = ['clientModal', 'contractModal', 'viewClientModal', 'viewContractModal'];
+    const modals = ['clientModal', 'contractModal', 'viewClientModal', 'viewContractModal', 'activeContractsModal', 'expiringContractsModal'];
     modals.forEach(modalId => {
         const modal = document.getElementById(modalId);
         if (modal && event.target === modal) {

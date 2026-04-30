@@ -26,12 +26,22 @@ router.get('/dashboard', async (req, res) => {
             throw clientsError;
         }
         
-        // Nombre de contrats actifs
-        const { count: contratsActifsCount, error: contratsError } = await db.supabase
+        // Nombre de contrats actifs et données des contrats récents
+        const { data: contratsActifsData, count: contratsActifsCount, error: contratsError } = await db.supabase
             .from('contrats')
-            .select('*', { count: 'exact', head: true })
+            .select(`
+                *,
+                clients!contrats_client_id_fkey (
+                    id,
+                    nom,
+                    prenom,
+                    telephone
+                )
+            `)
             .eq('entreprise_id', entrepriseId)
-            .eq('statut', 'actif');
+            .eq('statut', 'actif')
+            .order('created_at', { ascending: false })
+            .limit(10);
         
         if (contratsError) {
             console.error('Erreur lors du comptage des contrats actifs:', contratsError);
@@ -41,10 +51,18 @@ router.get('/dashboard', async (req, res) => {
         // Contrats à renouveler (dans les 7 prochains jours)
         const aujourdhui = moment().format('YYYY-MM-DD');
         const dateLimite = moment().add(7, 'days').format('YYYY-MM-DD');
-        
-        const { count: renouvellementsCount, error: renouvellementsError } = await db.supabase
+
+        const { data: renouvellementsData, count: renouvellementsCount, error: renouvellementsError } = await db.supabase
             .from('contrats')
-            .select('*', { count: 'exact', head: true })
+            .select(`
+                *,
+                clients!contrats_client_id_fkey (
+                    id,
+                    nom,
+                    prenom,
+                    telephone
+                )
+            `)
             .eq('entreprise_id', entrepriseId)
             .eq('statut', 'actif')
             .gte('date_fin', aujourdhui)
@@ -58,10 +76,18 @@ router.get('/dashboard', async (req, res) => {
         // Contrats expirés ce mois
         const debutMois = moment().startOf('month').format('YYYY-MM-DD');
         const finMois = moment().endOf('month').format('YYYY-MM-DD');
-        
-        const { count: expiresCount, error: expiresError } = await db.supabase
+
+        const { data: expiresData, count: expiresCount, error: expiresError } = await db.supabase
             .from('contrats')
-            .select('*', { count: 'exact', head: true })
+            .select(`
+                *,
+                clients!contrats_client_id_fkey (
+                    id,
+                    nom,
+                    prenom,
+                    telephone
+                )
+            `)
             .eq('entreprise_id', entrepriseId)
             .eq('statut', 'actif')
             .gte('date_fin', debutMois)
@@ -75,8 +101,11 @@ router.get('/dashboard', async (req, res) => {
         res.json({
             clients_actifs: clientsActifsCount || 0,
             contrats_actifs: contratsActifsCount || 0,
+            contrats_actifs_data: contratsActifsData || [],
             renouvellements_a_venir: renouvellementsCount || 0,
-            expires_ce_mois: expiresCount || 0
+            contrats_renouvellement: renouvellementsData || [],
+            expires_ce_mois: expiresCount || 0,
+            contrats_expires_data: expiresData || []
         });
     } catch (error) {
         console.error('Erreur lors de la récupération des statistiques:', error);

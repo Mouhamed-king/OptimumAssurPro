@@ -499,6 +499,9 @@ async function loadDashboard() {
         // Charger les statistiques depuis Supabase
         const stats = await window.api.stats.getDashboard();
         console.log('Statistiques reçues:', stats);
+
+        // Stocker les stats globalement pour les fonctions de détails
+        window.lastDashboardStats = stats;
         
         // Mettre à jour les cartes de statistiques
         const statsCards = document.querySelectorAll('.stat-card');
@@ -545,6 +548,17 @@ async function loadDashboard() {
         const alertCard = document.getElementById('alertCard');
         if (alertCard) {
             if (stats.renouvellements_a_venir > 0) {
+                const contratsHtml = stats.contrats_renouvellement.map(contrat => {
+                    const clientNom = `${contrat.clients?.nom || ''} ${contrat.clients?.prenom || ''}`.trim();
+                    const dateFin = formatDate(contrat.date_fin);
+                    return `
+                        <div class="renewal-client-card" onclick="showClientDetails(${contrat.clients?.id || contrat.client_id})" style="cursor: pointer; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; margin-bottom: 0.5rem; background: #f9fafb; transition: background-color 0.2s;">
+                            <div style="font-weight: 500; color: #1f2937;">${clientNom || 'Client inconnu'}</div>
+                            <div style="font-size: 0.875rem; color: #6b7280;">Échéance: ${dateFin}</div>
+                        </div>
+                    `;
+                }).join('');
+
                 alertCard.innerHTML = `
                     <div class="alert-icon">
                         <i class="fas fa-exclamation-circle"></i>
@@ -552,8 +566,11 @@ async function loadDashboard() {
                     <div class="alert-content">
                         <h4>Renouvellement à venir</h4>
                         <p>${stats.renouvellements_a_venir} contrat${stats.renouvellements_a_venir > 1 ? 's' : ''} ${stats.renouvellements_a_venir > 1 ? 'arrivent' : 'arrive'} à échéance dans les 7 prochains jours</p>
+                        <div class="renewal-clients-list" style="margin-top: 1rem; max-height: 200px; overflow-y: auto;">
+                            ${contratsHtml}
+                        </div>
                     </div>
-                    <button class="btn-primary" onclick="goToRapportsWithRenewals()">Voir détails</button>
+                    <button class="btn-primary" onclick="goToRapportsWithRenewals()">Voir tous les détails</button>
                 `;
             } else {
                 alertCard.innerHTML = `
@@ -764,6 +781,87 @@ function editClient(id) {
     if (typeof window.openEditClientModal === 'function') {
         window.openEditClientModal(id);
     }
+}
+
+function showClientDetails(clientId) {
+    // Utiliser la fonction viewClient de modals.js pour afficher les détails du client
+    if (typeof window.viewClient === 'function') {
+        window.viewClient(clientId);
+    } else {
+        console.error('Fonction viewClient non disponible');
+    }
+}
+
+function showActiveContractsDetails() {
+    const modal = document.getElementById('activeContractsModal');
+    const content = document.getElementById('activeContractsContent');
+
+    // Récupérer les données des contrats actifs depuis le cache ou refaire l'appel
+    loadDashboard().then(() => {
+        // Les données devraient être disponibles dans la variable globale ou via un nouvel appel
+        // Pour l'instant, on simule avec les données du dashboard récent
+        if (window.lastDashboardStats && window.lastDashboardStats.contrats_actifs_data) {
+            const contrats = window.lastDashboardStats.contrats_actifs_data;
+            if (contrats.length === 0) {
+                content.innerHTML = '<p>Aucun contrat actif trouvé</p>';
+            } else {
+                const contratsHtml = contrats.map(contrat => {
+                    const clientNom = `${contrat.clients?.nom || ''} ${contrat.clients?.prenom || ''}`.trim();
+                    const dateFin = formatDate(contrat.date_fin);
+                    return `
+                        <div class="contract-item" onclick="showClientDetails(${contrat.clients?.id || contrat.client_id})" style="cursor: pointer; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; margin-bottom: 0.5rem; background: #f9fafb; transition: background-color 0.2s;">
+                            <div style="font-weight: 500; color: #1f2937;">${clientNom || 'Client inconnu'}</div>
+                            <div style="font-size: 0.875rem; color: #6b7280;">Contrat: ${contrat.numero_contrat || contrat.numero_police || 'N/A'} - Expire: ${dateFin}</div>
+                        </div>
+                    `;
+                }).join('');
+                content.innerHTML = `<div style="max-height: 400px; overflow-y: auto;">${contratsHtml}</div>`;
+            }
+        } else {
+            content.innerHTML = '<p>Erreur lors du chargement des données</p>';
+        }
+    });
+
+    modal.classList.add('show');
+}
+
+function closeActiveContractsModal() {
+    document.getElementById('activeContractsModal').classList.remove('show');
+}
+
+function showExpiringContractsDetails() {
+    const modal = document.getElementById('expiringContractsModal');
+    const content = document.getElementById('expiringContractsContent');
+
+    // Récupérer les données des contrats expirant depuis le cache ou refaire l'appel
+    loadDashboard().then(() => {
+        if (window.lastDashboardStats && window.lastDashboardStats.contrats_expires_data) {
+            const contrats = window.lastDashboardStats.contrats_expires_data;
+            if (contrats.length === 0) {
+                content.innerHTML = '<p>Aucun contrat n\'expire ce mois</p>';
+            } else {
+                const contratsHtml = contrats.map(contrat => {
+                    const clientNom = `${contrat.clients?.nom || ''} ${contrat.clients?.prenom || ''}`.trim();
+                    const dateFin = formatDate(contrat.date_fin);
+                    return `
+                        <div class="contract-item" onclick="showClientDetails(${contrat.clients?.id || contrat.client_id})" style="cursor: pointer; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; margin-bottom: 0.5rem; background: #f9fafb; transition: background-color 0.2s;">
+                            <div style="font-weight: 500; color: #1f2937;">${clientNom || 'Client inconnu'}</div>
+                            <div style="font-size: 0.875rem; color: #6b7280;">Contrat: ${contrat.numero_contrat || contrat.numero_police || 'N/A'} - Expire: ${dateFin}</div>
+                        </div>
+                    `;
+                }).join('');
+                content.innerHTML = `<div style="max-height: 400px; overflow-y: auto;">${contratsHtml}</div>`;
+            }
+        } else {
+            content.innerHTML = '<p>Erreur lors du chargement des données</p>';
+        }
+    });
+
+    modal.classList.add('show');
+}
+
+function closeExpiringContractsModal() {
+    document.getElementById('expiringContractsModal').classList.remove('show');
 }
 
 // ============================================

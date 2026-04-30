@@ -101,7 +101,7 @@
                         <p>Clients actifs</p>
                     </div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card" id="activeContractsCard">
                     <div class="stat-icon green">
                         <i class="fas fa-file-contract"></i>
                     </div>
@@ -109,6 +109,7 @@
                         <h3>0</h3>
                         <p>Contrats actifs</p>
                     </div>
+                    <button class="btn-secondary" onclick="showActiveContractsDetails()" style="margin-top: 0.5rem; font-size: 0.8rem; padding: 0.25rem 0.5rem;">Voir détails</button>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon orange">
@@ -119,7 +120,7 @@
                         <p>Renouvellements à venir</p>
                     </div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card" id="expiringContractsCard">
                     <div class="stat-icon purple">
                         <i class="fas fa-calendar-check"></i>
                     </div>
@@ -127,6 +128,7 @@
                         <h3>0</h3>
                         <p>Expirés ce mois</p>
                     </div>
+                    <button class="btn-secondary" onclick="showExpiringContractsDetails()" style="margin-top: 0.5rem; font-size: 0.8rem; padding: 0.25rem 0.5rem;">Voir détails</button>
                 </div>
             </div>
 
@@ -773,9 +775,49 @@
     <div id="viewContractModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Détails du contrat</h2>
+                <h2 id="viewContractTitle">Détails du contrat</h2>
                 <button class="modal-close" onclick="closeViewContractModal()">&times;</button>
             </div>
+            <div id="viewContractContent" class="modal-body">
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeViewContractModal()">Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Contrats Actifs -->
+    <div id="activeContractsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Contrats actifs</h2>
+                <button class="modal-close" onclick="closeActiveContractsModal()">&times;</button>
+            </div>
+            <div id="activeContractsContent" class="modal-body">
+                <p>Chargement...</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeActiveContractsModal()">Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Contrats Expirant -->
+    <div id="expiringContractsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Contrats expirant ce mois</h2>
+                <button class="modal-close" onclick="closeExpiringContractsModal()">&times;</button>
+            </div>
+            <div id="expiringContractsContent" class="modal-body">
+                <p>Chargement...</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeExpiringContractsModal()">Fermer</button>
+            </div>
+        </div>
+    </div>
             <div id="viewContractContent" class="modal-body">
                 <!-- Contenu chargé dynamiquement -->
             </div>

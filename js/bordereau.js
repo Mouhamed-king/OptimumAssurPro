@@ -2,6 +2,10 @@
 // GESTION DU BORDEREAU DYNAMIQUE
 // ============================================
 
+// Variable globale pour la pagination du bordereau
+let bordereauCurrentPage = 1;
+const bordereauClientsPerPage = 25;
+
 // Mettre à jour le bordereau en temps réel
 function updateBordereau() {
     const nom = document.getElementById('clientNom')?.value || '';
@@ -249,15 +253,12 @@ function updateBordereauTotals() {
                 if (cells[7]) cells[7].textContent = formatNumber(totalNetAVerser);
             } catch (error) {
                 console.error('Erreur lors de la mise à jour des totaux:', error);
-                console.error('Cells:', cells, 'Length:', cells ? cells.length : 0);
             }
-        } else {
-            console.warn('La ligne de totaux n\'a pas le bon nombre de cellules:', cells ? cells.length : 0);
         }
     }
 }
 
-// Charger tous les contrats dans le bordereau
+// Charger tous les contrats dans le bordereau avec pagination
 async function loadBordereau() {
     try {
         // Vérifier que l'API est chargée
@@ -275,8 +276,23 @@ async function loadBordereau() {
             categorieDisplay.textContent = categorie;
         }
         
-        const data = await window.api.contracts.getAll();
-        const contrats = (data.contrats || []).filter(contrat => {
+        // Récupérer les dates de filtre
+        const dateDebutInput = document.getElementById('bordereauDateDebut');
+        const dateFinInput = document.getElementById('bordereauDateFin');
+        const dateDebut = dateDebutInput ? dateDebutInput.value : '';
+        const dateFin = dateFinInput ? dateFinInput.value : '';
+        
+        // Calculer l'offset pour la pagination
+        const offset = (bordereauCurrentPage - 1) * bordereauClientsPerPage;
+        
+        // Récupérer tous les contrats (on fera la pagination côté client pour le bordereau)
+        const data = await window.api.contracts.getAll({
+            dateDebut,
+            dateFin,
+            offset: 0,
+            limit: 1000
+        });
+        let contrats = (data.contrats || []).filter(contrat => {
             // Filtrer par catégorie si disponible
             return contrat.categorie_vehicule === categorie || (!contrat.categorie_vehicule && categorie === 'VP/CI');
         });
@@ -297,7 +313,10 @@ async function loadBordereau() {
             return;
         }
         
-        contrats.forEach((contrat, index) => {
+        // Appliquer la pagination
+        const paginatedContrats = contrats.slice(offset, offset + bordereauClientsPerPage);
+        
+        paginatedContrats.forEach((contrat, index) => {
             const primeNette = contrat.montant || 0;
             
             // Calculer toutes les valeurs à partir de la prime nette
@@ -325,10 +344,13 @@ async function loadBordereau() {
             // Récupérer le nom complet du client (nom seul, sans prénom)
             const nomComplet = contrat.client_nom || '';
             
+            // Le numéro réel dans la liste complète (pas juste dans la page)
+            const globalIndex = offset + index + 1;
+            
             const row = document.createElement('tr');
             row.style.borderBottom = '1px solid var(--color-border)';
             row.innerHTML = `
-                <td style="padding: 0.75rem; border: 1px solid #ddd;">${index + 1}</td>
+                <td style="padding: 0.75rem; border: 1px solid #ddd;">${globalIndex}</td>
                 <td style="padding: 0.75rem; border: 1px solid #ddd;">${contrat.numero_contrat || '-'}</td>
                 <td style="padding: 0.75rem; border: 1px solid #ddd;">${nomComplet}</td>
                 <td style="padding: 0.75rem; border: 1px solid #ddd;">${immatriculation}</td>
@@ -346,6 +368,9 @@ async function loadBordereau() {
         });
         
         updateBordereauTotals();
+        
+        // Mettre à jour la pagination du bordereau
+        updateBordereauPagination(contrats.length);
     } catch (error) {
         console.error('Erreur lors du chargement du bordereau:', error);
         if (typeof window.showToast === 'function') {
@@ -367,3 +392,46 @@ function exportBordereau() {
     printBordereau();
 }
 
+// Fonction de mise à jour de la pagination du bordereau
+function updateBordereauPagination(total) {
+    const totalPages = Math.ceil(total / bordereauClientsPerPage);
+    const pageInfo = document.getElementById('bordereauPageInfo');
+    const prevBtn = document.getElementById('bordereauPrevPage');
+    const nextBtn = document.getElementById('bordereauNextPage');
+    
+    if (pageInfo) {
+        pageInfo.textContent = `Page ${bordereauCurrentPage} sur ${totalPages}`;
+    }
+    
+    if (prevBtn) {
+        prevBtn.disabled = bordereauCurrentPage <= 1;
+    }
+    
+    if (nextBtn) {
+        nextBtn.disabled = bordereauCurrentPage >= totalPages || totalPages === 0;
+    }
+}
+
+// Gestionnaires d'événements pour la pagination du bordereau
+document.addEventListener('DOMContentLoaded', function() {
+    const prevBtn = document.getElementById('bordereauPrevPage');
+    const nextBtn = document.getElementById('bordereauNextPage');
+    
+    if (prevBtn) {
+        prevBtn.addEventListener('click', function() {
+            if (bordereauCurrentPage > 1) {
+                bordereauCurrentPage--;
+                loadBordereau();
+            }
+        });
+    }
+    
+    if (nextBtn) {
+        nextBtn.addEventListener('click', function() {
+            // On ne peut pas connaître le total exact sans recharger, donc on autorise le clic
+            // La désactivation sera gérée dans updateBordereauPagination
+            bordereauCurrentPage++;
+            loadBordereau();
+        });
+    }
+});

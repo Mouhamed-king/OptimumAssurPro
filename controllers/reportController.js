@@ -5,137 +5,187 @@
 const db = require('../database/connection');
 const moment = require('moment');
 
+function buildDateFilter(filter, dateDebut, dateFin) {
+    const today = moment();
+
+    if (dateDebut || dateFin) {
+        return {
+            gte: dateDebut || today.clone().startOf('year').format('YYYY-MM-DD'),
+            lte: dateFin || today.clone().endOf('year').format('YYYY-MM-DD')
+        };
+    }
+
+    if (filter === 'month') {
+        return {
+            gte: today.clone().startOf('month').format('YYYY-MM-DD'),
+            lte: today.clone().endOf('month').format('YYYY-MM-DD')
+        };
+    }
+
+    if (filter === 'quarter') {
+        return {
+            gte: today.clone().startOf('quarter').format('YYYY-MM-DD'),
+            lte: today.clone().endOf('quarter').format('YYYY-MM-DD')
+        };
+    }
+
+    if (filter === 'year') {
+        return {
+            gte: today.clone().startOf('year').format('YYYY-MM-DD'),
+            lte: today.clone().endOf('year').format('YYYY-MM-DD')
+        };
+    }
+
+    return {};
+}
+
+function applyContractFilters(query, entrepriseId, dateFilter, categorie) {
+    let nextQuery = query.eq('entreprise_id', entrepriseId);
+
+    if (dateFilter.gte) nextQuery = nextQuery.gte('date_debut', dateFilter.gte);
+    if (dateFilter.lte) nextQuery = nextQuery.lte('date_fin', dateFilter.lte);
+    if (categorie) nextQuery = nextQuery.eq('categorie_vehicule', categorie);
+
+    return nextQuery;
+}
+
 const getSummary = async (req, res) => {
     try {
         const entrepriseId = req.entrepriseId;
-        const { filter } = req.query; // 'all', 'month', 'quarter', 'year'
+        const {
+            filter,
+            dateDebut,
+            dateFin,
+            categorie = '',
+            offset = 0,
+            limit = 25
+        } = req.query;
 
-        let dateFilter = {};
-        const today = moment();
+        const parsedOffset = Math.max(parseInt(offset, 10) || 0, 0);
+        const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 25, 1), 1000);
+        const dateFilter = buildDateFilter(filter, dateDebut, dateFin);
 
-        if (filter === 'month') {
-            dateFilter = {
-                gte: today.startOf('month').format('YYYY-MM-DD'),
-                lte: today.endOf('month').format('YYYY-MM-DD')
-            };
-        } else if (filter === 'quarter') {
-            dateFilter = {
-                gte: today.startOf('quarter').format('YYYY-MM-DD'),
-                lte: today.endOf('quarter').format('YYYY-MM-DD')
-            };
-        } else if (filter === 'year') {
-            dateFilter = {
-                gte: today.startOf('year').format('YYYY-MM-DD'),
-                lte: today.endOf('year').format('YYYY-MM-DD')
-            };
-        }
-
-        // Total Revenue (sum of montant from active contracts)
-        let revenueQuery = db.supabase
-            .from('contrats')
-            .select('montant')
-            .eq('entreprise_id', entrepriseId)
-            .eq('statut', 'actif');
-
-        if (dateFilter.gte) revenueQuery = revenueQuery.gte('date_debut', dateFilter.gte);
-        if (dateFilter.lte) revenueQuery = revenueQuery.lte('date_fin', dateFilter.lte);
-
-        const { data: revenueData, error: revenueError } = await revenueQuery;
-        if (revenueError) throw revenueError;
-        const totalRevenue = revenueData.reduce((sum, contract) => sum + (parseFloat(contract.montant) || 0), 0);
-
-        // Total Contracts
-        let contractsQuery = db.supabase
-            .from('contrats')
-            .select('id', { count: 'exact', head: true })
-            .eq('entreprise_id', entrepriseId);
-
-        if (dateFilter.gte) contractsQuery = contractsQuery.gte('created_at', dateFilter.gte);
-        if (dateFilter.lte) contractsQuery = contractsQuery.lte('created_at', dateFilter.lte);
-
-        const { count: totalContracts, error: totalContractsError } = await contractsQuery;
-        if (totalContractsError) throw totalContractsError;
-
-        // Total Clients
-        let clientsQuery = db.supabase
-            .from('clients')
-            .select('id', { count: 'exact', head: true })
-            .eq('entreprise_id', entrepriseId);
-
-        if (dateFilter.gte) clientsQuery = clientsQuery.gte('created_at', dateFilter.gte);
-        if (dateFilter.lte) clientsQuery = clientsQuery.lte('created_at', dateFilter.lte);
-
-        const { count: totalClients, error: totalClientsError } = await clientsQuery;
-        if (totalClientsError) throw totalClientsError;
-
-        // Renewal Rate (simplified: count of renewed contracts / count of expired contracts)
-        const renewalRate = 0; // Placeholder - à implémenter si nécessaire
-
-        // Contracts Evolution (e.g., monthly new contracts)
-        const contractsEvolution = [];
-        for (let i = 5; i >= 0; i--) { // Last 6 months
-            const month = moment().subtract(i, 'months');
-            const { count: newContractsCount } = await db.supabase
-                .from('contrats')
-                .select('id', { count: 'exact', head: true })
-                .eq('entreprise_id', entrepriseId)
-                .gte('created_at', month.startOf('month').format('YYYY-MM-DD'))
-                .lte('created_at', month.endOf('month').format('YYYY-MM-DD'));
-            contractsEvolution.push({ month: month.format('MMM YYYY'), count: newContractsCount || 0 });
-        }
-
-        // Contract Type Distribution
-        const { data: typeDistributionData, error: typeDistributionError } = await db.supabase
-            .from('contrats')
-            .select('type_contrat')
-            .eq('entreprise_id', entrepriseId)
-            .not('type_contrat', 'is', null);
-
-        if (typeDistributionError) throw typeDistributionError;
-        
-        // Compter les occurrences de chaque type
-        const typeCounts = {};
-        typeDistributionData.forEach(contract => {
-            const type = contract.type_contrat || 'Autre';
-            typeCounts[type] = (typeCounts[type] || 0) + 1;
-        });
-        
-        const contractTypeDistribution = Object.entries(typeCounts).map(([type, count]) => ({
-            type,
-            count
-        }));
-
-        // Detailed Contracts (for the table)
-        let detailedContractsQuery = db.supabase
-            .from('contrats')
-            .select(`
+        const baseContractsQuery = applyContractFilters(
+            db.supabase.from('contrats').select(`
+                id,
+                client_id,
                 numero_contrat,
                 numero_police,
                 montant,
+                montant_paye,
+                montant_restant,
                 date_debut,
                 date_fin,
                 statut,
                 type_contrat,
+                categorie_vehicule,
+                created_at,
                 clients (nom, prenom),
                 vehicules (immatriculation, marque, modele)
-            `)
-            .eq('entreprise_id', entrepriseId)
-            .order('date_debut', { ascending: false });
+            `),
+            entrepriseId,
+            dateFilter,
+            categorie
+        );
 
-        if (dateFilter.gte) detailedContractsQuery = detailedContractsQuery.gte('date_debut', dateFilter.gte);
-        if (dateFilter.lte) detailedContractsQuery = detailedContractsQuery.lte('date_fin', dateFilter.lte);
+        const { data: contractsData, error: contractsError } = await baseContractsQuery;
+        if (contractsError) throw contractsError;
 
-        const { data: detailedContracts, error: detailedContractsError } = await detailedContractsQuery;
+        const allContracts = contractsData || [];
+        const totalRevenue = allContracts.reduce((sum, contract) => sum + (parseFloat(contract.montant) || 0), 0);
+        const totalPaid = allContracts.reduce((sum, contract) => sum + (parseFloat(contract.montant_paye) || 0), 0);
+        const totalRemaining = allContracts.reduce((sum, contract) => sum + (parseFloat(contract.montant_restant) || 0), 0);
+        const totalProfit = totalPaid - totalRevenue;
+        const totalContracts = allContracts.length;
+        const totalClients = new Set(allContracts.map(contract => contract.client_id).filter(Boolean)).size;
+
+        const expiredContracts = allContracts.filter(contract => contract.statut === 'expire').length;
+        const renewedContracts = allContracts.filter(contract => contract.statut === 'renouvele').length;
+        const renewalRate = expiredContracts > 0
+            ? Math.round((renewedContracts / expiredContracts) * 100)
+            : 0;
+
+        const contractsEvolutionMap = {};
+        const contractTypeMap = {};
+        const profitEvolutionMap = {};
+
+        allContracts.forEach(contract => {
+            const date = moment(contract.date_debut || contract.created_at);
+            if (!date.isValid()) {
+                return;
+            }
+
+            const monthLabel = date.locale('fr').format('MMM YYYY');
+            contractsEvolutionMap[monthLabel] = (contractsEvolutionMap[monthLabel] || 0) + 1;
+
+            const contractType = contract.type_contrat || 'Autre';
+            contractTypeMap[contractType] = (contractTypeMap[contractType] || 0) + 1;
+
+            const contractProfit = (parseFloat(contract.montant_paye) || 0) - (parseFloat(contract.montant) || 0);
+            profitEvolutionMap[monthLabel] = (profitEvolutionMap[monthLabel] || 0) + contractProfit;
+        });
+
+        const sortMonthEntries = entries => entries.sort((a, b) => {
+            const left = moment(a[0], 'MMM YYYY', 'fr');
+            const right = moment(b[0], 'MMM YYYY', 'fr');
+            return left.valueOf() - right.valueOf();
+        });
+
+        const contractsEvolution = sortMonthEntries(Object.entries(contractsEvolutionMap)).map(([month, count]) => ({
+            month,
+            count
+        }));
+
+        const profitEvolution = sortMonthEntries(Object.entries(profitEvolutionMap)).map(([month, amount]) => ({
+            month,
+            amount
+        }));
+
+        const contractTypeDistribution = Object.entries(contractTypeMap).map(([type, count]) => ({
+            type,
+            count
+        }));
+
+        let detailedContractsQuery = applyContractFilters(
+            db.supabase.from('contrats').select(`
+                numero_contrat,
+                numero_police,
+                montant,
+                montant_paye,
+                montant_restant,
+                date_debut,
+                date_fin,
+                statut,
+                type_contrat,
+                categorie_vehicule,
+                clients (nom, prenom),
+                vehicules (immatriculation, marque, modele)
+            `, { count: 'exact' }),
+            entrepriseId,
+            dateFilter,
+            categorie
+        ).order('date_debut', { ascending: false });
+
+        detailedContractsQuery = detailedContractsQuery.range(parsedOffset, parsedOffset + parsedLimit - 1);
+
+        const {
+            data: detailedContracts,
+            error: detailedContractsError,
+            count: detailedContractsCount
+        } = await detailedContractsQuery;
         if (detailedContractsError) throw detailedContractsError;
 
         const formattedDetailedContracts = detailedContracts.map(contract => ({
             numero_contrat: contract.numero_contrat,
             numero_police: contract.numero_police,
             montant: contract.montant,
+            montant_paye: contract.montant_paye,
+            montant_restant: contract.montant_restant,
             date_debut: contract.date_debut,
             date_fin: contract.date_fin,
             statut: contract.statut,
             type_contrat: contract.type_contrat,
+            categorie_vehicule: contract.categorie_vehicule,
             client_nom: contract.clients?.nom || '',
             client_prenom: contract.clients?.prenom || '',
             vehicule_immatriculation: contract.vehicules?.immatriculation || '',
@@ -145,12 +195,19 @@ const getSummary = async (req, res) => {
 
         res.json({
             totalRevenue,
+            totalPaid,
+            totalRemaining,
+            totalProfit,
             totalContracts: totalContracts || 0,
             totalClients: totalClients || 0,
             renewalRate,
             contractsEvolution,
+            profitEvolution,
             contractTypeDistribution,
-            detailedContracts: formattedDetailedContracts
+            detailedContracts: formattedDetailedContracts,
+            detailedContractsTotal: detailedContractsCount || 0,
+            offset: parsedOffset,
+            limit: parsedLimit
         });
 
     } catch (error) {
@@ -162,4 +219,3 @@ const getSummary = async (req, res) => {
 module.exports = {
     getSummary
 };
-

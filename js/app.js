@@ -2,6 +2,16 @@
 // NAVIGATION ET INTERACTIVITÉ
 // ============================================
 
+function appDebugEnabled() {
+    return localStorage.getItem('debug') === 'true';
+}
+
+function appDebugLog(...args) {
+    if (appDebugEnabled()) {
+        console.log(...args);
+    }
+}
+
 // Vérifier l'authentification au chargement
 document.addEventListener('DOMContentLoaded', function() {
     // Vérifier si l'utilisateur est connecté
@@ -48,19 +58,11 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
     
-    console.log('✅ Token trouvé, chargement des données...');
-    const tokenSource = localStorage.getItem('token') ? 'localStorage' : 'sessionStorage';
-    console.log('   Token source:', tokenSource);
-    console.log('   Token (premiers caractères):', token ? token.substring(0, 30) + '...' : 'null');
-    
     // Attendre un peu pour s'assurer que l'API est chargée
     setTimeout(() => {
-        console.log('⏳ Démarrage du chargement des données après délai...');
         // Charger les données de l'entreprise
         loadEntrepriseInfo().catch(error => {
-            // L'erreur est déjà gérée dans loadEntrepriseInfo()
-            console.error('❌ Erreur capturée par le catch externe:', error.message);
-            console.error('   Ne pas déconnecter automatiquement - laisser loadEntrepriseInfo gérer');
+            console.error('Erreur lors du chargement des informations entreprise:', error.message);
         });
     }, 500); // Augmenter le délai pour être sûr que l'API est chargée
     
@@ -377,36 +379,27 @@ document.head.appendChild(style);
 // ============================================
 
 async function loadEntrepriseInfo() {
-    console.log('📥 Chargement des informations de l\'entreprise...');
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    console.log('   Token présent:', !!token);
-    console.log('   Token (premiers caractères):', token ? token.substring(0, 20) + '...' : 'null');
-    console.log('   API disponible:', !!window.api);
-    console.log('   API auth disponible:', !!window.api?.auth);
     
     try {
         if (!window.api || !window.api.auth) {
-            console.error('❌ API non chargée, attente de 500ms...');
+            appDebugLog('API auth not ready yet, waiting 500ms');
             await new Promise(resolve => setTimeout(resolve, 500));
             if (!window.api || !window.api.auth) {
                 throw new Error('API non chargée après attente');
             }
         }
         
-        console.log('📡 Appel API getMe...');
         const data = await window.api.auth.getMe();
-        console.log('✅ Réponse API reçue:', data);
         
         const entreprise = data.entreprise;
         
         if (!entreprise) {
-            console.warn('⚠️ Aucune entreprise dans la réponse API');
             // Ne pas déconnecter, utiliser les données du localStorage
             const storedEntreprise = localStorage.getItem('entreprise') || sessionStorage.getItem('entreprise');
             if (storedEntreprise) {
                 try {
                     const parsed = JSON.parse(storedEntreprise);
-                    console.log('📦 Utilisation des données stockées:', parsed);
                     const userName = document.querySelector('.user-name');
                     if (userName) {
                         userName.textContent = parsed.nom || 'Entreprise';
@@ -418,25 +411,19 @@ async function loadEntrepriseInfo() {
             }
         }
         
-        console.log('✅ Informations de l\'entreprise chargées:', entreprise?.nom);
-        
         // Mettre à jour le nom de l'entreprise dans le header
         const userName = document.querySelector('.user-name');
         if (userName) {
             userName.textContent = entreprise.nom || 'Entreprise';
         }
     } catch (error) {
-        console.error('❌ Erreur lors du chargement des informations de l\'entreprise:', error);
-        console.error('   Type:', typeof error);
-        console.error('   Message:', error.message);
-        console.error('   Stack:', error.stack);
+        console.error('Erreur lors du chargement des informations de l\'entreprise:', error);
         
         // Ne pas déconnecter immédiatement, essayer d'utiliser les données stockées
         const storedEntreprise = localStorage.getItem('entreprise') || sessionStorage.getItem('entreprise');
         if (storedEntreprise) {
             try {
                 const parsed = JSON.parse(storedEntreprise);
-                console.log('📦 Utilisation des données stockées en cas d\'erreur:', parsed);
                 const userName = document.querySelector('.user-name');
                 if (userName) {
                     userName.textContent = parsed.nom || 'Entreprise';
@@ -458,20 +445,15 @@ async function loadEntrepriseInfo() {
         
         if (isAuthError) {
             // Vérifier si c'est vraiment une erreur d'authentification ou juste un problème temporaire
-            console.warn('⚠️ Erreur d\'authentification détectée');
-            console.warn('   Message:', error.message);
-            console.warn('   Token présent:', !!token);
-            
-            // Ne déconnecter QUE si on est sûr que c'est une erreur d'authentification
-            // ET seulement après plusieurs tentatives échouées
-            // Pour l'instant, ne pas déconnecter automatiquement - laisser l'utilisateur essayer
-            console.warn('⚠️ Erreur d\'authentification, mais session maintenue pour permettre une nouvelle tentative');
+            appDebugLog('Authentication-related error while loading entreprise info', {
+                message: error.message,
+                hasToken: !!token
+            });
             // Ne pas déconnecter - laisser l'utilisateur voir l'erreur et réessayer
             return;
         }
         
-        // Pour les autres erreurs, ne pas déconnecter
-        console.warn('⚠️ Erreur non-critique, session maintenue');
+        appDebugLog('Non-critical error while loading entreprise info, session kept');
     }
 }
 
@@ -479,22 +461,487 @@ async function loadEntrepriseInfo() {
 // CHARGEMENT DU DASHBOARD
 // ============================================
 
+const dashboardCharts = {
+    renewals: null,
+    expired: null,
+    payments: null,
+    profit: null
+};
+
+const dashboardState = {
+    clients: [],
+    contracts: [],
+    selectedStat: 'clients_actifs'
+};
+
+function dashboardMonthBuckets(monthCount = 6) {
+    const buckets = [];
+    const start = new Date();
+    start.setDate(1);
+    start.setHours(0, 0, 0, 0);
+    start.setMonth(start.getMonth() - (monthCount - 1));
+
+    for (let index = 0; index < monthCount; index++) {
+        const current = new Date(start);
+        current.setMonth(start.getMonth() + index);
+        const key = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`;
+        const label = current.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' });
+        buckets.push({ key, label });
+    }
+
+    return buckets;
+}
+
+function getDashboardMonthKey(dateValue) {
+    if (!dateValue) return null;
+    const date = new Date(dateValue);
+    if (Number.isNaN(date.getTime())) return null;
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function formatDashboardMoney(value) {
+    return `${new Intl.NumberFormat('fr-FR', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    }).format(value || 0)} FCFA`;
+}
+
+function renderDashboardEmptyState(container, message) {
+    if (!container) return;
+    container.innerHTML = `<p class="dashboard-empty-state">${message}</p>`;
+}
+
+function updateDashboardStatCards(stats) {
+    const cardValues = {
+        clients_actifs: stats.clients_actifs ?? 0,
+        contrats_actifs: stats.contrats_actifs ?? 0,
+        renouvellements_a_venir: stats.renouvellements_a_venir ?? 0,
+        expires_ce_mois: stats.expires_ce_mois ?? 0
+    };
+
+    document.querySelectorAll('#dashboardStatsGrid .dashboard-stat-card').forEach(card => {
+        const type = card.getAttribute('data-stat-type');
+        const valueElement = card.querySelector('h3');
+        if (valueElement) {
+            valueElement.textContent = cardValues[type] ?? 0;
+        }
+        card.classList.toggle('active', type === dashboardState.selectedStat);
+    });
+}
+
+function getDashboardStatEntries(type) {
+    const contracts = dashboardState.contracts || [];
+    const clients = dashboardState.clients || [];
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    if (type === 'clients_actifs') {
+        return clients
+            .filter(client => client.client_statut === 'actif')
+            .map(client => ({
+                title: client.nom || 'Client',
+                subtitle: client.telephone || 'Telephone non renseigne',
+                meta: client.dernier_contrat ? `Echeance ${formatDate(client.dernier_contrat)}` : 'Aucune echeance',
+                badge: 'Actif',
+                badgeClass: 'badge-success'
+            }));
+    }
+
+    if (type === 'contrats_actifs') {
+        return contracts
+            .filter(contract => contract.statut === 'actif')
+            .map(contract => ({
+                title: contract.client_nom || 'Client',
+                subtitle: `${contract.numero_contrat || 'Contrat sans numero'}${contract.immatriculation ? ` · ${contract.immatriculation}` : ''}`,
+                meta: contract.date_fin ? `Echeance ${formatDate(contract.date_fin)}` : 'Date indisponible',
+                badge: 'Actif',
+                badgeClass: 'badge-success'
+            }));
+    }
+
+    if (type === 'renouvellements_a_venir') {
+        return contracts
+            .filter(contract => contract.alerte_renouvellement)
+            .map(contract => {
+                const joursRestants = contract.jours_restants || 0;
+                return {
+                    title: contract.client_nom || 'Client',
+                    subtitle: `${contract.numero_contrat || 'Contrat'}${contract.immatriculation ? ` · ${contract.immatriculation}` : ''}`,
+                    meta: `Renouvellement dans ${joursRestants} jour${joursRestants > 1 ? 's' : ''}`,
+                    badge: joursRestants <= 3 ? 'Urgent' : 'A suivre',
+                    badgeClass: joursRestants <= 3 ? 'badge-warning' : 'badge-info'
+                };
+            });
+    }
+
+    if (type === 'expires_ce_mois') {
+        return contracts
+            .filter(contract => {
+                if (contract.statut !== 'expire' || !contract.date_fin) return false;
+                const endDate = new Date(contract.date_fin);
+                return endDate.getMonth() === currentMonth && endDate.getFullYear() === currentYear;
+            })
+            .map(contract => ({
+                title: contract.client_nom || 'Client',
+                subtitle: `${contract.numero_contrat || 'Contrat'}${contract.immatriculation ? ` · ${contract.immatriculation}` : ''}`,
+                meta: contract.date_fin ? `Expire le ${formatDate(contract.date_fin)}` : 'Expire ce mois',
+                badge: 'Expire',
+                badgeClass: 'badge-danger'
+            }));
+    }
+
+    return [];
+}
+
+function renderDashboardStatDetails(type) {
+    const titleMap = {
+        clients_actifs: 'Clients actifs',
+        contrats_actifs: 'Contrats actifs',
+        renouvellements_a_venir: 'Renouvellements a venir',
+        expires_ce_mois: 'Assurances expirees ce mois'
+    };
+
+    const titleElement = document.getElementById('dashboardDetailTitle');
+    const container = document.getElementById('dashboardStatDetails');
+    if (titleElement) {
+        titleElement.textContent = titleMap[type] || 'Details';
+    }
+
+    const entries = getDashboardStatEntries(type).slice(0, 8);
+    if (!entries.length) {
+        renderDashboardEmptyState(container, 'Aucun client correspondant pour le moment.');
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="dashboard-detail-list">
+            ${entries.map(entry => `
+                <div class="dashboard-detail-item">
+                    <div class="dashboard-detail-main">
+                        <h4>${entry.title}</h4>
+                        <p>${entry.subtitle}</p>
+                    </div>
+                    <div style="text-align: right;">
+                        <span class="badge ${entry.badgeClass}">${entry.badge}</span>
+                        <p class="dashboard-detail-meta">${entry.meta}</p>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function bindDashboardStatCards() {
+    document.querySelectorAll('#dashboardStatsGrid .dashboard-stat-card').forEach(card => {
+        if (card.dataset.bound === 'true') {
+            return;
+        }
+
+        card.dataset.bound = 'true';
+        card.addEventListener('click', function() {
+            dashboardState.selectedStat = this.getAttribute('data-stat-type') || 'clients_actifs';
+            document.querySelectorAll('#dashboardStatsGrid .dashboard-stat-card').forEach(item => {
+                item.classList.toggle('active', item === this);
+            });
+            renderDashboardStatDetails(dashboardState.selectedStat);
+        });
+    });
+}
+
+function renderRecentActivity(clients, contracts) {
+    const container = document.getElementById('recentActivity');
+    if (!container) return;
+
+    const activities = [];
+
+    clients.forEach(client => {
+        if (client.created_at) {
+            activities.push({
+                type: 'client',
+                title: 'Nouveau client ajoute',
+                description: client.nom || 'Client',
+                date: client.created_at,
+                icon: 'fa-user-plus'
+            });
+        }
+    });
+
+    contracts.forEach(contract => {
+        if (contract.created_at) {
+            activities.push({
+                type: 'contract',
+                title: 'Nouveau contrat cree',
+                description: `${contract.client_nom || 'Client'} · ${contract.numero_contrat || 'Sans numero'}`,
+                date: contract.created_at,
+                icon: 'fa-file-circle-plus'
+            });
+        }
+
+        const montantPaye = parseFloat(contract.montant_paye) || 0;
+        if (montantPaye > 0 && contract.updated_at) {
+            activities.push({
+                type: 'payment',
+                title: 'Paiement enregistre',
+                description: `${contract.client_nom || 'Client'} · ${formatDashboardMoney(montantPaye)}`,
+                date: contract.updated_at,
+                icon: 'fa-money-bill-wave'
+            });
+        }
+    });
+
+    activities.sort((left, right) => new Date(right.date) - new Date(left.date));
+    const recentActivities = activities.slice(0, 6);
+
+    if (!recentActivities.length) {
+        renderDashboardEmptyState(container, 'Aucune activite recente');
+        return;
+    }
+
+    container.innerHTML = recentActivities.map(activity => `
+        <div class="activity-item">
+            <div class="activity-icon">
+                <i class="fas ${activity.icon}"></i>
+            </div>
+            <div class="activity-content">
+                <h4>${activity.title}</h4>
+                <p>${activity.description} · ${formatTimeAgo(activity.date)}</p>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderContractsToRenew(contracts) {
+    const contractsContainer = document.getElementById('contractsToRenew');
+    if (!contractsContainer) return;
+
+    const contractsToRenew = contracts
+        .filter(contract => contract.alerte_renouvellement)
+        .sort((left, right) => (left.jours_restants || 0) - (right.jours_restants || 0))
+        .slice(0, 6);
+
+    if (!contractsToRenew.length) {
+        renderDashboardEmptyState(contractsContainer, 'Aucun contrat a renouveler');
+        return;
+    }
+
+    contractsContainer.innerHTML = contractsToRenew.map(contract => {
+        const joursRestants = contract.jours_restants || 0;
+        const badgeClass = joursRestants <= 3 ? 'badge-warning' : 'badge-info';
+        const badgeText = joursRestants <= 3 ? 'Urgent' : 'A suivre';
+        return `
+            <div class="contract-item">
+                <div class="contract-info">
+                    <h4>${contract.client_nom || 'Client'}</h4>
+                    <p>${contract.numero_contrat || 'Contrat'} · echeance ${formatDate(contract.date_fin)}</p>
+                </div>
+                <div style="text-align: right;">
+                    <span class="badge ${badgeClass}">${badgeText}</span>
+                    <p class="dashboard-detail-meta">${joursRestants} jour${joursRestants > 1 ? 's' : ''}</p>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderDashboardAlert(stats) {
+    const alertCard = document.getElementById('alertCard');
+    if (!alertCard) return;
+
+    if ((stats.renouvellements_a_venir ?? 0) > 0) {
+        alertCard.innerHTML = `
+            <div class="alert-icon">
+                <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <div class="alert-content">
+                <h4>Renouvellement a venir</h4>
+                <p>${stats.renouvellements_a_venir} contrat${stats.renouvellements_a_venir > 1 ? 's arrivent' : ' arrive'} a echeance dans les 7 prochains jours</p>
+            </div>
+            <button class="btn-primary" onclick="goToRapportsWithRenewals()">Voir details</button>
+        `;
+        return;
+    }
+
+    alertCard.innerHTML = `
+        <div class="alert-icon">
+            <i class="fas fa-check-circle"></i>
+        </div>
+        <div class="alert-content">
+            <h4>Tout est a jour</h4>
+            <p>Aucun renouvellement urgent a prevoir</p>
+        </div>
+    `;
+}
+
+function updateDashboardNotificationBadge(notifications) {
+    const badge = document.querySelector('.notifications .badge');
+    if (!badge) return;
+    badge.textContent = notifications.length;
+    badge.style.display = notifications.length > 0 ? 'flex' : 'none';
+}
+
+function buildDashboardMonthlySeries(contracts) {
+    const buckets = dashboardMonthBuckets(6);
+    const renewalsMap = Object.fromEntries(buckets.map(bucket => [bucket.key, 0]));
+    const expiredMap = Object.fromEntries(buckets.map(bucket => [bucket.key, 0]));
+    const paymentsMap = Object.fromEntries(buckets.map(bucket => [bucket.key, 0]));
+    const profitMap = Object.fromEntries(buckets.map(bucket => [bucket.key, 0]));
+
+    contracts.forEach(contract => {
+        const renewalKey = contract.statut === 'renouvele'
+            ? getDashboardMonthKey(contract.updated_at || contract.date_fin)
+            : null;
+        const expiredKey = contract.statut === 'expire'
+            ? getDashboardMonthKey(contract.date_fin || contract.updated_at)
+            : null;
+        const paymentKey = (parseFloat(contract.montant_paye) || 0) > 0
+            ? getDashboardMonthKey(contract.updated_at || contract.created_at || contract.date_debut)
+            : null;
+        const profitKey = getDashboardMonthKey(contract.date_debut || contract.created_at);
+
+        if (renewalKey && renewalKey in renewalsMap) {
+            renewalsMap[renewalKey] += 1;
+        }
+
+        if (expiredKey && expiredKey in expiredMap) {
+            expiredMap[expiredKey] += 1;
+        }
+
+        if (paymentKey && paymentKey in paymentsMap) {
+            paymentsMap[paymentKey] += parseFloat(contract.montant_paye) || 0;
+        }
+
+        if (profitKey && profitKey in profitMap) {
+            profitMap[profitKey] += (parseFloat(contract.montant_paye) || 0) - (parseFloat(contract.montant) || 0);
+        }
+    });
+
+    return {
+        labels: buckets.map(bucket => bucket.label),
+        renewals: buckets.map(bucket => renewalsMap[bucket.key]),
+        expired: buckets.map(bucket => expiredMap[bucket.key]),
+        payments: buckets.map(bucket => paymentsMap[bucket.key]),
+        profit: buckets.map(bucket => profitMap[bucket.key])
+    };
+}
+
+function renderDashboardChart(chartKey, canvasId, config) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || typeof Chart === 'undefined') {
+        return;
+    }
+
+    if (dashboardCharts[chartKey]) {
+        dashboardCharts[chartKey].destroy();
+    }
+
+    dashboardCharts[chartKey] = new Chart(canvas, config);
+}
+
+function renderDashboardCharts(contracts) {
+    const series = buildDashboardMonthlySeries(contracts);
+
+    renderDashboardChart('renewals', 'dashboardRenewalsChart', {
+        type: 'line',
+        data: {
+            labels: series.labels,
+            datasets: [{
+                label: 'Renouvellements',
+                data: series.renewals,
+                borderColor: '#F59E0B',
+                backgroundColor: 'rgba(245, 158, 11, 0.14)',
+                fill: true,
+                tension: 0.35
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+
+    renderDashboardChart('expired', 'dashboardExpiredChart', {
+        type: 'bar',
+        data: {
+            labels: series.labels,
+            datasets: [{
+                label: 'Expirees',
+                data: series.expired,
+                backgroundColor: 'rgba(139, 92, 246, 0.72)',
+                borderColor: '#8B5CF6',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+
+    renderDashboardChart('payments', 'dashboardPaymentsChart', {
+        type: 'line',
+        data: {
+            labels: series.labels,
+            datasets: [{
+                label: 'Paiements',
+                data: series.payments,
+                borderColor: '#10B981',
+                backgroundColor: 'rgba(16, 185, 129, 0.14)',
+                fill: true,
+                tension: 0.35
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    ticks: {
+                        callback: value => formatDashboardMoney(value)
+                    }
+                }
+            }
+        }
+    });
+
+    renderDashboardChart('profit', 'dashboardProfitChart', {
+        type: 'bar',
+        data: {
+            labels: series.labels,
+            datasets: [{
+                label: 'Benefice',
+                data: series.profit,
+                backgroundColor: series.profit.map(value => value >= 0 ? 'rgba(37, 99, 235, 0.72)' : 'rgba(239, 68, 68, 0.72)'),
+                borderColor: series.profit.map(value => value >= 0 ? '#2563EB' : '#EF4444'),
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    ticks: {
+                        callback: value => formatDashboardMoney(value)
+                    }
+                }
+            }
+        }
+    });
+}
+
 async function loadDashboard() {
     try {
-        console.log('Chargement du dashboard...');
-        
-        // Vérifier que le token existe avant de faire l'appel API
         const token = localStorage.getItem('token') || sessionStorage.getItem('token');
         if (!token) {
-            console.warn('Aucun token trouvé, redirection vers login...');
             window.location.href = '/login.html';
             return;
         }
         
-        // Vérifier que l'API est chargée
-        if (!window.api || !window.api.stats) {
+        if (!window.api || !window.api.stats || !window.api.clients || !window.api.contracts) {
             throw new Error('API non chargée');
         }
+<<<<<<< HEAD
         
         // Charger les statistiques depuis Supabase
         const stats = await window.api.stats.getDashboard();
@@ -643,6 +1090,28 @@ async function loadDashboard() {
                 }).join('');
             }
         }
+=======
+        const [stats, clientsData, contractsData, notificationsData] = await Promise.all([
+            window.api.stats.getDashboard(),
+            window.api.clients.getAll('', '', '', 0, 1000),
+            window.api.contracts.getAll({ offset: 0, limit: 1000 }),
+            window.api.notifications
+                ? window.api.notifications.getAll('false').catch(() => ({ notifications: [] }))
+                : Promise.resolve({ notifications: [] })
+        ]);
+
+        dashboardState.clients = clientsData.clients || [];
+        dashboardState.contracts = contractsData.contrats || [];
+
+        updateDashboardStatCards(stats);
+        bindDashboardStatCards();
+        renderDashboardStatDetails(dashboardState.selectedStat);
+        updateDashboardNotificationBadge(notificationsData.notifications || []);
+        renderDashboardAlert(stats);
+        renderContractsToRenew(dashboardState.contracts);
+        renderRecentActivity(dashboardState.clients, dashboardState.contracts);
+        renderDashboardCharts(dashboardState.contracts);
+>>>>>>> 8a46343e2d6d5d87e5b45a1228c72c48f24ca627
     } catch (error) {
         console.error('Erreur lors du chargement du dashboard:', error);
         showToast('Erreur lors du chargement du dashboard', 'error');
@@ -654,11 +1123,28 @@ async function loadDashboard() {
 // ============================================
 
 // Variable globale pour la catégorie actuelle
-let currentClientCategory = 'TPV';
+let currentClientCategory = 'VP/CI';
+let currentVehicleTypeFilter = 'all';
+// Variable globale pour la pagination
+let currentPage = 1;
+const clientsPerPage = 20;
+
+function getClientVehicleTypeFilter() {
+    const select = document.getElementById('vehicleTypeFilter');
+    return select ? select.value : 'all';
+}
+
+function updateVehicleTypeFilterVisibility() {
+    const wrapper = document.getElementById('vehicleTypeFilterWrap');
+    if (!wrapper) return;
+    wrapper.style.display = currentClientCategory === 'VP/CI' ? 'flex' : 'none';
+}
 
 // Fonction pour changer de catégorie
 function switchClientCategory(category) {
     currentClientCategory = category;
+    currentPage = 1;
+    currentVehicleTypeFilter = 'all';
     
     // Mettre à jour les onglets actifs
     document.querySelectorAll('.category-tab').forEach(tab => {
@@ -667,6 +1153,13 @@ function switchClientCategory(category) {
             tab.classList.add('active');
         }
     });
+
+    const vehicleTypeSelect = document.getElementById('vehicleTypeFilter');
+    if (vehicleTypeSelect) {
+        vehicleTypeSelect.value = 'all';
+    }
+
+    updateVehicleTypeFilterVisibility();
     
     // Recharger les clients avec la nouvelle catégorie
     loadClients();
@@ -676,18 +1169,22 @@ async function loadClients() {
     try {
         // Récupérer le filtre de statut actif
         const activeFilter = document.querySelector('#clients-page .btn-filter.active');
-        const statut = activeFilter ? (activeFilter.getAttribute('data-filter') === 'actif' ? 'actif' : activeFilter.getAttribute('data-filter') === 'inactif' ? 'inactif' : '') : '';
+        const filterType = activeFilter ? activeFilter.getAttribute('data-filter') : 'all';
+        let statut = '';
+        
+        // Déterminer le statut en fonction du type de filtre
+        if (filterType === 'actif') {
+            statut = 'actif';
+        } else if (filterType === 'inactif') {
+            statut = 'inactif';
+        }
         
         // Récupérer le terme de recherche
         const searchInput = document.getElementById('clientSearchInput');
         const searchTerm = searchInput ? searchInput.value : '';
         
-        // Charger les clients avec la catégorie actuelle
-        const data = await window.api.clients.getAll(searchTerm, statut, currentClientCategory);
-        const clients = data.clients || [];
-        
-        // Rendre le tableau des clients
-        renderClientsTable(clients);
+        // Charger les clients avec le filtre approprié
+        await loadClientsWithFilter(searchTerm, statut, filterType);
     } catch (error) {
         console.error('Erreur lors du chargement des clients:', error);
         showToast('Erreur lors du chargement des clients', 'error');
@@ -706,22 +1203,18 @@ function renderClientsTable(clients) {
     }
     
     clients.forEach(client => {
-        // Récupérer l'immatriculation du véhicule
-        const immatriculation = client.vehicules && client.vehicules.length > 0 
-            ? client.vehicules[0].immatriculation || '-'
-            : '-';
-        
-        // Récupérer la date d'échéance du dernier contrat
+        const vehicule = client.vehicules && client.vehicules.length > 0 ? client.vehicules[0] : null;
+        const immatriculation = vehicule ? vehicule.immatriculation || '-' : '-';
         const dateEcheance = client.dernier_contrat ? formatDate(client.dernier_contrat) : '-';
-        
-        // Formater le téléphone : ne pas afficher les téléphones temporaires
+
         let telephoneDisplay = '-';
         if (client.telephone && !client.telephone.startsWith('TEMP-')) {
             telephoneDisplay = client.telephone;
         }
-        
-        // Nom complet (nom seul car prenom est vide)
+
         const nomComplet = client.nom || '-';
+        const statutLabel = client.client_statut === 'actif' ? 'Actif' : 'Inactif';
+        const statutClass = client.client_statut === 'actif' ? 'badge-success' : 'badge-danger';
         
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -736,7 +1229,7 @@ function renderClientsTable(clients) {
             <td>${telephoneDisplay}</td>
             <td>${immatriculation}</td>
             <td>${dateEcheance}</td>
-            <td><span class="badge ${client.client_statut === 'actif' ? 'badge-success' : 'badge-secondary'}">${client.client_statut === 'actif' ? 'Actif' : 'Inactif'}</span></td>
+            <td><span class="badge ${statutClass}">${statutLabel}</span></td>
             <td>
                 <div class="action-buttons">
                     <button class="btn-icon" title="Modifier" onclick="editClient(${client.id})">
@@ -984,9 +1477,13 @@ function setupSearch() {
                     try {
                         // Récupérer le filtre actif
                         const activeFilter = document.querySelector('#clients-page .btn-filter.active');
-                        const statut = activeFilter ? (activeFilter.getAttribute('data-filter') === 'actif' ? 'actif' : activeFilter.getAttribute('data-filter') === 'inactif' ? 'inactif' : '') : '';
-                        const data = await window.api.clients.getAll(searchTerm, statut, currentClientCategory);
-                        renderClientsTable(data.clients || []);
+                        const filterType = activeFilter ? activeFilter.getAttribute('data-filter') : 'all';
+                        let statut = '';
+                        if (filterType === 'actif') statut = 'actif';
+                        else if (filterType === 'inactif') statut = 'inactif';
+                        
+                        // Utiliser loadClientsWithFilter pour une gestion cohérente
+                        await loadClientsWithFilter(searchTerm, statut, filterType);
                     } catch (error) {
                         console.error('Erreur de recherche:', error);
                         showToast('Erreur lors de la recherche', 'error');
@@ -1019,7 +1516,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // ============================================
 
 function setupFilters() {
-    const filterButtons = document.querySelectorAll('.btn-filter');
+    const filterButtons = document.querySelectorAll('#clients-page .btn-filter');
     
     filterButtons.forEach(button => {
         button.addEventListener('click', async function() {
@@ -1029,6 +1526,9 @@ function setupFilters() {
             // Ajouter la classe active au bouton cliqué
             this.classList.add('active');
             
+            // Réinitialiser la pagination lors du changement de filtre
+            currentPage = 1;
+            
             // Filtrer les clients
             if (document.getElementById('clients-page') && document.getElementById('clients-page').classList.contains('active')) {
                 try {
@@ -1036,9 +1536,13 @@ function setupFilters() {
                     const searchInput = document.getElementById('clientSearchInput');
                     const searchTerm = searchInput ? searchInput.value : '';
                     
-                    const statut = this.getAttribute('data-filter') === 'actif' ? 'actif' : this.getAttribute('data-filter') === 'inactif' ? 'inactif' : '';
-                    const data = await window.api.clients.getAll(searchTerm, statut, currentClientCategory);
-                    renderClientsTable(data.clients || []);
+                    let statut = '';
+                    const filterType = this.getAttribute('data-filter');
+                    if (filterType === 'actif') statut = 'actif';
+                    else if (filterType === 'inactif') statut = 'inactif';
+                    
+                    // Charger les clients avec les paramètres appropriés
+                    await loadClientsWithFilter(searchTerm, statut, filterType);
                 } catch (error) {
                     console.error('Erreur de filtrage:', error);
                     showToast('Erreur lors du filtrage', 'error');
@@ -1046,12 +1550,80 @@ function setupFilters() {
             }
         });
     });
+
+    const vehicleTypeSelect = document.getElementById('vehicleTypeFilter');
+    if (vehicleTypeSelect && vehicleTypeSelect.dataset.bound !== 'true') {
+        vehicleTypeSelect.dataset.bound = 'true';
+        vehicleTypeSelect.addEventListener('change', async function() {
+            currentVehicleTypeFilter = this.value;
+            currentPage = 1;
+
+            const activeFilter = document.querySelector('#clients-page .btn-filter.active');
+            const filterType = activeFilter ? activeFilter.getAttribute('data-filter') : 'all';
+            let statut = '';
+            if (filterType === 'actif') statut = 'actif';
+            else if (filterType === 'inactif') statut = 'inactif';
+
+            const searchInput = document.getElementById('clientSearchInput');
+            const searchTerm = searchInput ? searchInput.value : '';
+
+            await loadClientsWithFilter(searchTerm, statut, filterType);
+        });
+    }
+
+    updateVehicleTypeFilterVisibility();
+}
+
+// Nouvelle fonction pour charger les clients avec gestion des filtres spéciaux
+async function loadClientsWithFilter(searchTerm = '', statut = '', filterType = '') {
+    try {
+        // Calculer l'offset pour la pagination
+        const offset = (currentPage - 1) * clientsPerPage;
+        
+        // Préparer les paramètres pour l'appel API
+        let categorie = currentClientCategory;
+        let expireFilter = false;
+        let expiringSoonFilter = false;
+        if (filterType === 'expirant_soon') {
+            expiringSoonFilter = true;
+            statut = '';
+        }
+        if (filterType === 'inactif') {
+            expireFilter = true;
+        }
+
+        const vehicleType = currentClientCategory === 'VP/CI' ? getClientVehicleTypeFilter() : 'all';
+        currentVehicleTypeFilter = vehicleType;
+
+        const data = await window.api.clients.getAll(
+            searchTerm,
+            statut,
+            categorie,
+            offset,
+            clientsPerPage,
+            expireFilter,
+            expiringSoonFilter,
+            vehicleType
+        );
+        const clients = data.clients || [];
+        const total = data.total || 0;
+        
+        // Rendre le tableau des clients
+        renderClientsTable(clients);
+        
+        // Mettre à jour la pagination avec le total réel
+        updatePagination(total);
+    } catch (error) {
+        console.error('Erreur lors du chargement des clients avec filtre:', error);
+        showToast('Erreur lors du chargement des clients', 'error');
+    }
 }
 
 // Initialiser les filtres au chargement
 document.addEventListener('DOMContentLoaded', function() {
     setupSearch();
     setupFilters();
+    updateVehicleTypeFilterVisibility();
 });
 
 // Fonction de déconnexion
@@ -1263,3 +1835,56 @@ window.markNotificationAsRead = markNotificationAsRead;
 window.goToRapportsWithRenewals = goToRapportsWithRenewals;
 window.switchClientCategory = switchClientCategory;
 
+// Fonctions de pagination
+function updatePagination(total) {
+    const totalPages = Math.ceil(total / clientsPerPage);
+    const pageInfo = document.getElementById('pageInfo');
+    const prevBtn = document.getElementById('prevPage');
+    const nextBtn = document.getElementById('nextPage');
+    
+    if (pageInfo) {
+        pageInfo.textContent = `Page ${currentPage} sur ${totalPages}`;
+    }
+    
+    if (prevBtn) {
+        prevBtn.disabled = currentPage <= 1;
+    }
+    
+    if (nextBtn) {
+        nextBtn.disabled = currentPage >= totalPages || totalPages === 0;
+    }
+}
+
+// Gestionnaires d'événements pour la pagination
+document.addEventListener('DOMContentLoaded', function() {
+    const prevBtn = document.getElementById('prevPage');
+    const nextBtn = document.getElementById('nextPage');
+    
+    if (prevBtn) {
+        prevBtn.addEventListener('click', function() {
+            if (currentPage > 1) {
+                currentPage--;
+                loadClients();
+            }
+        });
+    }
+    
+    if (nextBtn) {
+        nextBtn.addEventListener('click', function() {
+            // Utiliser le total global pour calculer les pages
+            // Le total est stocké dans une variable globale ou on peut le récupérer du DOM
+            const pageInfo = document.getElementById('pageInfo');
+            let totalPages = 1;
+            if (pageInfo) {
+                const match = pageInfo.textContent.match(/Page \d+ sur (\d+)/);
+                if (match) {
+                    totalPages = parseInt(match[1]) || 1;
+                }
+            }
+            if (currentPage < totalPages) {
+                currentPage++;
+                loadClients();
+            }
+        });
+    }
+});

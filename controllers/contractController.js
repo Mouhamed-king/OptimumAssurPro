@@ -8,7 +8,17 @@ const moment = require('moment');
 // Obtenir tous les contrats de l'entreprise
 const getAllContracts = async (req, res) => {
     try {
-        const { statut, search } = req.query;
+        const {
+            statut,
+            search,
+            dateDebut,
+            dateFin,
+            offset = 0,
+            limit = 25
+        } = req.query;
+
+        const parsedOffset = Math.max(parseInt(offset, 10) || 0, 0);
+        const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 25, 1), 1000);
         
         // Construire la requête Supabase avec jointures
         let query = db.supabase
@@ -25,13 +35,23 @@ const getAllContracts = async (req, res) => {
                     modele,
                     immatriculation
                 )
-            `)
+            `, { count: 'exact' })
             .eq('entreprise_id', req.entrepriseId)
             .order('date_fin', { ascending: true });
         
         // Filtrer par statut si fourni
         if (statut) {
             query = query.eq('statut', statut);
+        }
+        
+        // Filtrer par date de début si fournie
+        if (dateDebut) {
+            query = query.gte('date_debut', dateDebut);
+        }
+        
+        // Filtrer par date de fin si fournie
+        if (dateFin) {
+            query = query.lte('date_fin', dateFin);
         }
         
         // Ajouter la recherche si fournie
@@ -41,7 +61,15 @@ const getAllContracts = async (req, res) => {
             query = query.or(`numero_contrat.ilike.%${search}%`);
         }
         
-        const { data: contrats, error } = await query;
+        // Si la recherche ne porte que sur le numero_contrat, on laisse Supabase filtrer.
+        // Sinon on filtre ensuite en memoire pour couvrir aussi client/immatriculation.
+        const shouldPaginateInDatabase = !search;
+
+        if (shouldPaginateInDatabase) {
+            query = query.range(parsedOffset, parsedOffset + parsedLimit - 1);
+        }
+
+        const { data: contrats, error, count } = await query;
         
         if (error) {
             throw error;
@@ -82,8 +110,24 @@ const getAllContracts = async (req, res) => {
                 alerte_renouvellement: joursRestants >= 0 && joursRestants <= 7
             };
         });
-        
-        res.json({ contrats: enrichedContrats });
+
+        if (shouldPaginateInDatabase) {
+            return res.json({
+                contrats: enrichedContrats,
+                total: count || 0,
+                offset: parsedOffset,
+                limit: parsedLimit
+            });
+        }
+
+        const paginatedContrats = enrichedContrats.slice(parsedOffset, parsedOffset + parsedLimit);
+
+        res.json({
+            contrats: paginatedContrats,
+            total: enrichedContrats.length,
+            offset: parsedOffset,
+            limit: parsedLimit
+        });
     } catch (error) {
         console.error('Erreur lors de la récupération des contrats:', error);
         res.status(500).json({ error: 'Erreur lors de la récupération des contrats: ' + error.message });

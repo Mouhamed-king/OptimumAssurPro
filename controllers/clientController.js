@@ -4,55 +4,106 @@
 
 const db = require('../database/connection');
 
+function normalizeVehicleType(rawVehicule = {}) {
+    const combined = [
+        rawVehicule.type_vehicule,
+        rawVehicule.modele,
+        rawVehicule.marque
+    ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+    if (!combined) return 'non_renseigne';
+    if (combined.includes('moto')) return 'moto';
+    if (combined.includes('camionnette') || combined.includes('pickup') || combined.includes('pick-up')) return 'camionnette';
+    if (combined.includes('camion') || combined.includes('truck')) return 'camion';
+    if (combined.includes('break') || combined.includes('wagon')) return 'break';
+    if (combined.includes('particulier') || combined.includes('berline') || combined.includes('suv') || combined.includes('citadine')) return 'particulier';
+
+    return 'particulier';
+}
+
+function getClientContractsForCategory(client, categorie) {
+    const contrats = client.contrats || [];
+    if (!categorie) {
+        return contrats;
+    }
+
+    return contrats.filter(contrat => contrat.categorie_vehicule === categorie);
+}
+
+function getClientLatestContract(contrats = []) {
+    if (!contrats.length) return null;
+
+    return contrats.reduce((latest, current) => {
+        return new Date(current.date_fin) > new Date(latest.date_fin) ? current : latest;
+    }, contrats[0]);
+}
+
 // Obtenir tous les clients de l'entreprise
 const getAllClients = async (req, res) => {
     try {
-        const { search, statut, categorie } = req.query;
+        const { search, statut, categorie, offset = 0, limit = 25, expire, expiringSoon, vehicleType } = req.query;
+        const parsedOffset = Math.max(parseInt(offset, 10) || 0, 0);
+        const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 25, 1), 100);
+        const requiresInMemoryFiltering = Boolean(search || statut || categorie || expire === 'true' || expiringSoon === 'true' || vehicleType);
         
-        // Construire la requête Supabase - récupérer tous les clients pour pouvoir chercher dans les immatriculations
+        // Quand aucun filtre relationnel n'est applique, on pagine directement en base.
         let query = db.supabase
             .from('clients')
             .select(`
                 *,
                 vehicules (*),
                 contrats (id, numero_contrat, date_fin, statut, categorie_vehicule)
-            `)
+            `, { count: 'exact' })
             .eq('entreprise_id', req.entrepriseId);
-        
-        // Ne pas filtrer par catégorie dans Supabase car on doit filtrer après avoir récupéré les données
-        // pour gérer correctement les relations imbriquées
-        
-        const { data: clients, error } = await query.order('created_at', { ascending: false });
+
+        if (!requiresInMemoryFiltering) {
+            query = query.range(parsedOffset, parsedOffset + parsedLimit - 1);
+        }
+
+        const { data: clients, error, count } = await query.order('created_at', { ascending: false });
         
         if (error) {
             throw error;
         }
-        
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const nextWeek = new Date(today);
+        nextWeek.setDate(today.getDate() + 7);
+
         // Enrichir les données avec les statistiques
         let enrichedClients = clients.map(client => {
-            // Filtrer les contrats par catégorie si fournie
-            let contratsFiltered = client.contrats || [];
-            if (categorie && (categorie === 'TPV' || categorie === 'VP/CI')) {
-                contratsFiltered = contratsFiltered.filter(c => c.categorie_vehicule === categorie);
-            }
-            
+            const vehicules = client.vehicules || [];
+            const contratsFiltered = getClientContractsForCategory(client, categorie);
             const nombre_contrats = contratsFiltered.length;
-            const dernier_contrat = contratsFiltered.length > 0 
-                ? contratsFiltered.reduce((latest, c) => {
-                    return new Date(c.date_fin) > new Date(latest.date_fin) ? c : latest;
-                }, contratsFiltered[0])
-                : null;
-            
-            // Déterminer le statut du client basé sur ses contrats filtrés
-            const hasActiveContract = contratsFiltered.some(c => c.statut === 'actif') || false;
-            const clientStatut = hasActiveContract ? 'actif' : 'inactif';
-            
+            const latestContract = getClientLatestContract(contratsFiltered);
+            const latestContractDate = latestContract?.date_fin ? new Date(latestContract.date_fin) : null;
+
+            if (latestContractDate) {
+                latestContractDate.setHours(0, 0, 0, 0);
+            }
+
+            const hasActiveAttestation = contratsFiltered.some(contrat => {
+                if (!contrat.date_fin) return false;
+                const endDate = new Date(contrat.date_fin);
+                endDate.setHours(0, 0, 0, 0);
+                return endDate >= today;
+            });
+
+            const clientStatut = hasActiveAttestation ? 'actif' : 'inactif';
+            const vehiculePrincipal = vehicules[0] || {};
+
             return {
                 ...client,
                 nombre_contrats,
-                dernier_contrat: dernier_contrat ? dernier_contrat.date_fin : null,
+                dernier_contrat: latestContract ? latestContract.date_fin : null,
                 client_statut: clientStatut,
-                vehicules: client.vehicules || []
+                contrats: contratsFiltered,
+                vehicules,
+                vehicle_type: normalizeVehicleType(vehiculePrincipal)
             };
         });
         
@@ -75,25 +126,68 @@ const getAllClients = async (req, res) => {
             });
         }
         
-        // Filtrer par statut si fourni
-        if (statut) {
-            enrichedClients = enrichedClients.filter(client => client.client_statut === statut);
+        if (vehicleType && vehicleType !== 'all') {
+            enrichedClients = enrichedClients.filter(client => client.vehicle_type === vehicleType);
         }
-        
-        // Filtrer par catégorie si fournie (après avoir enrichi les données)
+
+        if (statut) {
+            const normalizedStatut = statut.toLowerCase().trim();
+            enrichedClients = enrichedClients.filter(client => {
+                const clientStatut = client.client_statut ? client.client_statut.toLowerCase().trim() : '';
+                return clientStatut === normalizedStatut;
+            });
+        }
+
+        if (expire === 'true' || expire === true) {
+            enrichedClients = enrichedClients.filter(client => {
+                const latestContract = getClientLatestContract(client.contrats || []);
+                if (!latestContract?.date_fin) return false;
+                const endDate = new Date(latestContract.date_fin);
+                endDate.setHours(0, 0, 0, 0);
+                return endDate < today;
+            });
+        }
+
         if (categorie && (categorie === 'TPV' || categorie === 'VP/CI')) {
             enrichedClients = enrichedClients.filter(client => {
-                // Garder seulement les clients qui ont au moins un contrat de la catégorie demandée
-                return client.contrats && client.contrats.some(c => c.categorie_vehicule === categorie);
+                return client.contrats && client.contrats.length > 0;
+            });
+        }
+
+        if (expiringSoon === 'true') {
+            enrichedClients = enrichedClients.filter(client => {
+                return client.contrats && client.contrats.some(c => {
+                    if (!c.date_fin) return false;
+                    const dateFin = new Date(c.date_fin);
+                    dateFin.setHours(0, 0, 0, 0);
+                    return dateFin >= today && dateFin <= nextWeek;
+                });
             });
         }
         
-        res.json({ clients: enrichedClients });
+        if (!requiresInMemoryFiltering) {
+            return res.json({
+                clients: enrichedClients,
+                total: count || 0,
+                offset: parsedOffset,
+                limit: parsedLimit
+            });
+        }
+
+        const paginatedClients = enrichedClients.slice(parsedOffset, parsedOffset + parsedLimit);
+
+        res.json({
+            clients: paginatedClients,
+            total: enrichedClients.length,
+            offset: parsedOffset,
+            limit: parsedLimit
+        });
     } catch (error) {
         console.error('Erreur lors de la récupération des clients:', error);
         res.status(500).json({ error: 'Erreur lors de la récupération des clients: ' + error.message });
     }
 };
+
 
 // Obtenir un client par ID
 const getClientById = async (req, res) => {

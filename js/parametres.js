@@ -199,7 +199,7 @@ async function changePassword(event) {
         }
         
         // Appeler l'API pour changer le mot de passe
-        await window.api.auth.changePassword({ currentPassword, newPassword });
+        await window.api.auth.changePassword(currentPassword, newPassword);
         
         if (typeof window.showToast === 'function') {
             window.showToast('Mot de passe changé avec succès', 'success');
@@ -242,4 +242,3 @@ window.resetEntrepriseForm = resetEntrepriseForm;
 window.changePassword = changePassword;
 window.resetPasswordForm = resetPasswordForm;
 window.toggleAccordion = toggleAccordion;
-

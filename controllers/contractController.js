@@ -25,12 +25,12 @@ const getAllContracts = async (req, res) => {
             .from('contrats')
             .select(`
                 *,
-                clients!contrats_client_id_fkey (
+                clients (
                     nom,
                     prenom,
                     telephone
                 ),
-                vehicules!contrats_vehicule_id_fkey (
+                vehicules (
                     marque,
                     modele,
                     immatriculation
@@ -143,12 +143,12 @@ const getContractById = async (req, res) => {
             .from('contrats')
             .select(`
                 *,
-                clients!contrats_client_id_fkey (
+                clients (
                     nom,
                     prenom,
                     telephone
                 ),
-                vehicules!contrats_vehicule_id_fkey (
+                vehicules (
                     marque,
                     modele,
                     immatriculation
@@ -253,11 +253,11 @@ const createContract = async (req, res) => {
             })
             .select(`
                 *,
-                clients!contrats_client_id_fkey (
+                clients (
                     nom,
                     prenom
                 ),
-                vehicules!contrats_vehicule_id_fkey (
+                vehicules (
                     marque,
                     modele
                 )
@@ -339,11 +339,11 @@ const renewContract = async (req, res) => {
             })
             .select(`
                 *,
-                clients!contrats_client_id_fkey (
+                clients (
                     nom,
                     prenom
                 ),
-                vehicules!contrats_vehicule_id_fkey (
+                vehicules (
                     marque,
                     modele
                 )
@@ -417,11 +417,11 @@ const updateContract = async (req, res) => {
             .eq('id', id)
             .select(`
                 *,
-                clients!contrats_client_id_fkey (
+                clients (
                     nom,
                     prenom
                 ),
-                vehicules!contrats_vehicule_id_fkey (
+                vehicules (
                     marque,
                     modele
                 )

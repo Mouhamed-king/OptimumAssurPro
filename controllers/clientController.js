@@ -46,7 +46,7 @@ const getAllClients = async (req, res) => {
     try {
         const { search, statut, categorie, offset = 0, limit = 25, expire, expiringSoon, vehicleType } = req.query;
         const parsedOffset = Math.max(parseInt(offset, 10) || 0, 0);
-        const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 25, 1), 100);
+        const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 25, 1), 1000);
         const requiresInMemoryFiltering = Boolean(search || statut || categorie || expire === 'true' || expiringSoon === 'true' || vehicleType);
         
         // Quand aucun filtre relationnel n'est applique, on pagine directement en base.

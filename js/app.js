@@ -13,21 +13,21 @@ function appDebugLog(...args) {
 }
 
 // Vérifier l'authentification au chargement
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // Vérifier si l'utilisateur est connecté
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     const currentPath = window.location.pathname;
-    
+
     // Pages publiques qui doivent être accessibles même si connecté
     const publicPages = ['register.html', 'verify-email.html', 'reset-password.html'];
     const isPublicPage = publicPages.some(page => currentPath.includes(page));
     const isIndexPage = currentPath === '/' || currentPath.includes('index.html');
-    
+
     // Si on est sur une page publique, ne pas vérifier le token (laisser la page se charger)
     if (isPublicPage) {
         return; // Laisser ces pages se charger normalement
     }
-    
+
     // Si pas de token
     if (!token) {
         // Si on est sur index.html ou la racine sans token, rediriger vers login
@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', function() {
         window.location.href = '/login.html';
         return;
     }
-    
+
     // Si on a un token et qu'on est sur login.html, rediriger vers index.html
     if (token && currentPath.includes('login.html')) {
         const redirectPath = sessionStorage.getItem('redirectAfterLogin');
@@ -52,12 +52,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         return;
     }
-    
+
     // Si on est sur index.html avec un token, charger les données
     if (!isIndexPage || !token) {
         return;
     }
-    
+
     // Attendre un peu pour s'assurer que l'API est chargée
     setTimeout(() => {
         // Charger les données de l'entreprise
@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Erreur lors du chargement des informations entreprise:', error.message);
         });
     }, 500); // Augmenter le délai pour être sûr que l'API est chargée
-    
+
     // Charger le dashboard (page par défaut sur index.html)
     const dashboardPage = document.getElementById('dashboard-page');
     if (dashboardPage) {
@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 page.classList.remove('active');
             }
         });
-        
+
         loadDashboard().catch(error => {
             console.error('Erreur lors du chargement du dashboard:', error);
             if (error.message && error.message.includes('Token')) {
@@ -91,40 +91,40 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Navigation entre les pages
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // Gestion du menu mobile
     const mobileMenuToggle = document.getElementById('mobileMenuToggle');
     const mobileMenuClose = document.getElementById('mobileMenuClose');
     const sidebar = document.getElementById('sidebar');
-    
+
     function openMobileMenu() {
         if (sidebar) {
             sidebar.classList.add('mobile-open');
         }
         document.body.style.overflow = 'hidden';
     }
-    
+
     function closeMobileMenu() {
         if (sidebar) {
             sidebar.classList.remove('mobile-open');
         }
         document.body.style.overflow = '';
     }
-    
+
     if (mobileMenuToggle) {
         mobileMenuToggle.addEventListener('click', openMobileMenu);
     }
-    
+
     if (mobileMenuClose) {
         mobileMenuClose.addEventListener('click', closeMobileMenu);
     }
-    
 
-    
+
+
     // Fermer le menu lors du clic sur un élément de navigation sur mobile
     const navItems = document.querySelectorAll('.nav-item');
     navItems.forEach(item => {
-        item.addEventListener('click', function() {
+        item.addEventListener('click', function () {
             // Fermer le menu mobile après un court délai pour permettre la navigation
             setTimeout(() => {
                 if (window.innerWidth <= 768) {
@@ -133,45 +133,45 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 100);
         });
     });
-    
+
     // Fermer le menu lors du redimensionnement vers desktop
-    window.addEventListener('resize', function() {
+    window.addEventListener('resize', function () {
         if (window.innerWidth > 768) {
             closeMobileMenu();
         }
     });
-    
+
     // Gestion de la navigation dans la sidebar
     const pages = document.querySelectorAll('.page');
-    
+
     navItems.forEach(item => {
-        item.addEventListener('click', function(e) {
+        item.addEventListener('click', function (e) {
             e.preventDefault();
-            
+
             // Retirer la classe active de tous les items
             navItems.forEach(nav => nav.classList.remove('active'));
-            
+
             // Ajouter la classe active à l'item cliqué
             this.classList.add('active');
-            
+
             // Récupérer la page cible
             const targetPage = this.getAttribute('data-page');
-            
+
             // Masquer toutes les pages
             pages.forEach(page => page.classList.remove('active'));
-            
+
             // Afficher la page cible
             const targetPageElement = document.getElementById(`${targetPage}-page`);
             if (targetPageElement) {
                 targetPageElement.classList.add('active');
-                
+
                 // Vérifier le token avant de charger les données
                 const token = localStorage.getItem('token') || sessionStorage.getItem('token');
                 if (!token) {
                     window.location.href = '/login.html';
                     return;
                 }
-                
+
                 // Charger les données de la page avec gestion d'erreur
                 try {
                     if (targetPage === 'dashboard') {
@@ -254,32 +254,32 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-    
+
     // Gestion du menu utilisateur
     const userMenu = document.querySelector('.user-menu');
     if (userMenu) {
-        userMenu.addEventListener('click', function() {
+        userMenu.addEventListener('click', function () {
             // Ici vous pouvez ajouter un menu déroulant
             console.log('Menu utilisateur cliqué');
         });
     }
-    
+
     // Gestion des notifications
     const notifications = document.querySelector('.notifications');
     if (notifications) {
-        notifications.addEventListener('click', function() {
+        notifications.addEventListener('click', function () {
             showAllNotifications();
         });
     }
-    
+
     // Animation d'entrée pour les cartes
     const cards = document.querySelectorAll('.card, .stat-card');
     const observerOptions = {
         threshold: 0.1,
         rootMargin: '0px 0px -50px 0px'
     };
-    
-    const observer = new IntersectionObserver(function(entries) {
+
+    const observer = new IntersectionObserver(function (entries) {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
                 entry.target.style.opacity = '0';
@@ -293,7 +293,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }, observerOptions);
-    
+
     cards.forEach(card => {
         observer.observe(card);
     });
@@ -319,7 +319,7 @@ function formatPhone(phone) {
 // Fonction pour formater le temps écoulé
 function formatTimeAgo(dateString) {
     if (!dateString) return 'Récemment';
-    
+
     try {
         const date = new Date(dateString);
         const maintenant = new Date();
@@ -327,12 +327,12 @@ function formatTimeAgo(dateString) {
         const diffMins = Math.floor(diffMs / 60000);
         const diffHours = Math.floor(diffMs / 3600000);
         const diffDays = Math.floor(diffMs / 86400000);
-        
+
         if (diffMins < 1) return 'À l\'instant';
         if (diffMins < 60) return `Il y a ${diffMins} min${diffMins > 1 ? 's' : ''}`;
         if (diffHours < 24) return `Il y a ${diffHours} heure${diffHours > 1 ? 's' : ''}`;
         if (diffDays < 7) return `Il y a ${diffDays} jour${diffDays > 1 ? 's' : ''}`;
-        
+
         return formatDate(dateString);
     } catch (error) {
         return 'Récemment';
@@ -342,7 +342,7 @@ function formatTimeAgo(dateString) {
 // showToast est maintenant dans utils.js et chargé avant app.js
 // Si elle n'existe pas encore, créer une version de secours
 if (typeof window.showToast !== 'function') {
-    window.showToast = function(message, type = 'info') {
+    window.showToast = function (message, type = 'info') {
         console.log(`[${type.toUpperCase()}] ${message}`);
     };
 }
@@ -380,7 +380,7 @@ document.head.appendChild(style);
 
 async function loadEntrepriseInfo() {
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    
+
     try {
         if (!window.api || !window.api.auth) {
             appDebugLog('API auth not ready yet, waiting 500ms');
@@ -389,11 +389,11 @@ async function loadEntrepriseInfo() {
                 throw new Error('API non chargée après attente');
             }
         }
-        
+
         const data = await window.api.auth.getMe();
-        
+
         const entreprise = data.entreprise;
-        
+
         if (!entreprise) {
             // Ne pas déconnecter, utiliser les données du localStorage
             const storedEntreprise = localStorage.getItem('entreprise') || sessionStorage.getItem('entreprise');
@@ -410,7 +410,7 @@ async function loadEntrepriseInfo() {
                 }
             }
         }
-        
+
         // Mettre à jour le nom de l'entreprise dans le header
         const userName = document.querySelector('.user-name');
         if (userName) {
@@ -418,7 +418,7 @@ async function loadEntrepriseInfo() {
         }
     } catch (error) {
         console.error('Erreur lors du chargement des informations de l\'entreprise:', error);
-        
+
         // Ne pas déconnecter immédiatement, essayer d'utiliser les données stockées
         const storedEntreprise = localStorage.getItem('entreprise') || sessionStorage.getItem('entreprise');
         if (storedEntreprise) {
@@ -434,15 +434,15 @@ async function loadEntrepriseInfo() {
                 console.error('Erreur parsing entreprise stockée:', e);
             }
         }
-        
+
         // Vérifier le type d'erreur avant de déconnecter
         const isAuthError = error.message && (
-            error.message.includes('Token') || 
-            error.message.includes('authentification') || 
-            error.message.includes('401') || 
+            error.message.includes('Token') ||
+            error.message.includes('authentification') ||
+            error.message.includes('401') ||
             error.message.includes('403')
         );
-        
+
         if (isAuthError) {
             // Vérifier si c'est vraiment une erreur d'authentification ou juste un problème temporaire
             appDebugLog('Authentication-related error while loading entreprise info', {
@@ -452,7 +452,7 @@ async function loadEntrepriseInfo() {
             // Ne pas déconnecter - laisser l'utilisateur voir l'erreur et réessayer
             return;
         }
-        
+
         appDebugLog('Non-critical error while loading entreprise info, session kept');
     }
 }
@@ -644,7 +644,7 @@ function bindDashboardStatCards() {
         }
 
         card.dataset.bound = 'true';
-        card.addEventListener('click', function() {
+        card.addEventListener('click', function () {
             dashboardState.selectedStat = this.getAttribute('data-stat-type') || 'clients_actifs';
             document.querySelectorAll('#dashboardStatsGrid .dashboard-stat-card').forEach(item => {
                 item.classList.toggle('active', item === this);
@@ -762,16 +762,16 @@ function renderDashboardAlert(stats) {
             contratsHtml = `
                 <div class="renewal-clients-list" style="margin-top: 1rem; max-height: 200px; overflow-y: auto;">
                     ${contratsRenouvellement.map(contrat => {
-                        const clientNom = `${contrat.clients?.nom || ''} ${contrat.clients?.prenom || ''}`.trim();
-                        const dateFin = formatDate(contrat.date_fin);
-                        const clientId = contrat.clients?.id || contrat.client_id;
-                        return `
+                const clientNom = `${contrat.clients?.nom || ''} ${contrat.clients?.prenom || ''}`.trim();
+                const dateFin = formatDate(contrat.date_fin);
+                const clientId = contrat.clients?.id || contrat.client_id;
+                return `
                             <div class="renewal-client-card" onclick="showClientDetails(${clientId})" style="cursor: pointer; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; margin-bottom: 0.5rem; background: #f9fafb; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#eef2ff'" onmouseout="this.style.backgroundColor='#f9fafb'">
                                 <div style="font-weight: 500; color: #1f2937;">${clientNom || 'Client inconnu'}</div>
                                 <div style="font-size: 0.875rem; color: #6b7280;">Échéance: ${dateFin}</div>
                             </div>
                         `;
-                    }).join('')}
+            }).join('')}
                 </div>
             `;
         }
@@ -965,7 +965,7 @@ async function loadDashboard() {
             window.location.href = '/login.html';
             return;
         }
-        
+
         if (!window.api || !window.api.stats || !window.api.clients || !window.api.contracts) {
             throw new Error('API non chargée');
         }
@@ -1040,7 +1040,7 @@ function switchClientCategory(category) {
     currentClientCategory = category;
     currentPage = 1;
     currentVehicleTypeFilter = 'all';
-    
+
     // Mettre à jour les onglets actifs
     document.querySelectorAll('.category-tab').forEach(tab => {
         tab.classList.remove('active');
@@ -1055,7 +1055,7 @@ function switchClientCategory(category) {
     }
 
     updateVehicleTypeFilterVisibility();
-    
+
     // Recharger les clients avec la nouvelle catégorie
     loadClients();
 }
@@ -1066,18 +1066,18 @@ async function loadClients() {
         const activeFilter = document.querySelector('#clients-page .btn-filter.active');
         const filterType = activeFilter ? activeFilter.getAttribute('data-filter') : 'all';
         let statut = '';
-        
+
         // Déterminer le statut en fonction du type de filtre
         if (filterType === 'actif') {
             statut = 'actif';
         } else if (filterType === 'inactif') {
             statut = 'inactif';
         }
-        
+
         // Récupérer le terme de recherche
         const searchInput = document.getElementById('clientSearchInput');
         const searchTerm = searchInput ? searchInput.value : '';
-        
+
         // Charger les clients avec le filtre approprié
         await loadClientsWithFilter(searchTerm, statut, filterType);
     } catch (error) {
@@ -1089,14 +1089,14 @@ async function loadClients() {
 function renderClientsTable(clients) {
     const tbody = document.getElementById('clientsTableBody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = '';
-    
+
     if (clients.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem; color: #6B7280;">Aucun client trouvé</td></tr>';
         return;
     }
-    
+
     clients.forEach(client => {
         const vehicule = client.vehicules && client.vehicules.length > 0 ? client.vehicules[0] : null;
         const immatriculation = vehicule ? vehicule.immatriculation || '-' : '-';
@@ -1110,7 +1110,7 @@ function renderClientsTable(clients) {
         const nomComplet = client.nom || '-';
         const statutLabel = client.client_statut === 'actif' ? 'Actif' : 'Inactif';
         const statutClass = client.client_statut === 'actif' ? 'badge-success' : 'badge-danger';
-        
+
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>
@@ -1147,7 +1147,7 @@ async function deleteClient(clientId) {
             if (!window.api || !window.api.clients) {
                 throw new Error('API non chargée');
             }
-            
+
             await window.api.clients.delete(clientId);
             showToast('Client supprimé avec succès', 'success');
             loadClients();
@@ -1256,10 +1256,10 @@ async function loadContrats() {
         if (!window.api || !window.api.contracts) {
             throw new Error('API non chargée');
         }
-        
+
         const data = await window.api.contracts.getAll();
         const contrats = data.contrats || [];
-        
+
         // Rendre les cartes de contrats
         renderContractsCards(contrats);
     } catch (error) {
@@ -1271,22 +1271,22 @@ async function loadContrats() {
 function renderContractsCards(contrats) {
     const container = document.querySelector('#contrats-page .contracts-grid');
     if (!container) return;
-    
+
     container.innerHTML = '';
-    
+
     if (contrats.length === 0) {
         container.innerHTML = '<p style="text-align: center; padding: 2rem;">Aucun contrat trouvé</p>';
         return;
     }
-    
+
     contrats.forEach(contrat => {
         const joursRestants = contrat.jours_restants || 0;
-        const statutBadge = contrat.est_expire 
+        const statutBadge = contrat.est_expire
             ? '<span class="badge badge-danger">Expiré</span>'
             : contrat.alerte_renouvellement
-            ? '<span class="badge badge-warning">À renouveler</span>'
-            : '<span class="badge badge-success">Actif</span>';
-        
+                ? '<span class="badge badge-warning">À renouveler</span>'
+                : '<span class="badge badge-success">Actif</span>';
+
         const card = document.createElement('div');
         card.className = 'contract-card';
         card.innerHTML = `
@@ -1328,7 +1328,7 @@ async function renewContract(contractId) {
             if (!window.api || !window.api.contracts) {
                 throw new Error('API non chargée');
             }
-            
+
             await window.api.contracts.renew(contractId);
             showToast('Contrat renouvelé avec succès', 'success');
             loadContrats();
@@ -1353,13 +1353,13 @@ function viewContract(id) {
 // Fonction de recherche
 function setupSearch() {
     const searchInputs = document.querySelectorAll('.search-box input');
-    
+
     searchInputs.forEach(input => {
         let timeout;
-        input.addEventListener('input', function(e) {
+        input.addEventListener('input', function (e) {
             clearTimeout(timeout);
             const searchTerm = e.target.value;
-            
+
             timeout = setTimeout(async () => {
                 // Si on est sur la page clients
                 if (document.getElementById('clients-page') && document.getElementById('clients-page').classList.contains('active')) {
@@ -1370,7 +1370,7 @@ function setupSearch() {
                         let statut = '';
                         if (filterType === 'actif') statut = 'actif';
                         else if (filterType === 'inactif') statut = 'inactif';
-                        
+
                         // Utiliser loadClientsWithFilter pour une gestion cohérente
                         await loadClientsWithFilter(searchTerm, statut, filterType);
                     } catch (error) {
@@ -1396,7 +1396,7 @@ function setupSearch() {
 }
 
 // Initialiser la recherche au chargement
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     setupSearch();
 });
 
@@ -1406,30 +1406,30 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function setupFilters() {
     const filterButtons = document.querySelectorAll('#clients-page .btn-filter');
-    
+
     filterButtons.forEach(button => {
-        button.addEventListener('click', async function() {
+        button.addEventListener('click', async function () {
             // Retirer la classe active de tous les boutons
             filterButtons.forEach(btn => btn.classList.remove('active'));
-            
+
             // Ajouter la classe active au bouton cliqué
             this.classList.add('active');
-            
+
             // Réinitialiser la pagination lors du changement de filtre
             currentPage = 1;
-            
+
             // Filtrer les clients
             if (document.getElementById('clients-page') && document.getElementById('clients-page').classList.contains('active')) {
                 try {
                     // Récupérer la valeur de recherche actuelle
                     const searchInput = document.getElementById('clientSearchInput');
                     const searchTerm = searchInput ? searchInput.value : '';
-                    
+
                     let statut = '';
                     const filterType = this.getAttribute('data-filter');
                     if (filterType === 'actif') statut = 'actif';
                     else if (filterType === 'inactif') statut = 'inactif';
-                    
+
                     // Charger les clients avec les paramètres appropriés
                     await loadClientsWithFilter(searchTerm, statut, filterType);
                 } catch (error) {
@@ -1443,7 +1443,7 @@ function setupFilters() {
     const vehicleTypeSelect = document.getElementById('vehicleTypeFilter');
     if (vehicleTypeSelect && vehicleTypeSelect.dataset.bound !== 'true') {
         vehicleTypeSelect.dataset.bound = 'true';
-        vehicleTypeSelect.addEventListener('change', async function() {
+        vehicleTypeSelect.addEventListener('change', async function () {
             currentVehicleTypeFilter = this.value;
             currentPage = 1;
 
@@ -1468,7 +1468,7 @@ async function loadClientsWithFilter(searchTerm = '', statut = '', filterType = 
     try {
         // Calculer l'offset pour la pagination
         const offset = (currentPage - 1) * clientsPerPage;
-        
+
         // Préparer les paramètres pour l'appel API
         let categorie = currentClientCategory;
         let expireFilter = false;
@@ -1496,10 +1496,10 @@ async function loadClientsWithFilter(searchTerm = '', statut = '', filterType = 
         );
         const clients = data.clients || [];
         const total = data.total || 0;
-        
+
         // Rendre le tableau des clients
         renderClientsTable(clients);
-        
+
         // Mettre à jour la pagination avec le total réel
         updatePagination(total);
     } catch (error) {
@@ -1509,7 +1509,7 @@ async function loadClientsWithFilter(searchTerm = '', statut = '', filterType = 
 }
 
 // Initialiser les filtres au chargement
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     setupSearch();
     setupFilters();
     updateVehicleTypeFilterVisibility();
@@ -1523,7 +1523,7 @@ function logout() {
     sessionStorage.removeItem('token');
     sessionStorage.removeItem('entreprise');
     sessionStorage.removeItem('redirectAfterLogin');
-    
+
     // Rediriger vers login.html
     window.location.href = '/login.html';
 }
@@ -1548,13 +1548,13 @@ async function showAllNotifications() {
             }
             return;
         }
-        
+
         // Charger toutes les notifications (sans filtre lu/non lu)
         // Passer une chaîne vide pour obtenir toutes les notifications
         const data = await window.api.notifications.getAll('');
         const notifications = data.notifications || [];
         console.log('Notifications chargées:', notifications.length, notifications);
-        
+
         // Trier par date (plus récentes en premier) et par statut lu (non lues en premier)
         notifications.sort((a, b) => {
             // D'abord trier par statut lu (non lues en premier)
@@ -1564,7 +1564,7 @@ async function showAllNotifications() {
             // Ensuite par date (plus récentes en premier)
             return new Date(b.created_at) - new Date(a.created_at);
         });
-        
+
         // Créer la modal
         const modal = document.createElement('div');
         modal.className = 'modal';
@@ -1586,33 +1586,33 @@ async function showAllNotifications() {
                     ` : `
                         <div class="notifications-list">
                             ${notifications.map(notif => {
-                                const date = new Date(notif.created_at);
-                                const dateStr = date.toLocaleDateString('fr-FR', { 
-                                    day: '2-digit', 
-                                    month: '2-digit', 
-                                    year: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                });
-                                
-                                const iconMap = {
-                                    'renouvellement': 'fa-exclamation-circle',
-                                    'expiration': 'fa-clock',
-                                    'paiement': 'fa-money-bill',
-                                    'info': 'fa-info-circle'
-                                };
-                                
-                                const colorMap = {
-                                    'renouvellement': 'var(--color-accent)',
-                                    'expiration': 'var(--color-danger)',
-                                    'paiement': 'var(--color-success)',
-                                    'info': 'var(--color-primary)'
-                                };
-                                
-                                const icon = iconMap[notif.type] || 'fa-bell';
-                                const color = colorMap[notif.type] || 'var(--color-text-secondary)';
-                                
-                                return `
+            const date = new Date(notif.created_at);
+            const dateStr = date.toLocaleDateString('fr-FR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            const iconMap = {
+                'renouvellement': 'fa-exclamation-circle',
+                'expiration': 'fa-clock',
+                'paiement': 'fa-money-bill',
+                'info': 'fa-info-circle'
+            };
+
+            const colorMap = {
+                'renouvellement': 'var(--color-accent)',
+                'expiration': 'var(--color-danger)',
+                'paiement': 'var(--color-success)',
+                'info': 'var(--color-primary)'
+            };
+
+            const icon = iconMap[notif.type] || 'fa-bell';
+            const color = colorMap[notif.type] || 'var(--color-text-secondary)';
+
+            return `
                                     <div class="notification-item" style="padding: 1rem; border-bottom: 1px solid var(--color-border); display: flex; gap: 1rem; align-items: start; ${notif.lu ? 'opacity: 0.7;' : 'background: rgba(37, 99, 235, 0.05);'}">
                                         <div style="width: 40px; height: 40px; border-radius: 50%; background: ${color}20; color: ${color}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                                             <i class="fas ${icon}"></i>
@@ -1633,22 +1633,22 @@ async function showAllNotifications() {
                                         ` : ''}
                                     </div>
                                 `;
-                            }).join('')}
+        }).join('')}
                         </div>
                     `}
                 </div>
             </div>
         `;
-        
+
         document.body.appendChild(modal);
-        
+
         // Fermer la modal en cliquant en dehors
-        modal.addEventListener('click', function(e) {
+        modal.addEventListener('click', function (e) {
             if (e.target === modal) {
                 modal.remove();
             }
         });
-        
+
     } catch (error) {
         console.error('Erreur lors du chargement des notifications:', error);
         if (typeof window.showToast === 'function') {
@@ -1665,21 +1665,21 @@ async function markNotificationAsRead(id, button) {
         if (!window.api || !window.api.notifications) {
             return;
         }
-        
+
         await window.api.notifications.markAsRead(id);
-        
+
         // Mettre à jour l'interface
         const notificationItem = button.closest('.notification-item');
         if (notificationItem) {
             notificationItem.style.opacity = '0.7';
             notificationItem.style.background = 'transparent';
             button.remove();
-            
+
             // Retirer le badge "Nouveau"
             const badge = notificationItem.querySelector('span');
             if (badge) badge.remove();
         }
-        
+
         // Mettre à jour le badge de notifications dans la barre de navigation
         const badge = document.querySelector('.notifications .badge');
         if (badge) {
@@ -1691,7 +1691,7 @@ async function markNotificationAsRead(id, button) {
                 }
             }
         }
-        
+
     } catch (error) {
         console.error('Erreur lors du marquage de la notification:', error);
         if (typeof window.showToast === 'function') {
@@ -1730,36 +1730,36 @@ function updatePagination(total) {
     const pageInfo = document.getElementById('pageInfo');
     const prevBtn = document.getElementById('prevPage');
     const nextBtn = document.getElementById('nextPage');
-    
+
     if (pageInfo) {
         pageInfo.textContent = `Page ${currentPage} sur ${totalPages}`;
     }
-    
+
     if (prevBtn) {
         prevBtn.disabled = currentPage <= 1;
     }
-    
+
     if (nextBtn) {
         nextBtn.disabled = currentPage >= totalPages || totalPages === 0;
     }
 }
 
 // Gestionnaires d'événements pour la pagination
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const prevBtn = document.getElementById('prevPage');
     const nextBtn = document.getElementById('nextPage');
-    
+
     if (prevBtn) {
-        prevBtn.addEventListener('click', function() {
+        prevBtn.addEventListener('click', function () {
             if (currentPage > 1) {
                 currentPage--;
                 loadClients();
             }
         });
     }
-    
+
     if (nextBtn) {
-        nextBtn.addEventListener('click', function() {
+        nextBtn.addEventListener('click', function () {
             // Utiliser le total global pour calculer les pages
             // Le total est stocké dans une variable globale ou on peut le récupérer du DOM
             const pageInfo = document.getElementById('pageInfo');

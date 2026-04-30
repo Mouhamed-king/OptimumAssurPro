@@ -27,11 +27,11 @@ router.get('/dashboard', async (req, res) => {
         }
         
         // Nombre de contrats actifs et données des contrats récents
-        const { data: contratsActifsData, count: contratsActifsCount, error: contratsError } = await db.supabase
+        const { data: contratsActifsData, error: contratsError } = await db.supabase
             .from('contrats')
             .select(`
                 *,
-                clients!contrats_client_id_fkey (
+                clients (
                     id,
                     nom,
                     prenom,
@@ -40,8 +40,7 @@ router.get('/dashboard', async (req, res) => {
             `)
             .eq('entreprise_id', entrepriseId)
             .eq('statut', 'actif')
-            .order('created_at', { ascending: false })
-            .limit(10);
+            .order('created_at', { ascending: false });
         
         if (contratsError) {
             console.error('Erreur lors du comptage des contrats actifs:', contratsError);
@@ -52,11 +51,11 @@ router.get('/dashboard', async (req, res) => {
         const aujourdhui = moment().format('YYYY-MM-DD');
         const dateLimite = moment().add(7, 'days').format('YYYY-MM-DD');
 
-        const { data: renouvellementsData, count: renouvellementsCount, error: renouvellementsError } = await db.supabase
+        const { data: renouvellementsData, error: renouvellementsError } = await db.supabase
             .from('contrats')
             .select(`
                 *,
-                clients!contrats_client_id_fkey (
+                clients (
                     id,
                     nom,
                     prenom,
@@ -77,11 +76,11 @@ router.get('/dashboard', async (req, res) => {
         const debutMois = moment().startOf('month').format('YYYY-MM-DD');
         const finMois = moment().endOf('month').format('YYYY-MM-DD');
 
-        const { data: expiresData, count: expiresCount, error: expiresError } = await db.supabase
+        const { data: expiresData, error: expiresError } = await db.supabase
             .from('contrats')
             .select(`
                 *,
-                clients!contrats_client_id_fkey (
+                clients (
                     id,
                     nom,
                     prenom,
@@ -100,11 +99,11 @@ router.get('/dashboard', async (req, res) => {
         
         res.json({
             clients_actifs: clientsActifsCount || 0,
-            contrats_actifs: contratsActifsCount || 0,
+            contrats_actifs: (contratsActifsData || []).length,
             contrats_actifs_data: contratsActifsData || [],
-            renouvellements_a_venir: renouvellementsCount || 0,
+            renouvellements_a_venir: (renouvellementsData || []).length,
             contrats_renouvellement: renouvellementsData || [],
-            expires_ce_mois: expiresCount || 0,
+            expires_ce_mois: (expiresData || []).length,
             contrats_expires_data: expiresData || []
         });
     } catch (error) {

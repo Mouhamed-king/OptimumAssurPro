@@ -540,9 +540,10 @@ function getDashboardStatEntries(type) {
         return clients
             .filter(client => client.client_statut === 'actif')
             .map(client => ({
+                clientId: client.id,
                 title: client.nom || 'Client',
-                subtitle: client.telephone || 'Telephone non renseigne',
-                meta: client.dernier_contrat ? `Echeance ${formatDate(client.dernier_contrat)}` : 'Aucune echeance',
+                subtitle: client.telephone || 'Téléphone non renseigné',
+                meta: client.dernier_contrat ? `Échéance ${formatDate(client.dernier_contrat)}` : 'Aucune échéance',
                 badge: 'Actif',
                 badgeClass: 'badge-success'
             }));
@@ -552,9 +553,10 @@ function getDashboardStatEntries(type) {
         return contracts
             .filter(contract => contract.statut === 'actif')
             .map(contract => ({
+                clientId: contract.client_id,
                 title: contract.client_nom || 'Client',
-                subtitle: `${contract.numero_contrat || 'Contrat sans numero'}${contract.immatriculation ? ` · ${contract.immatriculation}` : ''}`,
-                meta: contract.date_fin ? `Echeance ${formatDate(contract.date_fin)}` : 'Date indisponible',
+                subtitle: `${contract.numero_contrat || 'Contrat sans numéro'}${contract.immatriculation ? ` · ${contract.immatriculation}` : ''}`,
+                meta: contract.date_fin ? `Échéance ${formatDate(contract.date_fin)}` : 'Date indisponible',
                 badge: 'Actif',
                 badgeClass: 'badge-success'
             }));
@@ -566,10 +568,11 @@ function getDashboardStatEntries(type) {
             .map(contract => {
                 const joursRestants = contract.jours_restants || 0;
                 return {
+                    clientId: contract.client_id,
                     title: contract.client_nom || 'Client',
                     subtitle: `${contract.numero_contrat || 'Contrat'}${contract.immatriculation ? ` · ${contract.immatriculation}` : ''}`,
                     meta: `Renouvellement dans ${joursRestants} jour${joursRestants > 1 ? 's' : ''}`,
-                    badge: joursRestants <= 3 ? 'Urgent' : 'A suivre',
+                    badge: joursRestants <= 3 ? 'Urgent' : 'À suivre',
                     badgeClass: joursRestants <= 3 ? 'badge-warning' : 'badge-info'
                 };
             });
@@ -583,10 +586,11 @@ function getDashboardStatEntries(type) {
                 return endDate.getMonth() === currentMonth && endDate.getFullYear() === currentYear;
             })
             .map(contract => ({
+                clientId: contract.client_id,
                 title: contract.client_nom || 'Client',
                 subtitle: `${contract.numero_contrat || 'Contrat'}${contract.immatriculation ? ` · ${contract.immatriculation}` : ''}`,
-                meta: contract.date_fin ? `Expire le ${formatDate(contract.date_fin)}` : 'Expire ce mois',
-                badge: 'Expire',
+                meta: contract.date_fin ? `Expiré le ${formatDate(contract.date_fin)}` : 'Expiré ce mois',
+                badge: 'Expiré',
                 badgeClass: 'badge-danger'
             }));
     }
@@ -598,37 +602,38 @@ function renderDashboardStatDetails(type) {
     const titleMap = {
         clients_actifs: 'Clients actifs',
         contrats_actifs: 'Contrats actifs',
-        renouvellements_a_venir: 'Renouvellements a venir',
-        expires_ce_mois: 'Assurances expirees ce mois'
+        renouvellements_a_venir: 'Renouvellements à venir',
+        expires_ce_mois: 'Assurances expirées ce mois'
     };
 
     const titleElement = document.getElementById('dashboardDetailTitle');
     const container = document.getElementById('dashboardStatDetails');
     if (titleElement) {
-        titleElement.textContent = titleMap[type] || 'Details';
+        titleElement.textContent = titleMap[type] || 'Détails';
     }
 
     const entries = getDashboardStatEntries(type).slice(0, 8);
     if (!entries.length) {
-        renderDashboardEmptyState(container, 'Aucun client correspondant pour le moment.');
+        renderDashboardEmptyState(container, 'Aucun élément correspondant pour le moment.');
         return;
     }
 
     container.innerHTML = `
         <div class="dashboard-detail-list">
             ${entries.map(entry => `
-                <div class="dashboard-detail-item">
+                <div class="dashboard-detail-item" onclick="showClientDetails(${entry.clientId})" style="cursor: pointer; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#f3f4f6'" onmouseout="this.style.backgroundColor=''">
                     <div class="dashboard-detail-main">
                         <h4>${entry.title}</h4>
                         <p>${entry.subtitle}</p>
                     </div>
-                    <div style="text-align: right;">
+                    <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem;">
                         <span class="badge ${entry.badgeClass}">${entry.badge}</span>
                         <p class="dashboard-detail-meta">${entry.meta}</p>
                     </div>
                 </div>
             `).join('')}
         </div>
+        <p style="text-align: center; margin-top: 0.75rem; font-size: 0.8rem; color: #9CA3AF;"><i class="fas fa-hand-pointer"></i> Cliquez sur un élément pour voir les détails</p>
     `;
 }
 
@@ -721,19 +726,20 @@ function renderContractsToRenew(contracts) {
         .slice(0, 6);
 
     if (!contractsToRenew.length) {
-        renderDashboardEmptyState(contractsContainer, 'Aucun contrat a renouveler');
+        renderDashboardEmptyState(contractsContainer, 'Aucun contrat à renouveler');
         return;
     }
 
     contractsContainer.innerHTML = contractsToRenew.map(contract => {
         const joursRestants = contract.jours_restants || 0;
         const badgeClass = joursRestants <= 3 ? 'badge-warning' : 'badge-info';
-        const badgeText = joursRestants <= 3 ? 'Urgent' : 'A suivre';
+        const badgeText = joursRestants <= 3 ? 'Urgent' : 'À suivre';
+        const clientId = contract.client_id;
         return `
-            <div class="contract-item">
+            <div class="contract-item" onclick="showClientDetails(${clientId})" style="cursor: pointer; transition: background-color 0.2s; padding: 0.75rem; border-radius: 0.5rem;" onmouseover="this.style.backgroundColor='#f3f4f6'" onmouseout="this.style.backgroundColor=''">
                 <div class="contract-info">
                     <h4>${contract.client_nom || 'Client'}</h4>
-                    <p>${contract.numero_contrat || 'Contrat'} · echeance ${formatDate(contract.date_fin)}</p>
+                    <p>${contract.numero_contrat || 'Contrat'} · échéance ${formatDate(contract.date_fin)}</p>
                 </div>
                 <div style="text-align: right;">
                     <span class="badge ${badgeClass}">${badgeText}</span>
@@ -749,15 +755,37 @@ function renderDashboardAlert(stats) {
     if (!alertCard) return;
 
     if ((stats.renouvellements_a_venir ?? 0) > 0) {
+        // Construire la liste cliquable des contrats à renouveler
+        const contratsRenouvellement = stats.contrats_renouvellement || [];
+        let contratsHtml = '';
+        if (contratsRenouvellement.length > 0) {
+            contratsHtml = `
+                <div class="renewal-clients-list" style="margin-top: 1rem; max-height: 200px; overflow-y: auto;">
+                    ${contratsRenouvellement.map(contrat => {
+                        const clientNom = `${contrat.clients?.nom || ''} ${contrat.clients?.prenom || ''}`.trim();
+                        const dateFin = formatDate(contrat.date_fin);
+                        const clientId = contrat.clients?.id || contrat.client_id;
+                        return `
+                            <div class="renewal-client-card" onclick="showClientDetails(${clientId})" style="cursor: pointer; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; margin-bottom: 0.5rem; background: #f9fafb; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#eef2ff'" onmouseout="this.style.backgroundColor='#f9fafb'">
+                                <div style="font-weight: 500; color: #1f2937;">${clientNom || 'Client inconnu'}</div>
+                                <div style="font-size: 0.875rem; color: #6b7280;">Échéance: ${dateFin}</div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
         alertCard.innerHTML = `
             <div class="alert-icon">
                 <i class="fas fa-exclamation-circle"></i>
             </div>
             <div class="alert-content">
-                <h4>Renouvellement a venir</h4>
-                <p>${stats.renouvellements_a_venir} contrat${stats.renouvellements_a_venir > 1 ? 's arrivent' : ' arrive'} a echeance dans les 7 prochains jours</p>
+                <h4>Renouvellement à venir</h4>
+                <p>${stats.renouvellements_a_venir} contrat${stats.renouvellements_a_venir > 1 ? 's arrivent' : ' arrive'} à échéance dans les 7 prochains jours</p>
+                ${contratsHtml}
             </div>
-            <button class="btn-primary" onclick="goToRapportsWithRenewals()">Voir details</button>
+            <button class="btn-primary" onclick="goToRapportsWithRenewals()">Voir tous les détails</button>
         `;
         return;
     }
@@ -767,8 +795,8 @@ function renderDashboardAlert(stats) {
             <i class="fas fa-check-circle"></i>
         </div>
         <div class="alert-content">
-            <h4>Tout est a jour</h4>
-            <p>Aucun renouvellement urgent a prevoir</p>
+            <h4>Tout est à jour</h4>
+            <p>Aucun renouvellement urgent à prévoir</p>
         </div>
     `;
 }
@@ -941,156 +969,8 @@ async function loadDashboard() {
         if (!window.api || !window.api.stats || !window.api.clients || !window.api.contracts) {
             throw new Error('API non chargée');
         }
-<<<<<<< HEAD
-        
-        // Charger les statistiques depuis Supabase
-        const stats = await window.api.stats.getDashboard();
-        console.log('Statistiques reçues:', stats);
 
-        // Stocker les stats globalement pour les fonctions de détails
-        window.lastDashboardStats = stats;
-        
-        // Mettre à jour les cartes de statistiques
-        const statsCards = document.querySelectorAll('.stat-card');
-        if (statsCards.length >= 4) {
-            // Toujours mettre à jour les valeurs depuis la base de données
-            const h3_0 = statsCards[0].querySelector('h3');
-            const h3_1 = statsCards[1].querySelector('h3');
-            const h3_2 = statsCards[2].querySelector('h3');
-            const h3_3 = statsCards[3].querySelector('h3');
-            
-            if (h3_0) h3_0.textContent = stats.clients_actifs ?? 0;
-            if (h3_1) h3_1.textContent = stats.contrats_actifs ?? 0;
-            if (h3_2) h3_2.textContent = stats.renouvellements_a_venir ?? 0;
-            if (h3_3) h3_3.textContent = stats.expires_ce_mois ?? 0;
-            console.log('Statistiques mises à jour:', {
-                clients: stats.clients_actifs ?? 0,
-                contrats: stats.contrats_actifs ?? 0,
-                renouvellements: stats.renouvellements_a_venir ?? 0,
-                expires: stats.expires_ce_mois ?? 0
-            });
-        }
-        
-        // Charger les notifications (gérer les erreurs silencieusement)
-        try {
-            if (!window.api || !window.api.notifications) {
-                console.warn('API notifications non chargée');
-            } else {
-                const notificationsData = await window.api.notifications.getAll('false');
-                const notifications = notificationsData.notifications || [];
-                
-                // Mettre à jour le badge de notifications
-                const badge = document.querySelector('.notifications .badge');
-                if (badge) {
-                    badge.textContent = notifications.length;
-                    badge.style.display = notifications.length > 0 ? 'flex' : 'none';
-                }
-            }
-        } catch (notifError) {
-            console.warn('Erreur lors du chargement des notifications:', notifError);
-            // Ne pas bloquer le dashboard si les notifications échouent
-        }
-        
-        // Mettre à jour la carte d'alerte
-        const alertCard = document.getElementById('alertCard');
-        if (alertCard) {
-            if (stats.renouvellements_a_venir > 0) {
-                const contratsHtml = stats.contrats_renouvellement.map(contrat => {
-                    const clientNom = `${contrat.clients?.nom || ''} ${contrat.clients?.prenom || ''}`.trim();
-                    const dateFin = formatDate(contrat.date_fin);
-                    return `
-                        <div class="renewal-client-card" onclick="showClientDetails(${contrat.clients?.id || contrat.client_id})" style="cursor: pointer; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; margin-bottom: 0.5rem; background: #f9fafb; transition: background-color 0.2s;">
-                            <div style="font-weight: 500; color: #1f2937;">${clientNom || 'Client inconnu'}</div>
-                            <div style="font-size: 0.875rem; color: #6b7280;">Échéance: ${dateFin}</div>
-                        </div>
-                    `;
-                }).join('');
-
-                alertCard.innerHTML = `
-                    <div class="alert-icon">
-                        <i class="fas fa-exclamation-circle"></i>
-                    </div>
-                    <div class="alert-content">
-                        <h4>Renouvellement à venir</h4>
-                        <p>${stats.renouvellements_a_venir} contrat${stats.renouvellements_a_venir > 1 ? 's' : ''} ${stats.renouvellements_a_venir > 1 ? 'arrivent' : 'arrive'} à échéance dans les 7 prochains jours</p>
-                        <div class="renewal-clients-list" style="margin-top: 1rem; max-height: 200px; overflow-y: auto;">
-                            ${contratsHtml}
-                        </div>
-                    </div>
-                    <button class="btn-primary" onclick="goToRapportsWithRenewals()">Voir tous les détails</button>
-                `;
-            } else {
-                alertCard.innerHTML = `
-                    <div class="alert-icon">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
-                    <div class="alert-content">
-                        <h4>Tout est à jour</h4>
-                        <p>Aucun renouvellement urgent à prévoir</p>
-                    </div>
-                `;
-            }
-        }
-        
-        // Charger les contrats à renouveler
-        if (!window.api || !window.api.contracts) {
-            throw new Error('API non chargée');
-        }
-        
-        const contractsData = await window.api.contracts.getAll('actif');
-        const contrats = contractsData.contrats || [];
-        const contratsARenouveler = contrats.filter(c => c.alerte_renouvellement);
-        
-        // Mettre à jour la section des contrats à renouveler
-        const contractsContainer = document.getElementById('contractsToRenew');
-        if (contractsContainer) {
-            if (contratsARenouveler.length === 0) {
-                contractsContainer.innerHTML = '<p style="text-align: center; padding: 2rem; color: #6B7280;">Aucun contrat à renouveler</p>';
-            } else {
-                contractsContainer.innerHTML = contratsARenouveler.slice(0, 5).map(contrat => {
-                    const joursRestants = contrat.jours_restants || 0;
-                    const badgeClass = joursRestants <= 3 ? 'badge-warning' : 'badge-info';
-                    const badgeText = joursRestants <= 3 ? 'Urgent' : 'À suivre';
-                    return `
-                        <div class="contract-item">
-                            <div class="contract-info">
-                                <h4>${contrat.client_nom} ${contrat.client_prenom}</h4>
-                                <p>Renouvellement dans ${joursRestants} jour${joursRestants > 1 ? 's' : ''}</p>
-                            </div>
-                            <span class="badge ${badgeClass}">${badgeText}</span>
-                        </div>
-                    `;
-                }).join('');
-            }
-        }
-        
-        // Mettre à jour l'activité récente (derniers clients et contrats créés)
-        const activityContainer = document.getElementById('recentActivity');
-        if (activityContainer && window.api && window.api.clients) {
-            // Charger les derniers clients créés
-            const clientsData = await window.api.clients.getAll();
-            const recentClients = (clientsData.clients || []).slice(0, 3);
-            
-            if (recentClients.length === 0) {
-                activityContainer.innerHTML = '<p style="text-align: center; padding: 2rem; color: #6B7280;">Aucune activité récente</p>';
-            } else {
-                activityContainer.innerHTML = recentClients.map(client => {
-                    const timeAgo = formatTimeAgo(client.created_at);
-                    return `
-                        <div class="activity-item">
-                            <div class="activity-icon">
-                                <i class="fas fa-user-plus"></i>
-                            </div>
-                            <div class="activity-content">
-                                <h4>Nouveau client ajouté</h4>
-                                <p>${client.nom} ${client.prenom} - ${timeAgo}</p>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            }
-        }
-=======
+        // Charger toutes les données en parallèle pour de meilleures performances
         const [stats, clientsData, contractsData, notificationsData] = await Promise.all([
             window.api.stats.getDashboard(),
             window.api.clients.getAll('', '', '', 0, 1000),
@@ -1100,18 +980,33 @@ async function loadDashboard() {
                 : Promise.resolve({ notifications: [] })
         ]);
 
+        // Stocker les données dans l'état global pour les détails et les graphiques
         dashboardState.clients = clientsData.clients || [];
         dashboardState.contracts = contractsData.contrats || [];
 
+        // Stocker les stats globalement pour les fonctions de détails (modales contrats actifs/expirants)
+        window.lastDashboardStats = stats;
+
+        // Mettre à jour les cartes de statistiques via data-stat-type
         updateDashboardStatCards(stats);
         bindDashboardStatCards();
         renderDashboardStatDetails(dashboardState.selectedStat);
+
+        // Mettre à jour le badge de notifications
         updateDashboardNotificationBadge(notificationsData.notifications || []);
+
+        // Mettre à jour la carte d'alerte (renouvellements à venir)
         renderDashboardAlert(stats);
+
+        // Mettre à jour la section des contrats à renouveler
         renderContractsToRenew(dashboardState.contracts);
+
+        // Mettre à jour l'activité récente
         renderRecentActivity(dashboardState.clients, dashboardState.contracts);
+
+        // Mettre à jour les graphiques du dashboard
         renderDashboardCharts(dashboardState.contracts);
->>>>>>> 8a46343e2d6d5d87e5b45a1228c72c48f24ca627
+
     } catch (error) {
         console.error('Erreur lors du chargement du dashboard:', error);
         showToast('Erreur lors du chargement du dashboard', 'error');

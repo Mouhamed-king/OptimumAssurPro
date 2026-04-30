@@ -228,9 +228,15 @@ function creerGraphiquePaiements(montantEncaisse, montantRestant) {
             console.warn('Canvas paiementsChart non trouvé');
             return;
         }
-        
-        // Détruire le graphique existant s'il existe
-        if (window.paiementsChart) {
+
+        // Vérifier que Chart.js est disponible
+        if (typeof Chart === 'undefined') {
+            console.warn('Chart.js non disponible');
+            return;
+        }
+
+        // Détruire le graphique existant s'il existe et est valide
+        if (window.paiementsChart && typeof window.paiementsChart.destroy === 'function') {
             window.paiementsChart.destroy();
         }
         

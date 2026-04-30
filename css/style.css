@@ -658,8 +658,9 @@ html {
     padding: var(--spacing-lg);
     box-shadow: var(--shadow-md);
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: var(--spacing-lg);
+    flex-wrap: wrap;
 }
 
 .alert-icon {

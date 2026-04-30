@@ -1141,13 +1141,6 @@ async function deleteClient(clientId) {
     }
 }
 
-function viewClient(id) {
-    // Implémenté dans modals.js
-    if (typeof window.viewClient === 'function') {
-        window.viewClient(id);
-    }
-}
-
 function editClient(id) {
     // Implémenté dans modals.js
     if (typeof window.openEditClientModal === 'function') {

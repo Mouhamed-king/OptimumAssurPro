@@ -37,35 +37,23 @@ function updateBordereau() {
 // Calculer les valeurs du contrat à partir de la prime nette
 // Formules déduites des données réelles du bordereau
 function calculateContractValues(primeNette) {
-    // Frais fixes (constant)
+    // Frais fixes (constante)
     const frais = 3000;
     
-    // Calculer FGA (2.5% de la prime nette)
+    // FGA = prime net * 2,5%
     const fga = Math.round((primeNette * 0.025) * 100) / 100;
     
-    // Calculer Prime TTC d'abord (pour déterminer les taxes)
-    // Les taxes sont calculées de manière à ce que P. TTC = P. Nette + Frais + Taxes + FGA
-    // D'après les données réelles, les taxes semblent être calculées sur (P. Nette + Frais)
-    // Formule déduite: Taxes ≈ (P. Nette + Frais) × taux - ajustement
-    // En analysant: Taxes = P. TTC - P. Nette - Frais - FGA
-    // Pour calculer P. TTC, on utilise: P. TTC = (P. Nette + Frais) × 1.18 + FGA (approximation)
-    // Mais d'après les données réelles, on calcule d'abord P. TTC puis on déduit les taxes
+    // taxes = (prime net + frais) * 14%
+    const taxes = Math.round(((primeNette + frais) * 0.14) * 100) / 100;
     
-    // Calculer Prime TTC (basée sur les données réelles analysées)
-    // Formule observée: P. TTC = (P. Nette + Frais) × 1.14 + FGA
-    const primeTTC = Math.round(((primeNette + frais) * 1.14 + fga) * 100) / 100;
+    // P TTC = prime net + frais + taxes + FGA
+    const primeTTC = Math.round((primeNette + frais + taxes + fga) * 100) / 100;
     
-    // Calculer les taxes à partir de P. TTC
-    // Taxes = P. TTC - P. Nette - Frais - FGA
-    const taxes = Math.round((primeTTC - primeNette - frais - fga) * 100) / 100;
-    
-    // Calculer Commission (25% de la prime nette)
+    // comm = prime net * 25%
     const commission = Math.round((primeNette * 0.25) * 100) / 100;
     
-    // Calculer Net à verser
-    // D'après les données réelles analysées: N à V = P. Nette - Comm + Frais - (Taxes + FGA) / 2
-    // Formule observée: N à V ≈ P. Nette - Comm + Frais - (Taxes + FGA) / 2 (avec arrondi)
-    const netAVerser = Math.round((primeNette - commission + frais - (taxes + fga) / 2) * 100) / 100;
+    // N a V = P TTC - FRAIS - comm
+    const netAVerser = Math.round((primeTTC - frais - commission) * 100) / 100;
     
     return {
         frais,

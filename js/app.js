@@ -1,4 +1,4 @@
-// ============================================
+o, k7// ============================================
 // NAVIGATION ET INTERACTIVITÉ
 // ============================================
 
@@ -583,9 +583,9 @@ function getDashboardStatEntries(type) {
             .filter(contract => {
                 if (!contract.date_fin) return false;
                 const endDate = new Date(contract.date_fin);
-                return endDate.getMonth() === currentMonth && 
-                       endDate.getFullYear() === currentYear &&
-                       (contract.statut === 'actif' || contract.statut === 'expire');
+                return endDate.getMonth() === currentMonth &&
+                    endDate.getFullYear() === currentYear &&
+                    (contract.statut === 'actif' || contract.statut === 'expire');
             })
             .map(contract => ({
                 clientId: contract.client_id,

@@ -46,6 +46,30 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    // Gérer l'affichage du mot de passe
+    const togglePasswordBtn = document.getElementById('togglePasswordBtn');
+    const passwordInput = document.getElementById('password');
+    const togglePasswordIcon = document.getElementById('togglePasswordIcon');
+    
+    if (togglePasswordBtn && passwordInput && togglePasswordIcon) {
+        togglePasswordBtn.addEventListener('click', function(e) {
+            e.preventDefault(); // Empêcher la soumission du formulaire au cas où
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            togglePasswordIcon.className = type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+        });
+    }
+
+    // Pré-remplir l'email si l'option "Se souvenir de moi" était cochée
+    const emailInput = document.getElementById('email');
+    const rememberCheckbox = document.querySelector('input[name="remember"]');
+    const rememberedEmail = localStorage.getItem('rememberedEmail');
+    
+    if (rememberedEmail && emailInput && rememberCheckbox) {
+        emailInput.value = rememberedEmail;
+        rememberCheckbox.checked = true;
+    }
+    
     const loginForm = document.getElementById('loginForm');
     
     if (loginForm) {
@@ -74,9 +98,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (remember) {
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('entreprise', JSON.stringify(data.entreprise));
+                    localStorage.setItem('rememberedEmail', email);
                 } else {
                     sessionStorage.setItem('token', data.token);
                     sessionStorage.setItem('entreprise', JSON.stringify(data.entreprise));
+                    localStorage.removeItem('rememberedEmail');
                 }
                 
                 // Vérifier que le token est bien stocké avant de rediriger

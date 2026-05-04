@@ -583,9 +583,13 @@ function getDashboardStatEntries(type) {
             .filter(contract => {
                 if (!contract.date_fin) return false;
                 const endDate = new Date(contract.date_fin);
+                // Comparer avec la date d'aujourd'hui (sans l'heure pour être précis sur le jour)
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
                 return endDate.getMonth() === currentMonth &&
                     endDate.getFullYear() === currentYear &&
-                    (contract.statut === 'actif' || contract.statut === 'expire');
+                    endDate < today;
             })
             .map(contract => ({
                 clientId: contract.client_id,

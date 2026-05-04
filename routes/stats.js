@@ -73,8 +73,8 @@ router.get('/dashboard', async (req, res) => {
         }
         
         // Contrats expirés ce mois
+        const aujourdhui = moment().format('YYYY-MM-DD');
         const debutMois = moment().startOf('month').format('YYYY-MM-DD');
-        const finMois = moment().endOf('month').format('YYYY-MM-DD');
 
         const { data: expiresData, error: expiresError } = await db.supabase
             .from('contrats')
@@ -88,9 +88,9 @@ router.get('/dashboard', async (req, res) => {
                 )
             `)
             .eq('entreprise_id', entrepriseId)
-            .eq('statut', 'actif')
+            .in('statut', ['actif', 'expire'])
             .gte('date_fin', debutMois)
-            .lte('date_fin', finMois);
+            .lt('date_fin', aujourdhui);
         
         if (expiresError) {
             console.error('Erreur lors du comptage des contrats expirés:', expiresError);

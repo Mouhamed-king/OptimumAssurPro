@@ -60,13 +60,18 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Pré-remplir l'email si l'option "Se souvenir de moi" était cochée
+    // Pré-remplir l'email et le mot de passe si l'option "Se souvenir de moi" était cochée
     const emailInput = document.getElementById('email');
+    const passwordInputEl = document.getElementById('password');
     const rememberCheckbox = document.querySelector('input[name="remember"]');
     const rememberedEmail = localStorage.getItem('rememberedEmail');
+    const rememberedPassword = localStorage.getItem('rememberedPassword');
     
     if (rememberedEmail && emailInput && rememberCheckbox) {
         emailInput.value = rememberedEmail;
+        if (rememberedPassword && passwordInputEl) {
+            passwordInputEl.value = rememberedPassword;
+        }
         rememberCheckbox.checked = true;
     }
     
@@ -99,10 +104,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('entreprise', JSON.stringify(data.entreprise));
                     localStorage.setItem('rememberedEmail', email);
+                    localStorage.setItem('rememberedPassword', password);
                 } else {
                     sessionStorage.setItem('token', data.token);
                     sessionStorage.setItem('entreprise', JSON.stringify(data.entreprise));
                     localStorage.removeItem('rememberedEmail');
+                    localStorage.removeItem('rememberedPassword');
                 }
                 
                 // Vérifier que le token est bien stocké avant de rediriger

@@ -3,6 +3,7 @@
 // ============================================
 
 const { createClient } = require('@supabase/supabase-js');
+const ws = require('ws');
 const { Pool } = require('pg'); // Utilisé uniquement pour les migrations SQL (création de tables)
 require('dotenv').config();
 
@@ -25,6 +26,9 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
     },
     db: {
         schema: 'public'
+    },
+    realtime: {
+        transport: ws
     }
 });
 

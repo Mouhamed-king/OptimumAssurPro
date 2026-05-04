@@ -73,7 +73,6 @@ router.get('/dashboard', async (req, res) => {
         }
         
         // Contrats expirés ce mois
-        const aujourdhui = moment().format('YYYY-MM-DD');
         const debutMois = moment().startOf('month').format('YYYY-MM-DD');
 
         const { data: expiresData, error: expiresError } = await db.supabase

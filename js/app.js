@@ -550,6 +550,8 @@ function formatContractVehicleSubtitle(contract) {
         .filter(Boolean)
         .join(' · ');
 }
+
+function getDashboardStatEntries(type) {
     const contracts = dashboardState.contracts || [];
     const clients = dashboardState.clients || [];
     const now = new Date();

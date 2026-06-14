@@ -67,6 +67,12 @@ async function connect() {
         // Vérifier si les tables existent, sinon les créer (utilise pg)
         if (pgPool) {
             await createTablesIfNotExist();
+            const { ensureVehiculeDetailColumns } = require('./add-vehicule-details');
+            await ensureVehiculeDetailColumns(pgPool).catch((error) => {
+                console.warn('⚠️  Migration colonnes véhicule:', error.message);
+            });
+        } else {
+            console.log('⚠️  pg Pool non configuré — exécutez database/add-vehicule-details.sql dans Supabase si besoin');
         }
         
         return supabase;
@@ -181,6 +187,9 @@ async function createTablesIfNotExist() {
                 immatriculation VARCHAR(50) UNIQUE,
                 annee INTEGER,
                 couleur VARCHAR(50),
+                puissance INTEGER,
+                energie VARCHAR(20),
+                type_vehicule VARCHAR(50),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE

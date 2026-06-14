@@ -9,7 +9,7 @@
     "migrate": "node database/migrate.js",
     "migrate-payments": "node database/add-payment-columns.js",
     "migrate-categorie": "node database/add-categorie-vehicule.js",
-    "migrate-vehicule-details": "node database/add-vehicule-details.js",
+    "migrate-vehicule-details": "node database/run-vehicule-details-migrate.js",
     "import-clients": "node import-clients.js"
   },
   "engines": {

@@ -30,14 +30,7 @@ const getAllContracts = async (req, res) => {
                     prenom,
                     telephone
                 ),
-                vehicules (
-                    marque,
-                    modele,
-                    immatriculation,
-                    puissance,
-                    energie,
-                    type_vehicule
-                )
+                vehicules (*)
             `, { count: 'exact' })
             .eq('entreprise_id', req.entrepriseId)
             .order('date_fin', { ascending: true });
@@ -154,14 +147,7 @@ const getContractById = async (req, res) => {
                     prenom,
                     telephone
                 ),
-                vehicules (
-                    marque,
-                    modele,
-                    immatriculation,
-                    puissance,
-                    energie,
-                    type_vehicule
-                )
+                vehicules (*)
             `)
             .eq('id', id)
             .eq('entreprise_id', req.entrepriseId)

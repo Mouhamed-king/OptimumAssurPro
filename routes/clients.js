@@ -13,6 +13,9 @@ router.use(authenticateToken);
 // Obtenir tous les clients
 router.get('/', clientController.getAllClients);
 
+// Portefeuille fidèle (clients + véhicules + contrats)
+router.get('/fidele', clientController.getFideleClients);
+
 // Obtenir un client par ID
 router.get('/:id', clientController.getClientById);
 

@@ -52,3 +52,5 @@ desktop.ini
 # Vercel
 .vercel
 
+*.xlsx
+*.xls

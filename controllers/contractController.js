@@ -33,7 +33,10 @@ const getAllContracts = async (req, res) => {
                 vehicules (
                     marque,
                     modele,
-                    immatriculation
+                    immatriculation,
+                    puissance,
+                    energie,
+                    type_vehicule
                 )
             `, { count: 'exact' })
             .eq('entreprise_id', req.entrepriseId)
@@ -105,6 +108,9 @@ const getAllContracts = async (req, res) => {
                 marque: vehicule.marque,
                 modele: vehicule.modele,
                 immatriculation: vehicule.immatriculation,
+                puissance: vehicule.puissance,
+                energie: vehicule.energie,
+                type_vehicule: vehicule.type_vehicule,
                 jours_restants: joursRestants,
                 est_expire: joursRestants < 0,
                 alerte_renouvellement: joursRestants >= 0 && joursRestants <= 7
@@ -151,7 +157,10 @@ const getContractById = async (req, res) => {
                 vehicules (
                     marque,
                     modele,
-                    immatriculation
+                    immatriculation,
+                    puissance,
+                    energie,
+                    type_vehicule
                 )
             `)
             .eq('id', id)
@@ -175,6 +184,9 @@ const getContractById = async (req, res) => {
             marque: vehicule.marque,
             modele: vehicule.modele,
             immatriculation: vehicule.immatriculation,
+            puissance: vehicule.puissance,
+            energie: vehicule.energie,
+            type_vehicule: vehicule.type_vehicule,
             jours_restants: joursRestants,
             est_expire: joursRestants < 0,
             alerte_renouvellement: joursRestants >= 0 && joursRestants <= 7

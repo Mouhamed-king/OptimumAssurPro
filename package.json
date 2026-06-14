@@ -9,6 +9,7 @@
     "migrate": "node database/migrate.js",
     "migrate-payments": "node database/add-payment-columns.js",
     "migrate-categorie": "node database/add-categorie-vehicule.js",
+    "migrate-vehicule-details": "node database/add-vehicule-details.js",
     "import-clients": "node import-clients.js"
   },
   "engines": {
@@ -30,7 +31,8 @@
     "express-validator": "^7.0.1",
     "moment": "^2.29.4",
     "pg": "^8.16.3",
-    "ws": "^8.20.0"
+    "ws": "^8.20.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

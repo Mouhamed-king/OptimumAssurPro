@@ -66,6 +66,10 @@
                 <i class="fas fa-users"></i>
                 <span>Clients</span>
             </a>
+            <a href="#" class="nav-item" data-page="fidele">
+                <i class="fas fa-id-card"></i>
+                <span>Fidèle</span>
+            </a>
             <a href="#" class="nav-item" data-page="bordereaux">
                 <i class="fas fa-file-invoice"></i>
                 <span>Bordereaux</span>
@@ -126,6 +130,15 @@
                     <div class="stat-content">
                         <h3>0</h3>
                         <p>Expirés ce mois</p>
+                    </div>
+                </div>
+                <div class="stat-card dashboard-stat-card" data-stat-type="tous_expires">
+                    <div class="stat-icon red">
+                        <i class="fas fa-calendar-times"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>0</h3>
+                        <p>Tous les expirés</p>
                     </div>
                 </div>
             </div>
@@ -301,6 +314,35 @@
                          Suivant <i class="fas fa-chevron-right"></i>
                      </button>
                  </div>
+            </div>
+        </div>
+
+        <!-- Fidèle Page -->
+        <div id="fidele-page" class="page">
+            <div class="page-header">
+                <div>
+                    <h1>Fidèle</h1>
+                    <p class="page-subtitle">Portefeuille clients — nombre de véhicules et détails par assuré</p>
+                </div>
+            </div>
+
+            <div class="card fidele-toolbar">
+                <div class="card-body fidele-toolbar-body">
+                    <div class="search-box fidele-search">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="fideleSearchInput" placeholder="Rechercher un client, une immatriculation, une marque...">
+                    </div>
+                    <div class="fidele-filters">
+                        <button type="button" class="btn-filter fidele-filter-btn active" data-filter="all">Tous</button>
+                        <button type="button" class="btn-filter fidele-filter-btn" data-filter="multi">2 véhicules et +</button>
+                        <button type="button" class="btn-filter fidele-filter-btn" data-filter="single">1 véhicule</button>
+                    </div>
+                    <div id="fideleStats" class="fidele-stats"></div>
+                </div>
+            </div>
+
+            <div id="fideleClientsList" class="fidele-clients-list">
+                <p class="fidele-loading">Chargement...</p>
             </div>
         </div>
 
@@ -921,6 +963,7 @@
     <script src="js/modals.js"></script>
     <script src="js/rapports.js"></script>
     <script src="js/parametres.js"></script>
+    <script src="js/fidele.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

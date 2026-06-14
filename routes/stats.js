@@ -95,6 +95,27 @@ router.get('/dashboard', async (req, res) => {
             console.error('Erreur lors du comptage des contrats expirés:', expiresError);
             throw expiresError;
         }
+
+        // TOUS les contrats expirés (date de fin passée, sans limite de mois)
+        const { data: allExpiresData, error: allExpiresError } = await db.supabase
+            .from('contrats')
+            .select(`
+                *,
+                clients (
+                    id,
+                    nom,
+                    prenom,
+                    telephone
+                )
+            `)
+            .eq('entreprise_id', entrepriseId)
+            .in('statut', ['actif', 'expire'])
+            .lt('date_fin', aujourdhui);
+        
+        if (allExpiresError) {
+            console.error('Erreur lors du comptage de tous les contrats expirés:', allExpiresError);
+            throw allExpiresError;
+        }
         
         res.json({
             clients_actifs: clientsActifsCount || 0,
@@ -103,7 +124,9 @@ router.get('/dashboard', async (req, res) => {
             renouvellements_a_venir: (renouvellementsData || []).length,
             contrats_renouvellement: renouvellementsData || [],
             expires_ce_mois: (expiresData || []).length,
-            contrats_expires_data: expiresData || []
+            contrats_expires_data: expiresData || [],
+            tous_expires: (allExpiresData || []).length,
+            tous_expires_data: allExpiresData || []
         });
     } catch (error) {
         console.error('Erreur lors de la récupération des statistiques:', error);

@@ -183,6 +183,13 @@ const clientsAPI = {
         return await apiRequest(`/clients/${id}`, {
             method: 'DELETE'
         });
+    },
+
+    getFidele: async (search = '') => {
+        const params = new URLSearchParams();
+        if (search) params.append('search', search);
+        const queryString = params.toString();
+        return await apiRequest(`/clients/fidele${queryString ? '?' + queryString : ''}`);
     }
 };
 

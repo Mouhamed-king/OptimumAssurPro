@@ -69,7 +69,8 @@
     .btn-primary,
     .btn-secondary,
     .badge,
-    .card-header {
+    .card-header,
+    .pagination-controls {
         display: none !important;
     }
     

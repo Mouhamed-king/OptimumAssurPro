@@ -568,6 +568,19 @@ html {
     gap: var(--spacing-sm);
 }
 
+.dashboard-detail-list--scroll {
+    max-height: 420px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.dashboard-detail-count {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+    font-weight: 500;
+}
+
 .dashboard-detail-item {
     display: flex;
     justify-content: space-between;
@@ -622,6 +635,10 @@ html {
 
 .stat-icon.purple {
     background: #8B5CF6;
+}
+
+.stat-icon.red {
+    background: var(--color-danger);
 }
 
 .stat-content h3 {
@@ -1203,6 +1220,11 @@ html {
     padding: var(--spacing-lg);
 }
 
+#viewClientContent {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
 .modal-footer {
     display: flex;
     justify-content: flex-end;
@@ -1450,4 +1472,196 @@ html {
         border-left-color: var(--color-secondary);
         border-bottom-color: var(--color-border);
     }
+}
+
+/* ============================================
+   PAGE FIDÈLE
+   ============================================ */
+
+.fidele-toolbar-body {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+    align-items: center;
+    justify-content: space-between;
+}
+
+.fidele-search {
+    flex: 1 1 280px;
+    min-width: 220px;
+}
+
+.fidele-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.fidele-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+}
+
+.fidele-clients-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-md);
+}
+
+.fidele-client-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.fidele-client-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: #FBFCFE;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+}
+
+.fidele-client-toggle:hover {
+    background: #F3F4F6;
+}
+
+.fidele-client-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    flex: 1;
+}
+
+.fidele-client-summary h3 {
+    margin: 0 0 0.25rem 0;
+    font-size: 1rem;
+}
+
+.fidele-client-summary p {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+}
+
+.fidele-client-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.fidele-chevron {
+    transition: transform 0.2s ease;
+    color: var(--color-text-secondary);
+}
+
+.fidele-chevron.open {
+    transform: rotate(180deg);
+}
+
+.fidele-client-details {
+    padding: var(--spacing-lg);
+    border-top: 1px solid var(--color-border);
+    background: var(--color-surface);
+}
+
+.fidele-client-actions {
+    margin-bottom: var(--spacing-md);
+}
+
+.fidele-vehicles-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.fidele-vehicle-card {
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-md);
+    background: #F9FAFB;
+}
+
+.fidele-vehicle-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+    margin-bottom: 0.5rem;
+}
+
+.fidele-vehicle-header h4 {
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.fidele-vehicle-subtitle {
+    margin: 0.25rem 0 0 0;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+}
+
+.fidele-contracts-block {
+    margin-top: var(--spacing-md);
+    padding-top: var(--spacing-md);
+    border-top: 1px dashed var(--color-border);
+}
+
+.fidele-contracts-block h5 {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+}
+
+.fidele-contract-item {
+    background: white;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.fidele-contract-item p {
+    margin: 0.25rem 0;
+    font-size: 0.85rem;
+}
+
+.fidele-contract-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+}
+
+.fidele-empty-state,
+.fidele-loading,
+.fidele-empty-inline {
+    text-align: center;
+    color: var(--color-text-secondary);
+    padding: 2rem 1rem;
+}
+
+.fidele-empty-state i {
+    font-size: 2rem;
+    margin-bottom: 0.75rem;
+    opacity: 0.5;
+}
+
+.fidele-empty-inline {
+    padding: 0.5rem 0;
+    font-size: 0.875rem;
 }

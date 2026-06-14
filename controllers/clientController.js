@@ -201,7 +201,7 @@ const getClientById = async (req, res) => {
                 vehicules (*),
                 contrats (
                     *,
-                    vehicules (marque, modele, immatriculation)
+                    vehicules (*)
                 )
             `)
             .eq('id', id)
@@ -267,7 +267,10 @@ const createClient = async (req, res) => {
                 client_id: newClient.id,
                 marque: vehicule.marque || '',
                 modele: vehicule.modele || '',
-                immatriculation: vehicule.immatriculation
+                immatriculation: vehicule.immatriculation,
+                puissance: vehicule.puissance ?? null,
+                energie: vehicule.energie || null,
+                type_vehicule: vehicule.type_vehicule || null
             })
             .select('id')
             .single();
@@ -375,7 +378,10 @@ const updateClient = async (req, res) => {
                     .update({
                         immatriculation: vehicule.immatriculation,
                         marque: vehicule.marque || '',
-                        modele: vehicule.modele || ''
+                        modele: vehicule.modele || '',
+                        puissance: vehicule.puissance ?? null,
+                        energie: vehicule.energie || null,
+                        type_vehicule: vehicule.type_vehicule || null
                     })
                     .eq('id', existingVehicules[0].id);
                 
@@ -390,7 +396,10 @@ const updateClient = async (req, res) => {
                         client_id: id,
                         immatriculation: vehicule.immatriculation,
                         marque: vehicule.marque || '',
-                        modele: vehicule.modele || ''
+                        modele: vehicule.modele || '',
+                        puissance: vehicule.puissance ?? null,
+                        energie: vehicule.energie || null,
+                        type_vehicule: vehicule.type_vehicule || null
                     });
                 
                 if (vehiculeError) {
@@ -538,9 +547,98 @@ const deleteClient = async (req, res) => {
     }
 };
 
+// Portefeuille fidèle : clients avec tous leurs véhicules et contrats
+const getFideleClients = async (req, res) => {
+    try {
+        const { search = '' } = req.query;
+
+        const { data: clients, error } = await db.supabase
+            .from('clients')
+            .select(`
+                *,
+                vehicules (*),
+                contrats (
+                    *,
+                    vehicules (*)
+                )
+            `)
+            .eq('entreprise_id', req.entrepriseId)
+            .order('nom', { ascending: true })
+            .limit(1000);
+
+        if (error) {
+            throw error;
+        }
+
+        let enrichedClients = (clients || []).map(client => {
+            const vehicules = client.vehicules || [];
+            const contrats = client.contrats || [];
+
+            const vehiculesAvecContrats = vehicules.map(vehicule => ({
+                ...vehicule,
+                vehicle_type: normalizeVehicleType(vehicule),
+                contrats: contrats
+                    .filter(contrat => contrat.vehicule_id === vehicule.id)
+                    .sort((a, b) => new Date(b.date_fin) - new Date(a.date_fin))
+            }));
+
+            const contratsSansVehicule = contrats.filter(
+                contrat => !vehicules.some(vehicule => vehicule.id === contrat.vehicule_id)
+            );
+
+            return {
+                id: client.id,
+                nom: client.nom,
+                prenom: client.prenom,
+                telephone: client.telephone,
+                email: client.email,
+                adresse: client.adresse,
+                created_at: client.created_at,
+                nombre_vehicules: vehicules.length,
+                nombre_contrats: contrats.length,
+                vehicules: vehiculesAvecContrats,
+                contrats_sans_vehicule: contratsSansVehicule
+            };
+        });
+
+        if (search) {
+            const searchLower = search.toLowerCase().trim();
+            enrichedClients = enrichedClients.filter(client => {
+                const matchesNom = client.nom?.toLowerCase().includes(searchLower);
+                const matchesTelephone = client.telephone?.toLowerCase().includes(searchLower);
+                const matchesImmat = client.vehicules?.some(vehicule =>
+                    vehicule.immatriculation?.toLowerCase().includes(searchLower)
+                );
+                const matchesMarque = client.vehicules?.some(vehicule =>
+                    vehicule.marque?.toLowerCase().includes(searchLower) ||
+                    vehicule.modele?.toLowerCase().includes(searchLower)
+                );
+                return matchesNom || matchesTelephone || matchesImmat || matchesMarque;
+            });
+        }
+
+        enrichedClients.sort((a, b) => {
+            if (b.nombre_vehicules !== a.nombre_vehicules) {
+                return b.nombre_vehicules - a.nombre_vehicules;
+            }
+            return (a.nom || '').localeCompare(b.nom || '', 'fr');
+        });
+
+        res.json({
+            clients: enrichedClients,
+            total: enrichedClients.length,
+            total_vehicules: enrichedClients.reduce((sum, client) => sum + client.nombre_vehicules, 0)
+        });
+    } catch (error) {
+        console.error('Erreur lors de la récupération du portefeuille fidèle:', error);
+        res.status(500).json({ error: 'Erreur lors de la récupération du portefeuille fidèle: ' + error.message });
+    }
+};
+
 module.exports = {
     getAllClients,
     getClientById,
+    getFideleClients,
     createClient,
     updateClient,
     deleteClient

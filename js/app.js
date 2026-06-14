@@ -201,6 +201,18 @@ document.addEventListener('DOMContentLoaded', function () {
                             if (typeof setupSearch === 'function') setupSearch();
                             if (typeof setupFilters === 'function') setupFilters();
                         }, 100);
+                    } else if (targetPage === 'fidele') {
+                        setupFidelePage();
+                        loadFidele().catch(error => {
+                            console.error('Erreur lors du chargement Fidèle:', error);
+                            if (error.message && error.message.includes('Token')) {
+                                localStorage.removeItem('token');
+                                sessionStorage.removeItem('token');
+                                window.location.href = '/login.html';
+                            } else if (typeof showToast === 'function') {
+                                showToast('Erreur lors du chargement Fidèle', 'error');
+                            }
+                        });
                     } else if (targetPage === 'bordereaux') {
                         if (typeof loadBordereau === 'function') {
                             loadBordereau().catch(error => {
@@ -516,7 +528,8 @@ function updateDashboardStatCards(stats) {
         clients_actifs: stats.clients_actifs ?? 0,
         contrats_actifs: stats.contrats_actifs ?? 0,
         renouvellements_a_venir: stats.renouvellements_a_venir ?? 0,
-        expires_ce_mois: stats.expires_ce_mois ?? 0
+        expires_ce_mois: stats.expires_ce_mois ?? 0,
+        tous_expires: stats.tous_expires ?? 0
     };
 
     document.querySelectorAll('#dashboardStatsGrid .dashboard-stat-card').forEach(card => {
@@ -529,7 +542,14 @@ function updateDashboardStatCards(stats) {
     });
 }
 
-function getDashboardStatEntries(type) {
+function formatContractVehicleSubtitle(contract) {
+    const vehicleParts = [contract.marque, contract.modele].filter(Boolean).join(' ');
+    const powerPart = contract.puissance ? `${contract.puissance} CV` : '';
+    const immatPart = contract.immatriculation ? contract.immatriculation : '';
+    return [contract.numero_contrat || 'Contrat', vehicleParts, powerPart, immatPart]
+        .filter(Boolean)
+        .join(' · ');
+}
     const contracts = dashboardState.contracts || [];
     const clients = dashboardState.clients || [];
     const now = new Date();
@@ -555,7 +575,7 @@ function getDashboardStatEntries(type) {
             .map(contract => ({
                 clientId: contract.client_id,
                 title: contract.client_nom || 'Client',
-                subtitle: `${contract.numero_contrat || 'Contrat sans numéro'}${contract.immatriculation ? ` · ${contract.immatriculation}` : ''}`,
+                subtitle: formatContractVehicleSubtitle(contract),
                 meta: contract.date_fin ? `Échéance ${formatDate(contract.date_fin)}` : 'Date indisponible',
                 badge: 'Actif',
                 badgeClass: 'badge-success'
@@ -570,7 +590,7 @@ function getDashboardStatEntries(type) {
                 return {
                     clientId: contract.client_id,
                     title: contract.client_nom || 'Client',
-                    subtitle: `${contract.numero_contrat || 'Contrat'}${contract.immatriculation ? ` · ${contract.immatriculation}` : ''}`,
+                    subtitle: formatContractVehicleSubtitle(contract),
                     meta: `Renouvellement dans ${joursRestants} jour${joursRestants > 1 ? 's' : ''}`,
                     badge: joursRestants <= 3 ? 'Urgent' : 'À suivre',
                     badgeClass: joursRestants <= 3 ? 'badge-warning' : 'badge-info'
@@ -594,8 +614,28 @@ function getDashboardStatEntries(type) {
             .map(contract => ({
                 clientId: contract.client_id,
                 title: contract.client_nom || 'Client',
-                subtitle: `${contract.numero_contrat || 'Contrat'}${contract.immatriculation ? ` · ${contract.immatriculation}` : ''}`,
+                subtitle: formatContractVehicleSubtitle(contract),
                 meta: contract.date_fin ? `Expiré le ${formatDate(contract.date_fin)}` : 'Expiré ce mois',
+                badge: 'Expiré',
+                badgeClass: 'badge-danger'
+            }));
+    }
+
+    if (type === 'tous_expires') {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        return contracts
+            .filter(contract => {
+                if (!contract.date_fin) return false;
+                const endDate = new Date(contract.date_fin);
+                return endDate < today;
+            })
+            .map(contract => ({
+                clientId: contract.client_id,
+                title: contract.client_nom || 'Client',
+                subtitle: formatContractVehicleSubtitle(contract),
+                meta: contract.date_fin ? `Expiré le ${formatDate(contract.date_fin)}` : 'Expiré',
                 badge: 'Expiré',
                 badgeClass: 'badge-danger'
             }));
@@ -609,7 +649,8 @@ function renderDashboardStatDetails(type) {
         clients_actifs: 'Clients actifs',
         contrats_actifs: 'Contrats actifs',
         renouvellements_a_venir: 'Renouvellements à venir',
-        expires_ce_mois: 'Assurances expirées ce mois'
+        expires_ce_mois: 'Assurances expirées ce mois',
+        tous_expires: 'Toutes les assurances expirées'
     };
 
     const titleElement = document.getElementById('dashboardDetailTitle');
@@ -618,14 +659,15 @@ function renderDashboardStatDetails(type) {
         titleElement.textContent = titleMap[type] || 'Détails';
     }
 
-    const entries = getDashboardStatEntries(type).slice(0, 8);
+    const entries = getDashboardStatEntries(type);
     if (!entries.length) {
         renderDashboardEmptyState(container, 'Aucun élément correspondant pour le moment.');
         return;
     }
 
     container.innerHTML = `
-        <div class="dashboard-detail-list">
+        <p class="dashboard-detail-count">${entries.length} élément${entries.length > 1 ? 's' : ''} au total</p>
+        <div class="dashboard-detail-list dashboard-detail-list--scroll">
             ${entries.map(entry => `
                 <div class="dashboard-detail-item" onclick="showClientDetails(${entry.clientId})" style="cursor: pointer; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#f3f4f6'" onmouseout="this.style.backgroundColor=''">
                     <div class="dashboard-detail-main">
@@ -728,21 +770,23 @@ function renderContractsToRenew(contracts) {
 
     const contractsToRenew = contracts
         .filter(contract => contract.alerte_renouvellement)
-        .sort((left, right) => (left.jours_restants || 0) - (right.jours_restants || 0))
-        .slice(0, 6);
+        .sort((left, right) => (left.jours_restants || 0) - (right.jours_restants || 0));
 
     if (!contractsToRenew.length) {
         renderDashboardEmptyState(contractsContainer, 'Aucun contrat à renouveler');
         return;
     }
 
-    contractsContainer.innerHTML = contractsToRenew.map(contract => {
+    contractsContainer.innerHTML = `
+        <p class="dashboard-detail-count">${contractsToRenew.length} contrat${contractsToRenew.length > 1 ? 's' : ''} à renouveler</p>
+        <div class="dashboard-detail-list dashboard-detail-list--scroll">
+            ${contractsToRenew.map(contract => {
         const joursRestants = contract.jours_restants || 0;
         const badgeClass = joursRestants <= 3 ? 'badge-warning' : 'badge-info';
         const badgeText = joursRestants <= 3 ? 'Urgent' : 'À suivre';
         const clientId = contract.client_id;
         return `
-            <div class="contract-item" onclick="showClientDetails(${clientId})" style="cursor: pointer; transition: background-color 0.2s; padding: 0.75rem; border-radius: 0.5rem;" onmouseover="this.style.backgroundColor='#f3f4f6'" onmouseout="this.style.backgroundColor=''">
+            <div class="contract-item dashboard-detail-item" onclick="showClientDetails(${clientId})" style="cursor: pointer; transition: background-color 0.2s; padding: 0.75rem; border-radius: 0.5rem;" onmouseover="this.style.backgroundColor='#f3f4f6'" onmouseout="this.style.backgroundColor=''">
                 <div class="contract-info">
                     <h4>${contract.client_nom || 'Client'}</h4>
                     <p>${contract.numero_contrat || 'Contrat'} · échéance ${formatDate(contract.date_fin)}</p>
@@ -753,7 +797,9 @@ function renderContractsToRenew(contracts) {
                 </div>
             </div>
         `;
-    }).join('');
+            }).join('')}
+        </div>
+    `;
 }
 
 function renderDashboardAlert(stats) {

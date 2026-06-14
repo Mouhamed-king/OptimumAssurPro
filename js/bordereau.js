@@ -5,6 +5,8 @@
 // Variable globale pour la pagination du bordereau
 let bordereauCurrentPage = 1;
 const bordereauClientsPerPage = 25;
+let bordereauAllContrats = [];
+let bordereauLastFilters = null;
 
 // Mettre à jour le bordereau en temps réel
 function updateBordereau() {
@@ -65,6 +67,102 @@ function calculateContractValues(primeNette) {
     };
 }
 
+function formatBordereauDate(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function formatBordereauNumber(num) {
+    const rounded = Math.round(num * 100) / 100;
+    const parts = rounded.toString().split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    return parts.length > 1 ? parts.join(',') : parts[0];
+}
+
+function getBordereauFilters() {
+    const categorieSelect = document.getElementById('bordereauCategorie');
+    const dateDebutInput = document.getElementById('bordereauDateDebut');
+    const dateFinInput = document.getElementById('bordereauDateFin');
+
+    return {
+        categorie: categorieSelect ? categorieSelect.value : 'VP/CI',
+        dateDebut: dateDebutInput ? dateDebutInput.value : '',
+        dateFin: dateFinInput ? dateFinInput.value : '',
+    };
+}
+
+async function fetchBordereauContrats() {
+    if (!window.api || !window.api.contracts) {
+        throw new Error('API non chargée');
+    }
+
+    const { categorie, dateDebut, dateFin } = getBordereauFilters();
+    const data = await window.api.contracts.getAll({
+        dateDebut,
+        dateFin,
+        offset: 0,
+        limit: 1000,
+    });
+
+    return (data.contrats || []).filter((contrat) => {
+        return contrat.categorie_vehicule === categorie || (!contrat.categorie_vehicule && categorie === 'VP/CI');
+    });
+}
+
+function createBordereauRow(contrat, rowNumber) {
+    const primeNette = contrat.montant || 0;
+    const values = calculateContractValues(primeNette);
+    const immatriculation =
+        contrat.vehicules?.immatriculation ||
+        (contrat.vehicules && contrat.vehicules.length > 0 ? contrat.vehicules[0].immatriculation : null) ||
+        contrat.immatriculation ||
+        '-';
+    const nomComplet = contrat.client_nom || '';
+
+    const row = document.createElement('tr');
+    row.style.borderBottom = '1px solid var(--color-border)';
+    row.innerHTML = `
+        <td style="padding: 0.75rem; border: 1px solid #ddd;">${rowNumber}</td>
+        <td style="padding: 0.75rem; border: 1px solid #ddd;">${contrat.numero_contrat || '-'}</td>
+        <td style="padding: 0.75rem; border: 1px solid #ddd;">${nomComplet}</td>
+        <td style="padding: 0.75rem; border: 1px solid #ddd;">${immatriculation}</td>
+        <td style="padding: 0.75rem; border: 1px solid #ddd;">${formatBordereauDate(contrat.date_debut)}</td>
+        <td style="padding: 0.75rem; border: 1px solid #ddd;">${formatBordereauDate(contrat.date_fin)}</td>
+        <td style="padding: 0.75rem; border: 1px solid #ddd; text-align: right;">${formatBordereauNumber(primeNette)}</td>
+        <td style="padding: 0.75rem; border: 1px solid #ddd; text-align: right;">${formatBordereauNumber(values.frais)}</td>
+        <td style="padding: 0.75rem; border: 1px solid #ddd; text-align: right;">${formatBordereauNumber(values.taxes)}</td>
+        <td style="padding: 0.75rem; border: 1px solid #ddd; text-align: right;">${formatBordereauNumber(values.fga)}</td>
+        <td style="padding: 0.75rem; border: 1px solid #ddd; text-align: right; font-weight: bold;">${formatBordereauNumber(values.primeTTC)}</td>
+        <td style="padding: 0.75rem; border: 1px solid #ddd; text-align: right;">${formatBordereauNumber(values.commission)}</td>
+        <td style="padding: 0.75rem; border: 1px solid #ddd; text-align: right;">${formatBordereauNumber(values.netAVerser)}</td>
+    `;
+
+    return row;
+}
+
+function renderBordereauTableBody(contrats, startIndex = 0) {
+    const tbody = document.getElementById('bordereauTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+
+    if (contrats.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="13" style="padding: 2rem; text-align: center; color: var(--color-text-secondary);">
+                    Aucun contrat à afficher dans le bordereau
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    contrats.forEach((contrat, index) => {
+        tbody.appendChild(createBordereauRow(contrat, startIndex + index + 1));
+    });
+}
+
 // Mettre à jour le tableau du bordereau
 function updateBordereauTable(nom, immatriculation, numeroPolice, dateEffet, dateEcheance, primeNette) {
     const tbody = document.getElementById('bordereauTableBody');
@@ -74,21 +172,10 @@ function updateBordereauTable(nom, immatriculation, numeroPolice, dateEffet, dat
     const values = calculateContractValues(primeNette);
     
     // Formater les dates
-    const formatDate = (dateStr) => {
-        if (!dateStr) return '';
-        const date = new Date(dateStr);
-        return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    };
+    const formatDate = formatBordereauDate;
     
     // Formater les nombres avec espaces et décimales
-    const formatNumber = (num) => {
-        // Arrondir à 2 décimales
-        const rounded = Math.round(num * 100) / 100;
-        // Formater avec espaces pour les milliers et garder les décimales
-        const parts = rounded.toString().split('.');
-        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-        return parts.length > 1 ? parts.join(',') : parts[0];
-    };
+    const formatNumber = formatBordereauNumber;
     
     // Vérifier si la ligne existe déjà (par numéro de police)
     const existingRow = Array.from(tbody.querySelectorAll('tr')).find(row => {
@@ -217,15 +304,7 @@ function updateBordereauTotals() {
     }
     
     if (totalsRow) {
-        // Formater les nombres avec espaces et décimales
-        const formatNumber = (num) => {
-            // Arrondir à 2 décimales
-            const rounded = Math.round(num * 100) / 100;
-            // Formater avec espaces pour les milliers et garder les décimales
-            const parts = rounded.toString().split('.');
-            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-            return parts.length > 1 ? parts.join(',') : parts[0];
-        };
+        const formatNumber = formatBordereauNumber;
         
         const cells = Array.from(totalsRow.querySelectorAll('td'));
         // La ligne de totaux a 8 cellules : 1 avec colspan="6" (indice 0) + 7 cellules numériques (indices 1-7)
@@ -246,119 +325,30 @@ function updateBordereauTotals() {
     }
 }
 
-// Charger tous les contrats dans le bordereau avec pagination
+// Charger les contrats dans le bordereau avec pagination à l'écran
 async function loadBordereau() {
     try {
-        // Vérifier que l'API est chargée
-        if (!window.api || !window.api.contracts) {
-            throw new Error('API non chargée');
+        const filters = getBordereauFilters();
+        const filterKey = JSON.stringify(filters);
+        if (bordereauLastFilters !== filterKey) {
+            bordereauCurrentPage = 1;
+            bordereauLastFilters = filterKey;
         }
-        
-        // Récupérer la catégorie sélectionnée
-        const categorieSelect = document.getElementById('bordereauCategorie');
-        const categorie = categorieSelect ? categorieSelect.value : 'VP/CI';
-        
-        // Mettre à jour l'affichage de la catégorie
+
+        const { categorie } = filters;
+
         const categorieDisplay = document.getElementById('bordereauCategorieDisplay');
         if (categorieDisplay) {
             categorieDisplay.textContent = categorie;
         }
-        
-        // Récupérer les dates de filtre
-        const dateDebutInput = document.getElementById('bordereauDateDebut');
-        const dateFinInput = document.getElementById('bordereauDateFin');
-        const dateDebut = dateDebutInput ? dateDebutInput.value : '';
-        const dateFin = dateFinInput ? dateFinInput.value : '';
-        
-        // Calculer l'offset pour la pagination
+
+        bordereauAllContrats = await fetchBordereauContrats();
         const offset = (bordereauCurrentPage - 1) * bordereauClientsPerPage;
-        
-        // Récupérer tous les contrats (on fera la pagination côté client pour le bordereau)
-        const data = await window.api.contracts.getAll({
-            dateDebut,
-            dateFin,
-            offset: 0,
-            limit: 1000
-        });
-        let contrats = (data.contrats || []).filter(contrat => {
-            // Filtrer par catégorie si disponible
-            return contrat.categorie_vehicule === categorie || (!contrat.categorie_vehicule && categorie === 'VP/CI');
-        });
-        
-        const tbody = document.getElementById('bordereauTableBody');
-        if (!tbody) return;
-        
-        tbody.innerHTML = '';
-        
-        if (contrats.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="13" style="padding: 2rem; text-align: center; color: var(--color-text-secondary);">
-                        Aucun contrat à afficher dans le bordereau
-                    </td>
-                </tr>
-            `;
-            return;
-        }
-        
-        // Appliquer la pagination
-        const paginatedContrats = contrats.slice(offset, offset + bordereauClientsPerPage);
-        
-        paginatedContrats.forEach((contrat, index) => {
-            const primeNette = contrat.montant || 0;
-            
-            // Calculer toutes les valeurs à partir de la prime nette
-            const values = calculateContractValues(primeNette);
-            
-            const formatDate = (dateStr) => {
-                if (!dateStr) return '';
-                const date = new Date(dateStr);
-                return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            };
-            
-            // Formater les nombres avec espaces et décimales
-            const formatNumber = (num) => {
-                // Arrondir à 2 décimales
-                const rounded = Math.round(num * 100) / 100;
-                // Formater avec espaces pour les milliers et garder les décimales
-                const parts = rounded.toString().split('.');
-                parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-                return parts.length > 1 ? parts.join(',') : parts[0];
-            };
-            
-            // Récupérer l'immatriculation depuis les véhicules
-            const immatriculation = contrat.vehicules?.immatriculation || (contrat.vehicules && contrat.vehicules.length > 0 ? contrat.vehicules[0].immatriculation : null) || contrat.immatriculation || '-';
-            
-            // Récupérer le nom complet du client (nom seul, sans prénom)
-            const nomComplet = contrat.client_nom || '';
-            
-            // Le numéro réel dans la liste complète (pas juste dans la page)
-            const globalIndex = offset + index + 1;
-            
-            const row = document.createElement('tr');
-            row.style.borderBottom = '1px solid var(--color-border)';
-            row.innerHTML = `
-                <td style="padding: 0.75rem; border: 1px solid #ddd;">${globalIndex}</td>
-                <td style="padding: 0.75rem; border: 1px solid #ddd;">${contrat.numero_contrat || '-'}</td>
-                <td style="padding: 0.75rem; border: 1px solid #ddd;">${nomComplet}</td>
-                <td style="padding: 0.75rem; border: 1px solid #ddd;">${immatriculation}</td>
-                <td style="padding: 0.75rem; border: 1px solid #ddd;">${formatDate(contrat.date_debut)}</td>
-                <td style="padding: 0.75rem; border: 1px solid #ddd;">${formatDate(contrat.date_fin)}</td>
-                <td style="padding: 0.75rem; border: 1px solid #ddd; text-align: right;">${formatNumber(primeNette)}</td>
-                <td style="padding: 0.75rem; border: 1px solid #ddd; text-align: right;">${formatNumber(values.frais)}</td>
-                <td style="padding: 0.75rem; border: 1px solid #ddd; text-align: right;">${formatNumber(values.taxes)}</td>
-                <td style="padding: 0.75rem; border: 1px solid #ddd; text-align: right;">${formatNumber(values.fga)}</td>
-                <td style="padding: 0.75rem; border: 1px solid #ddd; text-align: right; font-weight: bold;">${formatNumber(values.primeTTC)}</td>
-                <td style="padding: 0.75rem; border: 1px solid #ddd; text-align: right;">${formatNumber(values.commission)}</td>
-                <td style="padding: 0.75rem; border: 1px solid #ddd; text-align: right;">${formatNumber(values.netAVerser)}</td>
-            `;
-            tbody.appendChild(row);
-        });
-        
+        const paginatedContrats = bordereauAllContrats.slice(offset, offset + bordereauClientsPerPage);
+
+        renderBordereauTableBody(paginatedContrats, offset);
         updateBordereauTotals();
-        
-        // Mettre à jour la pagination du bordereau
-        updateBordereauPagination(contrats.length);
+        updateBordereauPagination(bordereauAllContrats.length);
     } catch (error) {
         console.error('Erreur lors du chargement du bordereau:', error);
         if (typeof window.showToast === 'function') {
@@ -367,17 +357,54 @@ async function loadBordereau() {
     }
 }
 
-// Imprimer le bordereau
-function printBordereau() {
-    // Utiliser window.print() directement pour utiliser les styles @media print
-    window.print();
+async function renderBordereauForOutput() {
+    const contrats = await fetchBordereauContrats();
+
+    if (contrats.length === 0) {
+        if (typeof window.showToast === 'function') {
+            window.showToast('Aucun contrat à exporter pour cette période', 'info');
+        }
+        return false;
+    }
+
+    renderBordereauTableBody(contrats, 0);
+    updateBordereauTotals();
+    return true;
 }
 
-// Exporter le bordereau
-function exportBordereau() {
-    // Pour l'instant, on utilise print
-    // Plus tard, on pourra ajouter l'export PDF
-    printBordereau();
+function restoreBordereauViewAfterOutput() {
+    loadBordereau();
+}
+
+// Imprimer le bordereau (tous les contrats de la période sélectionnée)
+async function printBordereau() {
+    const savedPage = bordereauCurrentPage;
+
+    try {
+        const hasData = await renderBordereauForOutput();
+        if (!hasData) return;
+
+        const restore = () => {
+            bordereauCurrentPage = savedPage;
+            restoreBordereauViewAfterOutput();
+            window.removeEventListener('afterprint', restore);
+        };
+
+        window.addEventListener('afterprint', restore, { once: true });
+        window.print();
+    } catch (error) {
+        console.error('Erreur lors de l\'impression du bordereau:', error);
+        bordereauCurrentPage = savedPage;
+        restoreBordereauViewAfterOutput();
+        if (typeof window.showToast === 'function') {
+            window.showToast('Erreur lors de l\'impression du bordereau: ' + (error.message || 'Erreur inconnue'), 'error');
+        }
+    }
+}
+
+// Exporter le bordereau (tous les contrats de la période sélectionnée)
+async function exportBordereau() {
+    await printBordereau();
 }
 
 // Fonction de mise à jour de la pagination du bordereau
@@ -416,10 +443,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (nextBtn) {
         nextBtn.addEventListener('click', function() {
-            // On ne peut pas connaître le total exact sans recharger, donc on autorise le clic
-            // La désactivation sera gérée dans updateBordereauPagination
-            bordereauCurrentPage++;
-            loadBordereau();
+            const totalPages = Math.ceil(bordereauAllContrats.length / bordereauClientsPerPage);
+            if (bordereauCurrentPage < totalPages) {
+                bordereauCurrentPage++;
+                loadBordereau();
+            }
         });
     }
 });

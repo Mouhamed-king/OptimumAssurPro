@@ -5,6 +5,73 @@
 let currentEditingClientId = null;
 let currentEditingContractId = null;
 
+function formatDetailValue(value, fallback = 'Non renseigné') {
+    if (value === null || value === undefined || String(value).trim() === '') {
+        return fallback;
+    }
+    return value;
+}
+
+function formatVehicleTypeLabel(type) {
+    const labels = {
+        moto: 'Moto / 2 roues',
+        camionnette: 'Camionnette',
+        camion: 'Camion',
+        break: 'Break',
+        particulier: 'Véhicule particulier',
+        non_renseigne: 'Non renseigné'
+    };
+    return labels[type] || type || 'Non renseigné';
+}
+
+function inferVehicleType(vehicule = {}) {
+    if (vehicule.type_vehicule) {
+        return formatVehicleTypeLabel(vehicule.type_vehicule);
+    }
+
+    const combined = [vehicule.modele, vehicule.marque]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+    if (!combined) return 'Non renseigné';
+    if (combined.includes('moto') || combined.includes('yamaha') || (combined.includes('honda') && combined.includes('sh'))) {
+        return formatVehicleTypeLabel('moto');
+    }
+    if (combined.includes('break') || combined.includes('wagon')) {
+        return formatVehicleTypeLabel('break');
+    }
+    if (combined.includes('camionnette') || combined.includes('pickup') || combined.includes('pick-up')) {
+        return formatVehicleTypeLabel('camionnette');
+    }
+    if (combined.includes('camion') || combined.includes('truck')) {
+        return formatVehicleTypeLabel('camion');
+    }
+    return formatVehicleTypeLabel('particulier');
+}
+
+function renderVehicleDetailsHtml(vehicule) {
+    const marque = formatDetailValue(vehicule.marque);
+    const modele = formatDetailValue(vehicule.modele);
+    const immat = formatDetailValue(vehicule.immatriculation);
+    const type = inferVehicleType(vehicule);
+    const puissance = vehicule.puissance ? `${vehicule.puissance} CV` : 'Non renseigné';
+    const energie = formatDetailValue(vehicule.energie);
+
+    return `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.5rem 1rem; margin-top: 0.5rem;">
+            <p style="margin: 0;"><strong>Marque:</strong> ${marque}</p>
+            <p style="margin: 0;"><strong>Modèle:</strong> ${modele}</p>
+            <p style="margin: 0;"><strong>Type:</strong> ${type}</p>
+            <p style="margin: 0;"><strong>Puissance:</strong> ${puissance}</p>
+            <p style="margin: 0;"><strong>Énergie:</strong> ${energie}</p>
+            <p style="margin: 0;"><strong>Immatriculation:</strong> ${immat}</p>
+            ${vehicule.annee ? `<p style="margin: 0;"><strong>Année:</strong> ${vehicule.annee}</p>` : ''}
+            ${vehicule.couleur ? `<p style="margin: 0;"><strong>Couleur:</strong> ${vehicule.couleur}</p>` : ''}
+        </div>
+    `;
+}
+
 // ============================================
 // MODAL CLIENT
 // ============================================
@@ -243,10 +310,8 @@ async function viewClient(id) {
         const vehiculesHtml = client.vehicules && client.vehicules.length > 0
             ? client.vehicules.map(v => `
                 <div style="margin-bottom: 1rem; padding: 1rem; background: #F3F4F6; border-radius: 8px;">
-                    <strong>${v.marque} ${v.modele}</strong><br>
-                    ${v.immatriculation ? `Immatriculation: ${v.immatriculation}<br>` : ''}
-                    ${v.annee ? `Année: ${v.annee}<br>` : ''}
-                    ${v.couleur ? `Couleur: ${v.couleur}` : ''}
+                    <strong style="display: block; margin-bottom: 0.25rem;">${formatDetailValue(v.marque, 'Véhicule')} ${v.modele || ''}</strong>
+                    ${renderVehicleDetailsHtml(v)}
                 </div>
             `).join('')
             : '<p>Aucun véhicule enregistré</p>';
@@ -261,9 +326,11 @@ async function viewClient(id) {
                 return `
                 <div style="margin-bottom: 1rem; padding: 1rem; background: #F3F4F6; border-radius: 8px;">
                     <strong>${c.numero_contrat}</strong><br>
-                    Type: ${c.type_contrat}<br>
+                    Type: ${formatDetailValue(c.type_contrat)}<br>
+                    Catégorie: ${formatDetailValue(c.categorie_vehicule)}<br>
                     Durée: ${c.duree_mois} mois<br>
                     Du ${formatDate(c.date_debut)} au ${formatDate(c.date_fin)}<br>
+                    ${c.vehicules ? `<div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #E5E7EB;"><strong>Véhicule associé</strong>${renderVehicleDetailsHtml(c.vehicules)}</div>` : ''}
                     <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid #E5E7EB;">
                         <strong>Paiements:</strong><br>
                         Montant total: <strong>${montantTotal.toLocaleString()} FCFA</strong><br>
@@ -574,11 +641,16 @@ async function viewContract(id) {
             </div>
             <div>
                 <h3 style="margin-bottom: 1rem;">Véhicule</h3>
-                <p><strong>Marque:</strong> ${contrat.marque}</p>
-                <p><strong>Modèle:</strong> ${contrat.modele}</p>
-                ${contrat.immatriculation ? `<p><strong>Immatriculation:</strong> ${contrat.immatriculation}</p>` : ''}
-                ${contrat.annee ? `<p><strong>Année:</strong> ${contrat.annee}</p>` : ''}
-                ${contrat.couleur ? `<p><strong>Couleur:</strong> ${contrat.couleur}</p>` : ''}
+                ${renderVehicleDetailsHtml({
+                    marque: contrat.marque,
+                    modele: contrat.modele,
+                    immatriculation: contrat.immatriculation,
+                    puissance: contrat.puissance,
+                    energie: contrat.energie,
+                    type_vehicule: contrat.type_vehicule,
+                    annee: contrat.annee,
+                    couleur: contrat.couleur
+                })}
             </div>
         `;
         
@@ -608,6 +680,9 @@ window.closeContractModal = closeContractModal;
 window.saveContract = saveContract;
 window.viewContract = viewContract;
 window.closeViewContractModal = closeViewContractModal;
+window.renderVehicleDetailsHtml = renderVehicleDetailsHtml;
+window.inferVehicleType = inferVehicleType;
+window.formatDetailValue = formatDetailValue;
 
 // Fermer les modaux en cliquant en dehors
 window.onclick = function(event) {

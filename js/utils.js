@@ -6,7 +6,6 @@
 function showToast(message, type = 'info') {
     // Vérifier si le body existe
     if (!document.body) {
-        console.log(`[${type.toUpperCase()}] ${message}`);
         return;
     }
     
@@ -46,7 +45,6 @@ function showToast(message, type = 'info') {
 function checkAPI() {
     if (!window.api) {
         const error = new Error('API non chargée. Veuillez recharger la page.');
-        console.error(error);
         if (typeof window.showToast === 'function') {
             window.showToast('Erreur: API non chargée. Veuillez recharger la page.', 'error');
         }
@@ -55,6 +53,16 @@ function checkAPI() {
     return true;
 }
 
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // Exposer globalement
 window.showToast = showToast;
 window.checkAPI = checkAPI;
+window.escapeHtml = escapeHtml;

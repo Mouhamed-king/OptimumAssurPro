@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="HandheldFriendly" content="true">
     <meta name="MobileOptimized" content="width">
-    <title>OptimumAssurPro - Gestion Clients Assurance</title>
+    <title>Gestionnaire Clientele - Assurance</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/print.css" media="print">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,8 +26,8 @@
                 <i class="fas fa-bars"></i>
             </button>
             <div class="logo">
-                <i class="fas fa-shield-alt"></i>
-                <span>OptimumAssurPro</span>
+                <i class="fas fa-clipboard-list"></i>
+                <span>Gestionnaire Clientele</span>
             </div>
         </div>
         <div class="header-right">
@@ -37,7 +37,7 @@
             </div>
             <div class="user-menu" onclick="logout()" style="cursor: pointer;">
                 <div class="user-avatar">
-                    <i class="fas fa-user"></i>
+                    <i class="fas fa-building-user"></i>
                 </div>
                 <span class="user-name">Entreprise</span>
                 <i class="fas fa-sign-out-alt"></i>
@@ -51,35 +51,35 @@
         <nav class="sidebar-nav">
             <div class="sidebar-header-mobile">
                 <div class="logo">
-                    <i class="fas fa-shield-alt"></i>
-                    <span>OptimumAssurPro</span>
+                    <i class="fas fa-clipboard-list"></i>
+                    <span>Gestionnaire Clientele</span>
                 </div>
                 <button class="mobile-menu-close" id="mobileMenuClose" aria-label="Fermer le menu">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             <a href="index.html" class="nav-item active" data-page="dashboard">
-                <i class="fas fa-home"></i>
+                <i class="fas fa-gauge-high"></i>
                 <span>Dashboard</span>
             </a>
             <a href="#" class="nav-item" data-page="clients">
-                <i class="fas fa-users"></i>
+                <i class="fas fa-address-book"></i>
                 <span>Clients</span>
             </a>
             <a href="#" class="nav-item" data-page="fidele">
-                <i class="fas fa-id-card"></i>
+                <i class="fas fa-user-check"></i>
                 <span>Fidèle</span>
             </a>
             <a href="#" class="nav-item" data-page="bordereaux">
-                <i class="fas fa-file-invoice"></i>
+                <i class="fas fa-file-signature"></i>
                 <span>Bordereaux</span>
             </a>
             <a href="#" class="nav-item" data-page="rapports">
-                <i class="fas fa-chart-bar"></i>
+                <i class="fas fa-chart-line"></i>
                 <span>Rapports</span>
             </a>
             <a href="#" class="nav-item" data-page="parametres">
-                <i class="fas fa-cog"></i>
+                <i class="fas fa-sliders"></i>
                 <span>Paramètres</span>
             </a>
         </nav>
@@ -98,7 +98,7 @@
             <div class="stats-grid dashboard-stats-grid" id="dashboardStatsGrid">
                 <div class="stat-card dashboard-stat-card active" data-stat-type="clients_actifs">
                     <div class="stat-icon blue">
-                        <i class="fas fa-users"></i>
+                        <i class="fas fa-user-group"></i>
                     </div>
                     <div class="stat-content">
                         <h3>0</h3>
@@ -107,7 +107,7 @@
                 </div>
                 <div class="stat-card dashboard-stat-card" data-stat-type="contrats_actifs">
                     <div class="stat-icon green">
-                        <i class="fas fa-file-contract"></i>
+                        <i class="fas fa-file-signature"></i>
                     </div>
                     <div class="stat-content">
                         <h3>0</h3>
@@ -116,7 +116,7 @@
                 </div>
                 <div class="stat-card dashboard-stat-card" data-stat-type="renouvellements_a_venir">
                     <div class="stat-icon orange">
-                        <i class="fas fa-exclamation-triangle"></i>
+                        <i class="fas fa-rotate-right"></i>
                     </div>
                     <div class="stat-content">
                         <h3>0</h3>
@@ -125,7 +125,7 @@
                 </div>
                 <div class="stat-card dashboard-stat-card" data-stat-type="expires_ce_mois">
                     <div class="stat-icon purple">
-                        <i class="fas fa-calendar-check"></i>
+                        <i class="fas fa-calendar-xmark"></i>
                     </div>
                     <div class="stat-content">
                         <h3>0</h3>
@@ -134,7 +134,7 @@
                 </div>
                 <div class="stat-card dashboard-stat-card" data-stat-type="tous_expires">
                     <div class="stat-icon red">
-                        <i class="fas fa-calendar-times"></i>
+                        <i class="fas fa-triangle-exclamation"></i>
                     </div>
                     <div class="stat-content">
                         <h3>0</h3>
@@ -459,7 +459,7 @@
             <div class="stats-grid" style="margin-bottom: 2rem;">
                 <div class="stat-card">
                     <div class="stat-icon blue">
-                        <i class="fas fa-money-bill-wave"></i>
+                        <i class="fas fa-sack-dollar"></i>
                     </div>
                     <div class="stat-content">
                         <h3 id="rapportChiffreAffaires">0</h3>
@@ -468,7 +468,7 @@
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon green">
-                        <i class="fas fa-money-check-alt"></i>
+                        <i class="fas fa-circle-check"></i>
                     </div>
                     <div class="stat-content">
                         <h3 id="rapportMontantEncaisse">0</h3>
@@ -477,7 +477,7 @@
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon orange">
-                        <i class="fas fa-money-bill"></i>
+                        <i class="fas fa-wallet"></i>
                     </div>
                     <div class="stat-content">
                         <h3 id="rapportMontantRestant">0</h3>
@@ -486,7 +486,7 @@
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon purple">
-                        <i class="fas fa-file-contract"></i>
+                        <i class="fas fa-file-signature"></i>
                     </div>
                     <div class="stat-content">
                         <h3 id="rapportContratsTotal">0</h3>
@@ -495,7 +495,7 @@
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon teal">
-                        <i class="fas fa-users"></i>
+                        <i class="fas fa-address-book"></i>
                     </div>
                     <div class="stat-content">
                         <h3 id="rapportClientsTotal">0</h3>
@@ -504,7 +504,7 @@
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon purple">
-                        <i class="fas fa-percentage"></i>
+                        <i class="fas fa-percent"></i>
                     </div>
                     <div class="stat-content">
                         <h3 id="rapportTauxRenouvellement">0%</h3>
@@ -513,7 +513,7 @@
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon" style="background: linear-gradient(135deg, #10B981 0%, #059669 100%);">
-                        <i class="fas fa-chart-line"></i>
+                        <i class="fas fa-arrow-trend-up"></i>
                     </div>
                     <div class="stat-content">
                         <h3 id="rapportBenefice" style="color: #10B981;">0</h3>
@@ -731,7 +731,7 @@
 
     <!-- Footer -->
     <footer class="footer">
-        <p>&copy; 2026 OptimumAssurPro - Version 1.0.0</p>
+        <p>&copy; 2026 Gestionnaire Clientele - Version 1.0.0</p>
     </footer>
 
     <!-- Modal Ajouter/Modifier Client -->

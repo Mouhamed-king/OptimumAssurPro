@@ -7,9 +7,9 @@ let currentEditingContractId = null;
 
 function formatDetailValue(value, fallback = 'Non renseigné') {
     if (value === null || value === undefined || String(value).trim() === '') {
-        return fallback;
+        return typeof window.escapeHtml === 'function' ? window.escapeHtml(fallback) : fallback;
     }
-    return value;
+    return typeof window.escapeHtml === 'function' ? window.escapeHtml(value) : value;
 }
 
 function formatVehicleTypeLabel(type) {
@@ -172,12 +172,16 @@ function openEditClientModal(clientId) {
                 document.getElementById('contractPrimeNette').value = contrat.montant || '';
                 document.getElementById('contractMontantPaye').value = contrat.montant_paye || 0;
                 document.getElementById('contractMontantRestant').value = contrat.montant_restant || 0;
+                const categorieSelect = document.getElementById('categorieVehicule');
+                if (categorieSelect) {
+                    categorieSelect.value = contrat.categorie_vehicule || 'VP/CI';
+                }
             }
             
             document.getElementById('clientModal').classList.add('show');
         })
         .catch(error => {
-            (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur lors du chargement du client: ' + error.message, 'error');
+            (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur lors du chargement du client', 'error');
         });
 }
 
@@ -211,15 +215,23 @@ async function saveClient(event) {
     const telephone = document.getElementById('clientTelephone').value.trim();
     const numeroPolice = document.getElementById('contractNumeroPolice').value.trim();
     const immatriculation = document.getElementById('vehiculeImmatriculation').value.trim();
-    const categorieVehicule = document.getElementById('categorieVehicule').value;
+    const categorieVehicule = document.getElementById('categorieVehicule')?.value || 'VP/CI';
     const dateEffet = document.getElementById('contractDateEffet').value;
     const dateEcheance = document.getElementById('contractDateEcheance').value;
-    const primeNette = parseFloat(document.getElementById('contractPrimeNette').value);
+    const primeNetteValue = document.getElementById('contractPrimeNette').value;
+    const primeNette = parseFloat(primeNetteValue);
     const montantPaye = parseFloat(document.getElementById('contractMontantPaye').value) || 0;
     const montantRestant = parseFloat(document.getElementById('contractMontantRestant').value) || 0;
     
+    const isEditing = Boolean(currentEditingClientId);
+
     // Validation
-    if (!nom || !telephone || !numeroPolice || !immatriculation || !categorieVehicule || !dateEffet || !dateEcheance || !primeNette || primeNette <= 0) {
+    if (!nom || !telephone) {
+        (typeof window.showToast === 'function' ? window.showToast : console.log)('Veuillez remplir tous les champs obligatoires', 'error');
+        return;
+    }
+
+    if (!isEditing && (!numeroPolice || !immatriculation || !categorieVehicule || !dateEffet || !dateEcheance || !primeNette || primeNette <= 0)) {
         (typeof window.showToast === 'function' ? window.showToast : console.log)('Veuillez remplir tous les champs obligatoires', 'error');
         return;
     }
@@ -239,7 +251,9 @@ async function saveClient(event) {
     const dateEffetObj = new Date(dateEffet);
     const dateEcheanceObj = new Date(dateEcheance);
     const diffTime = Math.abs(dateEcheanceObj - dateEffetObj);
-    const diffMonths = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 30));
+    const diffMonths = dateEffet && dateEcheance
+        ? Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 30))
+        : 12;
     
     // Préparer les données pour l'API
     const formData = {
@@ -262,6 +276,16 @@ async function saveClient(event) {
             categorie_vehicule: categorieVehicule
         }
     };
+
+    const hasCompleteContract = numeroPolice && dateEffet && dateEcheance && Number.isFinite(primeNette) && primeNette > 0;
+    if (isEditing) {
+        if (!immatriculation) {
+            delete formData.vehicule;
+        }
+        if (!hasCompleteContract) {
+            delete formData.contrat;
+        }
+    }
     
     try {
         // Vérifier que l'API est chargée
@@ -269,17 +293,13 @@ async function saveClient(event) {
             throw new Error('API non chargée');
         }
         
-        console.log('Données du formulaire:', formData);
-        
         if (currentEditingClientId) {
             // Modifier (sans créer de nouveau contrat)
             const result = await window.api.clients.update(currentEditingClientId, formData);
-            console.log('Client modifié:', result);
             (typeof window.showToast === 'function' ? window.showToast : console.log)('Client modifié avec succès', 'success');
         } else {
             // Créer client avec véhicule et contrat
             const result = await window.api.clients.create(formData);
-            console.log('Client créé:', result);
             (typeof window.showToast === 'function' ? window.showToast : console.log)('Client et contrat créés avec succès', 'success');
             
             // Recharger le bordereau
@@ -292,8 +312,8 @@ async function saveClient(event) {
         loadClients();
         loadDashboard(); // Recharger le dashboard pour mettre à jour les stats
     } catch (error) {
-        console.error('Erreur lors de la sauvegarde du client:', error);
-        (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur: ' + (error.message || 'Une erreur est survenue'), 'error');
+        console.error('Erreur lors de la sauvegarde du client');
+        (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur lors de la sauvegarde', 'error');
     }
 }
 
@@ -310,7 +330,7 @@ async function viewClient(id) {
         const vehiculesHtml = client.vehicules && client.vehicules.length > 0
             ? client.vehicules.map(v => `
                 <div style="margin-bottom: 1rem; padding: 1rem; background: #F3F4F6; border-radius: 8px;">
-                    <strong style="display: block; margin-bottom: 0.25rem;">${formatDetailValue(v.marque, 'Véhicule')} ${v.modele || ''}</strong>
+                    <strong style="display: block; margin-bottom: 0.25rem;">${formatDetailValue(v.marque, 'Véhicule')} ${formatDetailValue(v.modele, '')}</strong>
                     ${renderVehicleDetailsHtml(v)}
                 </div>
             `).join('')
@@ -325,7 +345,7 @@ async function viewClient(id) {
                 
                 return `
                 <div style="margin-bottom: 1rem; padding: 1rem; background: #F3F4F6; border-radius: 8px;">
-                    <strong>${c.numero_contrat}</strong><br>
+                    <strong>${formatDetailValue(c.numero_contrat)}</strong><br>
                     Type: ${formatDetailValue(c.type_contrat)}<br>
                     Catégorie: ${formatDetailValue(c.categorie_vehicule)}<br>
                     Durée: ${c.duree_mois} mois<br>
@@ -357,10 +377,10 @@ async function viewClient(id) {
         viewContent.innerHTML = `
             <div style="margin-bottom: 1.5rem;">
                 <h3 style="margin-bottom: 1rem;">Informations personnelles</h3>
-                <p><strong>Nom:</strong> ${client.nom} ${client.prenom}</p>
-                <p><strong>Téléphone:</strong> ${client.telephone}</p>
-                ${client.email ? `<p><strong>Email:</strong> ${client.email}</p>` : ''}
-                ${client.adresse ? `<p><strong>Adresse:</strong> ${client.adresse}</p>` : ''}
+                <p><strong>Nom:</strong> ${formatDetailValue(client.nom)} ${formatDetailValue(client.prenom, '')}</p>
+                <p><strong>Téléphone:</strong> ${formatDetailValue(client.telephone)}</p>
+                ${client.email ? `<p><strong>Email:</strong> ${formatDetailValue(client.email)}</p>` : ''}
+                ${client.adresse ? `<p><strong>Adresse:</strong> ${formatDetailValue(client.adresse)}</p>` : ''}
                 <p><strong>Date d'inscription:</strong> ${formatDate(client.created_at)}</p>
             </div>
             <div style="margin-bottom: 1.5rem;">
@@ -375,7 +395,7 @@ async function viewClient(id) {
         
         document.getElementById('viewClientModal').classList.add('show');
     } catch (error) {
-        (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur lors du chargement: ' + error.message, 'error');
+        (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur lors du chargement', 'error');
     }
 }
 
@@ -441,10 +461,10 @@ async function updatePayment(contratId, montantTotal, montantPayeActuel, montant
                 loadRapports();
             }
         } else {
-            (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur: ' + (data.error || 'Une erreur est survenue'), 'error');
+            (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur lors de la mise à jour du paiement', 'error');
         }
     } catch (error) {
-        console.error('Erreur lors de la mise à jour du paiement:', error);
+        console.error('Erreur lors de la mise à jour du paiement:');
         (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur lors de la mise à jour du paiement', 'error');
     }
 }
@@ -480,7 +500,7 @@ async function openAddContractModal() {
         document.getElementById('contractDateDebut').valueAsDate = new Date();
         document.getElementById('contractModal').classList.add('show');
     } catch (error) {
-        (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur lors du chargement des clients: ' + error.message, 'error');
+        (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur lors du chargement des clients', 'error');
     }
 }
 
@@ -537,7 +557,7 @@ async function openEditContractModal(contractId) {
         document.getElementById('viewClientModal').classList.remove('show');
         document.getElementById('contractModal').classList.add('show');
     } catch (error) {
-        (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur lors du chargement du contrat: ' + error.message, 'error');
+        (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur lors du chargement du contrat', 'error');
     }
 }
 
@@ -571,7 +591,7 @@ async function loadClientVehicules(clientId) {
             vehiculeSelect.innerHTML = '<option value="">Ce client n\'a pas de véhicule</option>';
         }
     } catch (error) {
-        (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur lors du chargement des véhicules: ' + error.message, 'error');
+        (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur lors du chargement des véhicules', 'error');
     }
 }
 
@@ -607,7 +627,7 @@ async function saveContract(event) {
         loadContrats();
         loadDashboard();
     } catch (error) {
-        (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur: ' + error.message, 'error');
+        (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur lors de l\'opération', 'error');
     }
 }
 
@@ -624,8 +644,8 @@ async function viewContract(id) {
         document.getElementById('viewContractContent').innerHTML = `
             <div style="margin-bottom: 1.5rem;">
                 <h3 style="margin-bottom: 1rem;">Informations du contrat</h3>
-                <p><strong>Numéro:</strong> ${contrat.numero_contrat}</p>
-                <p><strong>Type:</strong> ${contrat.type_contrat}</p>
+                <p><strong>Numéro:</strong> ${formatDetailValue(contrat.numero_contrat)}</p>
+                <p><strong>Type:</strong> ${formatDetailValue(contrat.type_contrat)}</p>
                 <p><strong>Durée:</strong> ${contrat.duree_mois} mois</p>
                 <p><strong>Date de début:</strong> ${formatDate(contrat.date_debut)}</p>
                 <p><strong>Date de fin:</strong> ${formatDate(contrat.date_fin)}</p>
@@ -656,7 +676,7 @@ async function viewContract(id) {
         
         document.getElementById('viewContractModal').classList.add('show');
     } catch (error) {
-        (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur lors du chargement: ' + error.message, 'error');
+        (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur lors du chargement', 'error');
     }
 }
 

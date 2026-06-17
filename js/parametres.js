@@ -44,9 +44,9 @@ async function loadParametres() {
         }
         
     } catch (error) {
-        console.error('Erreur lors du chargement des paramètres:', error);
+        console.error('Erreur lors du chargement des paramètres');
         if (typeof window.showToast === 'function') {
-            window.showToast('Erreur lors du chargement des paramètres: ' + (error.message || 'Erreur inconnue'), 'error');
+            window.showToast('Erreur lors du chargement des paramètres', 'error');
         }
     }
 }
@@ -109,9 +109,9 @@ async function saveEntrepriseInfo(event) {
         }
         
     } catch (error) {
-        console.error('Erreur lors de la sauvegarde:', error);
+        console.error('Erreur lors de la sauvegarde');
         if (typeof window.showToast === 'function') {
-            window.showToast('Erreur: ' + (error.message || 'Une erreur est survenue'), 'error');
+            window.showToast('Erreur lors de la sauvegarde', 'error');
         }
     }
 }
@@ -207,9 +207,9 @@ async function changePassword(event) {
         resetPasswordForm();
         
     } catch (error) {
-        console.error('Erreur lors du changement de mot de passe:', error);
+        console.error('Erreur lors du changement de mot de passe');
         if (typeof window.showToast === 'function') {
-            window.showToast('Erreur: ' + (error.message || 'Une erreur est survenue'), 'error');
+            window.showToast('Erreur lors du changement de mot de passe', 'error');
         }
     }
 }

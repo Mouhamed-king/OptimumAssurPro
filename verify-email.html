@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vérification Email - OptimumAssurPro</title>
+    <title>Vérification Email - Gestionnaire Clientele</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Roboto:wght@400;500&family=Inter:wght@500;600&display=swap" rel="stylesheet">
@@ -380,7 +380,7 @@
                 </div>
                 <h2 class="success-title">Email vérifié avec succès !</h2>
                 <p class="success-message">
-                    Votre adresse email a été vérifiée avec succès. Vous pouvez maintenant vous connecter à votre compte et commencer à utiliser OptimumAssurPro.
+                    Votre adresse email a été vérifiée avec succès. Vous pouvez maintenant vous connecter à votre compte et commencer à utiliser Gestionnaire Clientele.
                 </p>
                 <a href="login.html" class="success-button">
                     <span>Se connecter</span>
@@ -409,82 +409,37 @@
         </div>
     </div>
     
-    <!-- Charger Supabase JS depuis CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // Charger la configuration depuis l'API
-        let supabase = null;
-        
-        async function initSupabase() {
-            try {
-                const response = await fetch('/api/config');
-                const config = await response.json();
-                
-                if (!config.supabaseUrl || !config.supabaseAnonKey) {
-                    throw new Error('Configuration Supabase manquante');
-                }
-                
-                // Initialiser le client Supabase
-                supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
-                return true;
-            } catch (error) {
-                console.error('Erreur lors de l\'initialisation de Supabase:', error);
-                showError('Erreur de configuration. Veuillez contacter l\'administrateur.');
-                return false;
-            }
-        }
-        
         async function verifyEmail() {
-            // Initialiser Supabase d'abord
-            const initialized = await initSupabase();
-            if (!initialized) {
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            const searchParams = new URLSearchParams(window.location.search);
+            const token = hashParams.get('access_token') || searchParams.get('token');
+
+            if (!token) {
+                showError('Lien de vérification invalide ou expiré');
+                document.getElementById('resendButton').style.display = 'inline-flex';
                 return;
             }
-            
+
             try {
-                // Supabase Auth vérifie automatiquement le hash dans l'URL (#access_token=...)
-                // Si le hash est présent, Supabase confirme automatiquement l'email
-                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-                
-                if (sessionError) {
-                    // Essayer de vérifier avec le hash dans l'URL
-                    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-                    const accessToken = hashParams.get('access_token');
-                    const type = hashParams.get('type');
-                    
-                    if (accessToken && type === 'signup') {
-                        // Le hash contient le token de vérification
-                        // Supabase vérifie automatiquement quand on récupère la session
-                        const { data: { user }, error: verifyError } = await supabase.auth.getUser(accessToken);
-                        
-                        if (verifyError || !user) {
-                            showError('Token de vérification invalide ou expiré');
-                            document.getElementById('resendButton').style.display = 'inline-flex';
-                            return;
-                        }
-                        
-                        // Vérifier si l'email est maintenant confirmé
-                        if (user.email_confirmed_at) {
-                            showSuccess();
-                            // Nettoyer l'URL
-                            window.history.replaceState({}, document.title, window.location.pathname);
-                        } else {
-                            showError('L\'email n\'a pas encore été confirmé');
-                            document.getElementById('resendButton').style.display = 'inline-flex';
-                        }
-                    } else {
-                        showError('Token de vérification manquant dans l\'URL');
-                        document.getElementById('resendButton').style.display = 'inline-flex';
-                    }
-                } else if (session?.user?.email_confirmed_at) {
-                    // L'utilisateur est déjà vérifié
+                const response = await fetch(`${window.location.origin}/api/auth/verify-email`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ token })
+                });
+
+                const data = await response.json().catch(() => ({}));
+
+                if (response.ok && data.verified) {
                     showSuccess();
+                    window.history.replaceState({}, document.title, window.location.pathname);
                 } else {
-                    showError('Email non vérifié');
+                    showError('Lien de vérification invalide ou expiré');
                     document.getElementById('resendButton').style.display = 'inline-flex';
                 }
             } catch (error) {
-                console.error('Erreur:', error);
                 showError('Une erreur est survenue lors de la vérification');
                 document.getElementById('resendButton').style.display = 'inline-flex';
             }
@@ -516,20 +471,18 @@
                     body: JSON.stringify({ email })
                 });
                 
-                const data = await response.json();
+                await response.json();
                 
                 if (response.ok) {
-                    alert('Un nouvel email de vérification vous a été envoyé. Veuillez vérifier votre boîte de réception.');
+                    alert('Si cet email existe, un nouveau lien de vérification vous a été envoyé.');
                 } else {
-                    alert(data.error || 'Erreur lors de l\'envoi de l\'email');
+                    alert('Une erreur est survenue');
                 }
             } catch (error) {
-                console.error('Erreur:', error);
                 alert('Une erreur est survenue');
             }
         }
         
-        // Vérifier l'email au chargement de la page
         verifyEmail();
     </script>
 </body>

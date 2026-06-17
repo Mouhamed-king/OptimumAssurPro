@@ -25,6 +25,9 @@ router.post('/change-password', authenticateToken, authController.changePassword
 // Renvoyer l'email de vérification
 router.post('/resend-verification', authController.resendVerificationEmail);
 
+// Vérifier un lien de vérification email
+router.post('/verify-email', authController.verifyEmail);
+
 // Demander la réinitialisation du mot de passe
 router.post('/forgot-password', authController.forgotPassword);
 

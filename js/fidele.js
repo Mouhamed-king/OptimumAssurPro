@@ -9,14 +9,14 @@ function formatFidelePhone(telephone) {
     if (!telephone || telephone.startsWith('TEMP-')) {
         return 'Non renseigné';
     }
-    return telephone;
+    return typeof window.escapeHtml === 'function' ? window.escapeHtml(telephone) : telephone;
 }
 
 function formatFideleValue(value, fallback = 'Non renseigné') {
     if (value === null || value === undefined || String(value).trim() === '') {
-        return fallback;
+        return typeof window.escapeHtml === 'function' ? window.escapeHtml(fallback) : fallback;
     }
-    return value;
+    return typeof window.escapeHtml === 'function' ? window.escapeHtml(value) : value;
 }
 
 function formatFideleVehicleType(vehicule) {
@@ -80,7 +80,7 @@ function renderFideleVehicleCard(vehicule, index) {
         <article class="fidele-vehicle-card">
             <div class="fidele-vehicle-header">
                 <div>
-                    <h4>${title}</h4>
+                    <h4>${formatFideleValue(title)}</h4>
                     <p class="fidele-vehicle-subtitle">${formatFideleValue(vehicule.immatriculation, 'Immatriculation non renseignée')}</p>
                 </div>
                 <span class="badge badge-info">${formatFideleVehicleType(vehicule)}</span>
@@ -115,7 +115,7 @@ function renderFideleClientCard(client) {
             <button type="button" class="fidele-client-toggle" onclick="toggleFideleClient(${client.id})" aria-expanded="false">
                 <div class="fidele-client-summary">
                     <div>
-                        <h3>${client.nom || 'Client'} ${client.prenom || ''}</h3>
+                        <h3>${formatFideleValue(client.nom, 'Client')} ${formatFideleValue(client.prenom, '')}</h3>
                         <p>${formatFidelePhone(client.telephone)}</p>
                     </div>
                     <div class="fidele-client-badges">
@@ -195,12 +195,12 @@ async function loadFidele(searchTerm = '') {
         fideleClients = data.clients || [];
         renderFidelePage();
     } catch (error) {
-        console.error('Erreur lors du chargement Fidèle:', error);
+        console.error('Erreur lors du chargement Fidèle:');
         if (container) {
             container.innerHTML = '<p class="fidele-empty-state">Impossible de charger les données</p>';
         }
         if (typeof window.showToast === 'function') {
-            window.showToast('Erreur lors du chargement Fidèle: ' + (error.message || 'Erreur inconnue'), 'error');
+            window.showToast('Erreur lors du chargement Fidèle', 'error');
         }
     }
 }

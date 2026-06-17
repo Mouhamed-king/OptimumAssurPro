@@ -80,6 +80,11 @@ function formatBordereauNumber(num) {
     return parts.length > 1 ? parts.join(',') : parts[0];
 }
 
+function formatBordereauText(value, fallback = '-') {
+    const text = value === null || value === undefined || String(value).trim() === '' ? fallback : value;
+    return typeof window.escapeHtml === 'function' ? window.escapeHtml(text) : text;
+}
+
 function getBordereauFilters() {
     const categorieSelect = document.getElementById('bordereauCategorie');
     const dateDebutInput = document.getElementById('bordereauDateDebut');
@@ -124,9 +129,9 @@ function createBordereauRow(contrat, rowNumber) {
     row.style.borderBottom = '1px solid var(--color-border)';
     row.innerHTML = `
         <td style="padding: 0.75rem; border: 1px solid #ddd;">${rowNumber}</td>
-        <td style="padding: 0.75rem; border: 1px solid #ddd;">${contrat.numero_contrat || '-'}</td>
-        <td style="padding: 0.75rem; border: 1px solid #ddd;">${nomComplet}</td>
-        <td style="padding: 0.75rem; border: 1px solid #ddd;">${immatriculation}</td>
+        <td style="padding: 0.75rem; border: 1px solid #ddd;">${formatBordereauText(contrat.numero_contrat)}</td>
+        <td style="padding: 0.75rem; border: 1px solid #ddd;">${formatBordereauText(nomComplet)}</td>
+        <td style="padding: 0.75rem; border: 1px solid #ddd;">${formatBordereauText(immatriculation)}</td>
         <td style="padding: 0.75rem; border: 1px solid #ddd;">${formatBordereauDate(contrat.date_debut)}</td>
         <td style="padding: 0.75rem; border: 1px solid #ddd;">${formatBordereauDate(contrat.date_fin)}</td>
         <td style="padding: 0.75rem; border: 1px solid #ddd; text-align: right;">${formatBordereauNumber(primeNette)}</td>
@@ -216,9 +221,9 @@ function updateBordereauTable(nom, immatriculation, numeroPolice, dateEffet, dat
         row.style.borderBottom = '1px solid var(--color-border)';
         row.innerHTML = `
             <td style="padding: 0.75rem; border: 1px solid #ddd;">${rowCount}</td>
-            <td style="padding: 0.75rem; border: 1px solid #ddd;">${numeroPolice}</td>
-            <td style="padding: 0.75rem; border: 1px solid #ddd;">${nom}</td>
-            <td style="padding: 0.75rem; border: 1px solid #ddd;">${immatriculation}</td>
+            <td style="padding: 0.75rem; border: 1px solid #ddd;">${formatBordereauText(numeroPolice)}</td>
+            <td style="padding: 0.75rem; border: 1px solid #ddd;">${formatBordereauText(nom)}</td>
+            <td style="padding: 0.75rem; border: 1px solid #ddd;">${formatBordereauText(immatriculation)}</td>
             <td style="padding: 0.75rem; border: 1px solid #ddd;">${formatDate(dateEffet)}</td>
             <td style="padding: 0.75rem; border: 1px solid #ddd;">${formatDate(dateEcheance)}</td>
             <td style="padding: 0.75rem; border: 1px solid #ddd; text-align: right;">${formatNumber(primeNette)}</td>
@@ -319,7 +324,7 @@ function updateBordereauTotals() {
                 if (cells[6]) cells[6].textContent = formatNumber(totalCommission);
                 if (cells[7]) cells[7].textContent = formatNumber(totalNetAVerser);
             } catch (error) {
-                console.error('Erreur lors de la mise à jour des totaux:', error);
+                console.error('Erreur lors de la mise à jour des totaux:');
             }
         }
     }
@@ -350,9 +355,9 @@ async function loadBordereau() {
         updateBordereauTotals();
         updateBordereauPagination(bordereauAllContrats.length);
     } catch (error) {
-        console.error('Erreur lors du chargement du bordereau:', error);
+        console.error('Erreur lors du chargement du bordereau:');
         if (typeof window.showToast === 'function') {
-            window.showToast('Erreur lors du chargement du bordereau: ' + (error.message || 'Erreur inconnue'), 'error');
+            window.showToast('Erreur lors du chargement du bordereau', 'error');
         }
     }
 }
@@ -393,11 +398,11 @@ async function printBordereau() {
         window.addEventListener('afterprint', restore, { once: true });
         window.print();
     } catch (error) {
-        console.error('Erreur lors de l\'impression du bordereau:', error);
+        console.error('Erreur lors de l\'impression du bordereau:');
         bordereauCurrentPage = savedPage;
         restoreBordereauViewAfterOutput();
         if (typeof window.showToast === 'function') {
-            window.showToast('Erreur lors de l\'impression du bordereau: ' + (error.message || 'Erreur inconnue'), 'error');
+            window.showToast('Erreur lors de l\'impression du bordereau', 'error');
         }
     }
 }

@@ -12,6 +12,29 @@ function appDebugLog(...args) {
     }
 }
 
+function isAuthError(error) {
+    const message = String(error?.message || '').toLowerCase();
+    return message.includes('session')
+        || message.includes('token')
+        || message.includes('authentification')
+        || message.includes('401')
+        || message.includes('403')
+        || message.includes('accès refusé');
+}
+
+function safeHtml(value) {
+    if (typeof window.escapeHtml === 'function') {
+        return window.escapeHtml(value);
+    }
+
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // Vérifier l'authentification au chargement
 document.addEventListener('DOMContentLoaded', function () {
     // Vérifier si l'utilisateur est connecté
@@ -62,7 +85,7 @@ document.addEventListener('DOMContentLoaded', function () {
     setTimeout(() => {
         // Charger les données de l'entreprise
         loadEntrepriseInfo().catch(error => {
-            console.error('Erreur lors du chargement des informations entreprise:', error.message);
+            console.error('Erreur lors du chargement des informations entreprise');
         });
     }, 500); // Augmenter le délai pour être sûr que l'API est chargée
 
@@ -78,13 +101,13 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         loadDashboard().catch(error => {
-            console.error('Erreur lors du chargement du dashboard:', error);
-            if (error.message && error.message.includes('Token')) {
+            console.error('Erreur lors du chargement du dashboard:');
+            if (isAuthError(error)) {
                 localStorage.removeItem('token');
                 sessionStorage.removeItem('token');
                 window.location.href = '/login.html';
             } else if (typeof showToast === 'function') {
-                showToast('Erreur lors du chargement du dashboard: ' + (error.message || 'Erreur inconnue'), 'error');
+                showToast('Erreur lors du chargement du dashboard', 'error');
             }
         });
     }
@@ -176,8 +199,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 try {
                     if (targetPage === 'dashboard') {
                         loadDashboard().catch(error => {
-                            console.error('Erreur lors du chargement du dashboard:', error);
-                            if (error.message && error.message.includes('Token')) {
+                            console.error('Erreur lors du chargement du dashboard:');
+                            if (isAuthError(error)) {
                                 localStorage.removeItem('token');
                                 sessionStorage.removeItem('token');
                                 window.location.href = '/login.html';
@@ -187,8 +210,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         });
                     } else if (targetPage === 'clients') {
                         loadClients().catch(error => {
-                            console.error('Erreur lors du chargement des clients:', error);
-                            if (error.message && error.message.includes('Token')) {
+                            console.error('Erreur lors du chargement des clients:');
+                            if (isAuthError(error)) {
                                 localStorage.removeItem('token');
                                 sessionStorage.removeItem('token');
                                 window.location.href = '/login.html';
@@ -204,8 +227,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     } else if (targetPage === 'fidele') {
                         setupFidelePage();
                         loadFidele().catch(error => {
-                            console.error('Erreur lors du chargement Fidèle:', error);
-                            if (error.message && error.message.includes('Token')) {
+                            console.error('Erreur lors du chargement Fidèle:');
+                            if (isAuthError(error)) {
                                 localStorage.removeItem('token');
                                 sessionStorage.removeItem('token');
                                 window.location.href = '/login.html';
@@ -216,8 +239,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     } else if (targetPage === 'bordereaux') {
                         if (typeof loadBordereau === 'function') {
                             loadBordereau().catch(error => {
-                                console.error('Erreur lors du chargement du bordereau:', error);
-                                if (error.message && error.message.includes('Token')) {
+                                console.error('Erreur lors du chargement du bordereau:');
+                                if (isAuthError(error)) {
                                     localStorage.removeItem('token');
                                     sessionStorage.removeItem('token');
                                     window.location.href = '/login.html';
@@ -229,8 +252,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     } else if (targetPage === 'rapports') {
                         if (typeof loadRapports === 'function') {
                             loadRapports().catch(error => {
-                                console.error('Erreur lors du chargement des rapports:', error);
-                                if (error.message && error.message.includes('Token')) {
+                                console.error('Erreur lors du chargement des rapports:');
+                                if (isAuthError(error)) {
                                     localStorage.removeItem('token');
                                     sessionStorage.removeItem('token');
                                     window.location.href = '/login.html';
@@ -242,8 +265,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     } else if (targetPage === 'parametres') {
                         if (typeof loadParametres === 'function') {
                             loadParametres().catch(error => {
-                                console.error('Erreur lors du chargement des paramètres:', error);
-                                if (error.message && error.message.includes('Token')) {
+                                console.error('Erreur lors du chargement des paramètres:');
+                                if (isAuthError(error)) {
                                     localStorage.removeItem('token');
                                     sessionStorage.removeItem('token');
                                     window.location.href = '/login.html';
@@ -254,8 +277,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
                     }
                 } catch (error) {
-                    console.error('Erreur lors du chargement de la page:', error);
-                    if (error.message && error.message.includes('Token')) {
+                    console.error('Erreur lors du chargement de la page:');
+                    if (isAuthError(error)) {
                         localStorage.removeItem('token');
                         sessionStorage.removeItem('token');
                         window.location.href = '/login.html';
@@ -272,7 +295,6 @@ document.addEventListener('DOMContentLoaded', function () {
     if (userMenu) {
         userMenu.addEventListener('click', function () {
             // Ici vous pouvez ajouter un menu déroulant
-            console.log('Menu utilisateur cliqué');
         });
     }
 
@@ -355,7 +377,7 @@ function formatTimeAgo(dateString) {
 // Si elle n'existe pas encore, créer une version de secours
 if (typeof window.showToast !== 'function') {
     window.showToast = function (message, type = 'info') {
-        console.log(`[${type.toUpperCase()}] ${message}`);
+        appDebugLog('toast', { type, message });
     };
 }
 
@@ -418,7 +440,7 @@ async function loadEntrepriseInfo() {
                     }
                     return;
                 } catch (e) {
-                    console.error('Erreur parsing entreprise stockée:', e);
+                    console.error('Erreur parsing entreprise stockée:');
                 }
             }
         }
@@ -429,7 +451,7 @@ async function loadEntrepriseInfo() {
             userName.textContent = entreprise.nom || 'Entreprise';
         }
     } catch (error) {
-        console.error('Erreur lors du chargement des informations de l\'entreprise:', error);
+        console.error('Erreur lors du chargement des informations de l\'entreprise:');
 
         // Ne pas déconnecter immédiatement, essayer d'utiliser les données stockées
         const storedEntreprise = localStorage.getItem('entreprise') || sessionStorage.getItem('entreprise');
@@ -443,22 +465,16 @@ async function loadEntrepriseInfo() {
                 // Ne pas déconnecter si on a des données stockées
                 return;
             } catch (e) {
-                console.error('Erreur parsing entreprise stockée:', e);
+                console.error('Erreur parsing entreprise stockée:');
             }
         }
 
         // Vérifier le type d'erreur avant de déconnecter
-        const isAuthError = error.message && (
-            error.message.includes('Token') ||
-            error.message.includes('authentification') ||
-            error.message.includes('401') ||
-            error.message.includes('403')
-        );
+        const authError = isAuthError(error);
 
-        if (isAuthError) {
+        if (authError) {
             // Vérifier si c'est vraiment une erreur d'authentification ou juste un problème temporaire
             appDebugLog('Authentication-related error while loading entreprise info', {
-                message: error.message,
                 hasToken: !!token
             });
             // Ne pas déconnecter - laisser l'utilisateur voir l'erreur et réessayer
@@ -1044,7 +1060,7 @@ async function loadDashboard() {
         renderDashboardCharts(dashboardState.contracts);
 
     } catch (error) {
-        console.error('Erreur lors du chargement du dashboard:', error);
+        console.error('Erreur lors du chargement du dashboard:');
         showToast('Erreur lors du chargement du dashboard', 'error');
     }
 }
@@ -1117,7 +1133,7 @@ async function loadClients() {
         // Charger les clients avec le filtre approprié
         await loadClientsWithFilter(searchTerm, statut, filterType);
     } catch (error) {
-        console.error('Erreur lors du chargement des clients:', error);
+        console.error('Erreur lors du chargement des clients:');
         showToast('Erreur lors du chargement des clients', 'error');
     }
 }
@@ -1154,11 +1170,11 @@ function renderClientsTable(clients) {
                     <div class="user-avatar-small">
                         <i class="fas fa-user"></i>
                     </div>
-                    <span>${nomComplet}</span>
+                    <span>${safeHtml(nomComplet)}</span>
                 </div>
             </td>
-            <td>${telephoneDisplay}</td>
-            <td>${immatriculation}</td>
+            <td>${safeHtml(telephoneDisplay)}</td>
+            <td>${safeHtml(immatriculation)}</td>
             <td>${dateEcheance}</td>
             <td><span class="badge ${statutClass}">${statutLabel}</span></td>
             <td>
@@ -1188,7 +1204,7 @@ async function deleteClient(clientId) {
             showToast('Client supprimé avec succès', 'success');
             loadClients();
         } catch (error) {
-            showToast('Erreur lors de la suppression: ' + error.message, 'error');
+            showToast('Erreur lors de la suppression', 'error');
         }
     }
 }
@@ -1221,11 +1237,12 @@ function showActiveContractsDetails() {
         } else {
             const contratsHtml = contrats.map(contrat => {
                 const clientNom = `${contrat.clients?.nom || ''} ${contrat.clients?.prenom || ''}`.trim();
+                const numeroContrat = contrat.numero_contrat || 'N/A';
                 const dateFin = formatDate(contrat.date_fin);
                 return `
                     <div class="contract-item" onclick="showClientDetails(${contrat.clients?.id || contrat.client_id})" style="cursor: pointer; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; margin-bottom: 0.5rem; background: #f9fafb; transition: background-color 0.2s;">
-                        <div style="font-weight: 500; color: #1f2937;">${clientNom || 'Client inconnu'}</div>
-                        <div style="font-size: 0.875rem; color: #6b7280;">Contrat: ${contrat.numero_contrat || 'N/A'} - Expire: ${dateFin}</div>
+                        <div style="font-weight: 500; color: #1f2937;">${safeHtml(clientNom || 'Client inconnu')}</div>
+                        <div style="font-size: 0.875rem; color: #6b7280;">Contrat: ${safeHtml(numeroContrat)} - Expire: ${dateFin}</div>
                     </div>
                 `;
             }).join('');
@@ -1254,11 +1271,12 @@ function showExpiringContractsDetails() {
         } else {
             const contratsHtml = contrats.map(contrat => {
                 const clientNom = `${contrat.clients?.nom || ''} ${contrat.clients?.prenom || ''}`.trim();
+                const numeroContrat = contrat.numero_contrat || 'N/A';
                 const dateFin = formatDate(contrat.date_fin);
                 return `
                     <div class="contract-item" onclick="showClientDetails(${contrat.clients?.id || contrat.client_id})" style="cursor: pointer; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; margin-bottom: 0.5rem; background: #f9fafb; transition: background-color 0.2s;">
-                        <div style="font-weight: 500; color: #1f2937;">${clientNom || 'Client inconnu'}</div>
-                        <div style="font-size: 0.875rem; color: #6b7280;">Contrat: ${contrat.numero_contrat || 'N/A'} - Expire: ${dateFin}</div>
+                        <div style="font-weight: 500; color: #1f2937;">${safeHtml(clientNom || 'Client inconnu')}</div>
+                        <div style="font-size: 0.875rem; color: #6b7280;">Contrat: ${safeHtml(numeroContrat)} - Expire: ${dateFin}</div>
                     </div>
                 `;
             }).join('');
@@ -1292,7 +1310,7 @@ async function loadContrats() {
         // Rendre les cartes de contrats
         renderContractsCards(contrats);
     } catch (error) {
-        console.error('Erreur lors du chargement des contrats:', error);
+        console.error('Erreur lors du chargement des contrats:');
         showToast('Erreur lors du chargement des contrats', 'error');
     }
 }
@@ -1320,13 +1338,13 @@ function renderContractsCards(contrats) {
         card.className = 'contract-card';
         card.innerHTML = `
             <div class="contract-card-header">
-                <h3>${contrat.client_nom} ${contrat.client_prenom}</h3>
+                <h3>${safeHtml(`${contrat.client_nom || ''} ${contrat.client_prenom || ''}`.trim() || 'Client')}</h3>
                 ${statutBadge}
             </div>
             <div class="contract-card-body">
                 <div class="contract-detail">
                     <i class="fas fa-car"></i>
-                    <span>${contrat.marque} ${contrat.modele}</span>
+                    <span>${safeHtml(`${contrat.marque || ''} ${contrat.modele || ''}`.trim() || 'Non renseigné')}</span>
                 </div>
                 <div class="contract-detail">
                     <i class="fas fa-calendar"></i>
@@ -1338,7 +1356,7 @@ function renderContractsCards(contrats) {
                 </div>
                 <div class="contract-detail">
                     <i class="fas fa-file-contract"></i>
-                    <span>${contrat.numero_contrat}</span>
+                    <span>${safeHtml(contrat.numero_contrat || 'Non renseigné')}</span>
                 </div>
             </div>
             <div class="contract-card-footer">
@@ -1363,7 +1381,7 @@ async function renewContract(contractId) {
             loadContrats();
             loadDashboard(); // Recharger le dashboard pour mettre à jour les stats
         } catch (error) {
-            showToast('Erreur lors du renouvellement: ' + error.message, 'error');
+            showToast('Erreur lors du renouvellement', 'error');
         }
     }
 }
@@ -1403,7 +1421,7 @@ function setupSearch() {
                         // Utiliser loadClientsWithFilter pour une gestion cohérente
                         await loadClientsWithFilter(searchTerm, statut, filterType);
                     } catch (error) {
-                        console.error('Erreur de recherche:', error);
+                        console.error('Erreur de recherche:');
                         showToast('Erreur lors de la recherche', 'error');
                     }
                 }
@@ -1416,7 +1434,7 @@ function setupSearch() {
                         const data = await window.api.contracts.getAll('', searchTerm);
                         renderContractsCards(data.contrats || []);
                     } catch (error) {
-                        console.error('Erreur de recherche:', error);
+                        console.error('Erreur de recherche:');
                     }
                 }
             }, 500); // Debounce de 500ms
@@ -1462,7 +1480,7 @@ function setupFilters() {
                     // Charger les clients avec les paramètres appropriés
                     await loadClientsWithFilter(searchTerm, statut, filterType);
                 } catch (error) {
-                    console.error('Erreur de filtrage:', error);
+                    console.error('Erreur de filtrage:');
                     showToast('Erreur lors du filtrage', 'error');
                 }
             }
@@ -1532,7 +1550,7 @@ async function loadClientsWithFilter(searchTerm = '', statut = '', filterType = 
         // Mettre à jour la pagination avec le total réel
         updatePagination(total);
     } catch (error) {
-        console.error('Erreur lors du chargement des clients avec filtre:', error);
+        console.error('Erreur lors du chargement des clients avec filtre:');
         showToast('Erreur lors du chargement des clients', 'error');
     }
 }
@@ -1565,10 +1583,9 @@ window.logout = logout;
 // ============================================
 
 async function showAllNotifications() {
-    console.log('showAllNotifications appelée');
     try {
         if (!window.api || !window.api.notifications) {
-            console.error('API notifications non disponible', window.api);
+            console.error('API notifications non disponible');
             if (typeof window.showToast === 'function') {
                 window.showToast('API notifications non disponible', 'error');
             } else {
@@ -1582,7 +1599,6 @@ async function showAllNotifications() {
         // Passer une chaîne vide pour obtenir toutes les notifications
         const data = await window.api.notifications.getAll('');
         const notifications = data.notifications || [];
-        console.log('Notifications chargées:', notifications.length, notifications);
 
         // Trier par date (plus récentes en premier) et par statut lu (non lues en premier)
         notifications.sort((a, b) => {
@@ -1679,11 +1695,11 @@ async function showAllNotifications() {
         });
 
     } catch (error) {
-        console.error('Erreur lors du chargement des notifications:', error);
+        console.error('Erreur lors du chargement des notifications');
         if (typeof window.showToast === 'function') {
-            window.showToast('Erreur lors du chargement des notifications: ' + (error.message || 'Erreur inconnue'), 'error');
+            window.showToast('Erreur lors du chargement des notifications', 'error');
         } else {
-            alert('Erreur lors du chargement des notifications: ' + (error.message || 'Erreur inconnue'));
+            alert('Erreur lors du chargement des notifications');
         }
     }
 }
@@ -1722,11 +1738,11 @@ async function markNotificationAsRead(id, button) {
         }
 
     } catch (error) {
-        console.error('Erreur lors du marquage de la notification:', error);
+        console.error('Erreur lors du marquage de la notification');
         if (typeof window.showToast === 'function') {
-            window.showToast('Erreur lors du marquage de la notification: ' + (error.message || 'Erreur inconnue'), 'error');
+            window.showToast('Erreur lors du marquage de la notification', 'error');
         } else {
-            console.error('Erreur lors du marquage de la notification:', error);
+            console.error('Erreur lors du marquage de la notification');
         }
     }
 }

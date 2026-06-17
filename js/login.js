@@ -65,13 +65,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const passwordInputEl = document.getElementById('password');
     const rememberCheckbox = document.querySelector('input[name="remember"]');
     const rememberedEmail = localStorage.getItem('rememberedEmail');
-    const rememberedPassword = localStorage.getItem('rememberedPassword');
     
     if (rememberedEmail && emailInput && rememberCheckbox) {
         emailInput.value = rememberedEmail;
-        if (rememberedPassword && passwordInputEl) {
-            passwordInputEl.value = rememberedPassword;
-        }
         rememberCheckbox.checked = true;
     }
     
@@ -104,18 +100,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('entreprise', JSON.stringify(data.entreprise));
                     localStorage.setItem('rememberedEmail', email);
-                    localStorage.setItem('rememberedPassword', password);
                 } else {
                     sessionStorage.setItem('token', data.token);
                     sessionStorage.setItem('entreprise', JSON.stringify(data.entreprise));
                     localStorage.removeItem('rememberedEmail');
-                    localStorage.removeItem('rememberedPassword');
                 }
                 
                 // Vérifier que le token est bien stocké avant de rediriger
                 const storedToken = remember ? localStorage.getItem('token') : sessionStorage.getItem('token');
                 if (!storedToken) {
-                    console.error('❌ ERREUR: Le token n\'a pas été stocké correctement !');
+                    console.error('Erreur lors du stockage de la session');
                     showToast('Erreur lors du stockage de la session', 'error');
                     return;
                 }
@@ -125,7 +119,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
             } catch (error) {
                 // Afficher l'erreur
-                const errorMessage = error.message || 'Erreur de connexion';
+                const errorMessage = 'Erreur de connexion';
                 showToast(errorMessage, 'error');
                 
                 // Si l'erreur indique que l'email n'est pas vérifié, proposer de renvoyer
@@ -142,7 +136,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             Si vous n'avez pas reçu l'email, vous pouvez :
                         </p>
                         <div style="display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap;">
-                            <a href="#" onclick="resendVerificationEmail('${email}'); return false;" 
+                            <a href="#" onclick="resendVerificationEmail(); return false;"
                                style="color: #2563EB; text-decoration: underline; font-size: 0.9rem;">
                                 Renvoyer l'email
                             </a>
@@ -181,7 +175,7 @@ async function resendVerificationEmail(email) {
     }
     
     // Afficher un indicateur de chargement
-    const button = event?.target || document.querySelector('a[onclick*="resendVerificationEmail"]');
+    const button = document.querySelector('a[onclick*="resendVerificationEmail"]');
     if (button) {
         const originalText = button.innerHTML;
         button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi...';
@@ -207,91 +201,23 @@ async function resendVerificationEmail(email) {
         if (response.ok) {
             showToast('Un nouvel email de vérification vous a été envoyé. Veuillez vérifier votre boîte de réception.', 'success');
         } else {
-            // Si l'email n'a pas pu être envoyé, afficher le lien de vérification manuel
-            if (data.error && data.error.includes('SMTP') || data.error && data.error.includes('email')) {
-                showManualVerificationInfo(email);
-            } else {
-                showToast(data.error || 'Erreur lors de l\'envoi de l\'email', 'error');
-            }
+            showToast('Une erreur est survenue lors de l\'envoi de l\'email', 'error');
         }
     } catch (error) {
-        console.error('Erreur:', error);
-        showToast('Une erreur est survenue. Veuillez utiliser la vérification manuelle.', 'error');
-        showManualVerificationInfo(email);
+        console.error('Erreur lors de la vérification email');
+        showToast('Une erreur est survenue.', 'error');
     }
 }
 
 // Fonction pour afficher les informations de vérification manuelle
 function showManualVerificationInfo(email) {
-    // Récupérer le token depuis Supabase ou afficher une modal avec instructions
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.style.display = 'flex';
-    modal.style.position = 'fixed';
-    modal.style.top = '0';
-    modal.style.left = '0';
-    modal.style.width = '100%';
-    modal.style.height = '100%';
-    modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-    modal.style.zIndex = '10000';
-    modal.style.alignItems = 'center';
-    modal.style.justifyContent = 'center';
-    
-    modal.innerHTML = `
-        <div class="modal-content" style="max-width: 600px; background: white; border-radius: 8px; padding: 0; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
-            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem; border-bottom: 1px solid #e5e7eb;">
-                <h2 style="margin: 0; font-size: 1.5rem; color: #111827;">Vérification manuelle</h2>
-                <button class="modal-close" onclick="this.closest('.modal').remove()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280; padding: 0.5rem; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body" style="padding: 1.5rem;">
-                <div style="padding: 1rem; background: #FEF3C7; border-left: 4px solid #F59E0B; border-radius: 8px; margin-bottom: 1.5rem;">
-                    <p style="margin: 0; color: #92400E; font-weight: 600;">
-                        <i class="fas fa-exclamation-triangle"></i> L'email n'a pas pu être envoyé
-                    </p>
-                    <p style="margin: 0.5rem 0 0 0; color: #78350F; font-size: 0.9rem;">
-                        Le serveur SMTP n'est pas configuré ou rencontre un problème. Vous pouvez vérifier votre email manuellement.
-                    </p>
-                </div>
-                <p style="margin-bottom: 1rem; color: #374151;">
-                    Pour vérifier votre email manuellement, contactez l'administrateur avec votre adresse email : <strong>${email}</strong>
-                </p>
-                <p style="margin-bottom: 1rem; font-size: 0.9rem; color: #6B7280;">
-                    L'administrateur peut vérifier votre email directement dans la base de données Supabase ou vous fournir un lien de vérification.
-                </p>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    // Fermer la modal en cliquant en dehors
-    modal.addEventListener('click', function(e) {
-        if (e.target === modal) {
-            modal.remove();
-        }
-    });
-}
-
-window.resendVerificationEmail = resendVerificationEmail;
-window.showManualVerificationInfo = showManualVerificationInfo;
-
-// Fonction pour afficher les informations de vérification manuelle
-function showManualVerificationInfo(email) {
-    const message = `Pour vérifier manuellement votre email, utilisez cette commande dans le terminal du serveur :
-
-node scripts/verify-email-manual.js ${email} --yes
-
-Ou contactez l'administrateur pour qu'il vérifie votre compte.`;
-    
-    alert(message);
-    console.log('📋 Commande pour vérifier manuellement:', `node scripts/verify-email-manual.js ${email} --yes`);
+    alert('Une erreur est survenue. Veuillez réessayer plus tard ou contacter l\'administrateur.');
 }
 
 window.showManualVerificationInfo = showManualVerificationInfo;
 
 // Fonction pour ouvrir le modal de mot de passe oublié
+
 function openForgotPasswordModal() {
     const modal = document.getElementById('forgotPasswordModal');
     if (modal) {
@@ -334,10 +260,10 @@ async function handleForgotPassword(event) {
             showToast('Un email de réinitialisation vous a été envoyé. Veuillez vérifier votre boîte de réception.', 'success');
             closeForgotPasswordModal();
         } else {
-            showToast(data.error || 'Erreur lors de l\'envoi de l\'email', 'error');
+            showToast('Erreur lors de l\'envoi de l\'email', 'error');
         }
     } catch (error) {
-        console.error('Erreur:', error);
+        console.error('Erreur lors de la réinitialisation du mot de passe');
         showToast('Une erreur est survenue', 'error');
     } finally {
         submitButton.innerHTML = originalText;

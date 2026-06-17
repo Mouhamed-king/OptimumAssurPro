@@ -1,9 +1,8 @@
-# Dépendances
+# Dependencies
 node_modules/
 vendor/
-package-lock.json
 
-# Fichiers de configuration sensibles
+# Sensitive configuration
 config.php
 config.json
 .env
@@ -11,46 +10,55 @@ config.json
 .env.production
 .env.development
 
-# Fichiers de log
+# Logs
 *.log
 logs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Fichiers temporaires
+# Temporary files
 *.tmp
 *.temp
+~$*
+__pycache__/
+*.pyc
 .DS_Store
 Thumbs.db
 
 # IDE
+.kilo/
+.codex
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# Build
+# Build and local processing
 dist/
 build/
+bordereau/
 
-# Base de données locale
+# Local databases
 *.sqlite
 *.db
 
-# Fichiers système
+# System files
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# Fichiers de sauvegarde
+# Backups
 *.bak
 *.backup
 *~
 
-# Vercel
+# Hosting
 .vercel
 
+# Local bordereau source/reference files
 *.xlsx
 *.xls
+*.jpeg
+*.jpg

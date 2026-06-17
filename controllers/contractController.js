@@ -128,8 +128,8 @@ const getAllContracts = async (req, res) => {
             limit: parsedLimit
         });
     } catch (error) {
-        console.error('Erreur lors de la récupération des contrats:', error);
-        res.status(500).json({ error: 'Erreur lors de la récupération des contrats: ' + error.message });
+        console.error('Erreur lors de la récupération des contrats');
+        res.status(500).json({ error: 'Erreur lors de la récupération des contrats' });
     }
 };
 
@@ -180,8 +180,8 @@ const getContractById = async (req, res) => {
         
         res.json({ contrat: enrichedContrat });
     } catch (error) {
-        console.error('Erreur lors de la récupération du contrat:', error);
-        res.status(500).json({ error: 'Erreur lors de la récupération du contrat: ' + error.message });
+        console.error('Erreur lors de la récupération du contrat');
+        res.status(500).json({ error: 'Erreur lors de la récupération du contrat' });
     }
 };
 
@@ -280,8 +280,8 @@ const createContract = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Erreur lors de la création du contrat:', error);
-        res.status(500).json({ error: 'Erreur lors de la création du contrat: ' + error.message });
+        console.error('Erreur lors de la création du contrat');
+        res.status(500).json({ error: 'Erreur lors de la création du contrat' });
     }
 };
 
@@ -366,8 +366,8 @@ const renewContract = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Erreur lors du renouvellement du contrat:', error);
-        res.status(500).json({ error: 'Erreur lors du renouvellement du contrat: ' + error.message });
+        console.error('Erreur lors du renouvellement du contrat');
+        res.status(500).json({ error: 'Erreur lors du renouvellement du contrat' });
     }
 };
 
@@ -444,8 +444,8 @@ const updateContract = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Erreur lors de la mise à jour du contrat:', error);
-        res.status(500).json({ error: 'Erreur lors de la mise à jour du contrat: ' + error.message });
+        console.error('Erreur lors de la mise à jour du contrat');
+        res.status(500).json({ error: 'Erreur lors de la mise à jour du contrat' });
     }
 };
 
@@ -500,8 +500,8 @@ const updatePayment = async (req, res) => {
             contrat: updated
         });
     } catch (error) {
-        console.error('Erreur lors de la mise à jour du paiement:', error);
-        res.status(500).json({ error: 'Erreur lors de la mise à jour du paiement: ' + error.message });
+        console.error('Erreur lors de la mise à jour du paiement');
+        res.status(500).json({ error: 'Erreur lors de la mise à jour du paiement' });
     }
 };
 
@@ -534,8 +534,8 @@ const deleteContract = async (req, res) => {
         
         res.json({ message: 'Contrat supprimé avec succès' });
     } catch (error) {
-        console.error('Erreur lors de la suppression du contrat:', error);
-        res.status(500).json({ error: 'Erreur lors de la suppression du contrat: ' + error.message });
+        console.error('Erreur lors de la suppression du contrat');
+        res.status(500).json({ error: 'Erreur lors de la suppression du contrat' });
     }
 };
 

@@ -224,8 +224,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Ne pas stocker le token car l'email n'est pas encore vérifié
                 // L'utilisateur doit vérifier son email avant de pouvoir se connecter
                 
-                console.log('Réponse API:', data);
-                
                 // Avec Supabase Auth, l'email est toujours envoyé automatiquement
                 showToast(data.message || 'Compte créé avec succès ! Veuillez vérifier votre email pour activer votre compte.', 'success');
                 
@@ -236,8 +234,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 
             } catch (error) {
                 // Afficher l'erreur
-                const errorMessage = error.message || 'Une erreur est survenue';
-                showToast('Erreur lors de l\'inscription: ' + errorMessage, 'error');
+                const errorMessage = 'Une erreur est survenue';
+                showToast('Erreur lors de l\'inscription', 'error');
                 
                 // Afficher les erreurs spécifiques
                 if (errorMessage.includes('email')) {

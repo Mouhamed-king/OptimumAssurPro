@@ -13,8 +13,7 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // Pour bypass
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY; // Pour le frontend
 
 if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('❌ Variables Supabase manquantes dans .env');
-    console.error('Assurez-vous d\'avoir SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY');
+    console.error('Variables Supabase manquantes dans .env');
     process.exit(1);
 }
 
@@ -69,7 +68,7 @@ async function connect() {
             await createTablesIfNotExist();
             const { ensureVehiculeDetailColumns } = require('./add-vehicule-details');
             await ensureVehiculeDetailColumns(pgPool).catch((error) => {
-                console.warn('⚠️  Migration colonnes véhicule:', error.message);
+                console.warn('Migration colonnes véhicule ignorée');
             });
         } else {
             console.log('⚠️  pg Pool non configuré — exécutez database/add-vehicule-details.sql dans Supabase si besoin');
@@ -77,7 +76,7 @@ async function connect() {
         
         return supabase;
     } catch (error) {
-        console.error('❌ Erreur de connexion à Supabase:', error.message);
+        console.error('Erreur de connexion à Supabase');
         throw error;
     }
 }

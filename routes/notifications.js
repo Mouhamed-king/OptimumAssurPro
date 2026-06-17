@@ -46,8 +46,8 @@ router.get('/', async (req, res) => {
         
         res.json({ notifications: formattedNotifications });
     } catch (error) {
-        console.error('Erreur lors de la récupération des notifications:', error);
-        res.status(500).json({ error: 'Erreur lors de la récupération des notifications: ' + error.message });
+        console.error('Erreur lors de la récupération des notifications');
+        res.status(500).json({ error: 'Erreur lors de la récupération des notifications' });
     }
 });
 
@@ -80,8 +80,8 @@ router.put('/:id/read', async (req, res) => {
         
         res.json({ message: 'Notification marquée comme lue' });
     } catch (error) {
-        console.error('Erreur lors de la mise à jour de la notification:', error);
-        res.status(500).json({ error: 'Erreur lors de la mise à jour de la notification: ' + error.message });
+        console.error('Erreur lors de la mise à jour de la notification');
+        res.status(500).json({ error: 'Erreur lors de la mise à jour de la notification' });
     }
 });
 
@@ -112,8 +112,8 @@ router.post('/', async (req, res) => {
             notification: newNotification
         });
     } catch (error) {
-        console.error('Erreur lors de la création de la notification:', error);
-        res.status(500).json({ error: 'Erreur lors de la création de la notification: ' + error.message });
+        console.error('Erreur lors de la création de la notification');
+        res.status(500).json({ error: 'Erreur lors de la création de la notification' });
     }
 });
 

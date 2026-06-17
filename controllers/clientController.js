@@ -4,6 +4,137 @@
 
 const db = require('../database/connection');
 
+const DEFAULT_TEXT = 'Non renseigné';
+
+function cleanText(value, fallback = DEFAULT_TEXT) {
+    if (value === null || value === undefined || String(value).trim() === '') {
+        return fallback;
+    }
+    return String(value).trim();
+}
+
+function cleanNullableText(value) {
+    if (value === null || value === undefined || String(value).trim() === '') {
+        return null;
+    }
+    return String(value).trim();
+}
+
+function cleanNullableNumber(value) {
+    if (value === null || value === undefined || value === '') {
+        return null;
+    }
+
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getMissingSchemaCacheColumn(error) {
+    if (!error || error.code !== 'PGRST204') {
+        return null;
+    }
+
+    const message = error.message || '';
+    if (!message.toLowerCase().includes('schema cache')) {
+        return null;
+    }
+
+    const match = message.match(/'([^']+)'\s+column/i);
+    return match ? match[1] : null;
+}
+
+async function runMutationWithSchemaFallback(payload, operation) {
+    const safePayload = { ...payload };
+    const removedColumns = [];
+
+    while (true) {
+        const result = await operation(safePayload);
+        const missingColumn = getMissingSchemaCacheColumn(result.error);
+
+        if (!missingColumn || !Object.prototype.hasOwnProperty.call(safePayload, missingColumn)) {
+            if (removedColumns.length) {
+                result.removedSchemaColumns = removedColumns;
+            }
+            return result;
+        }
+
+        delete safePayload[missingColumn];
+        removedColumns.push(missingColumn);
+        console.warn(`Colonne absente du cache Supabase ignoree: ${missingColumn}`);
+    }
+}
+
+function buildClientPayload({ nom, prenom, telephone }, isCreate = false) {
+    const payload = {};
+
+    if (isCreate || nom !== undefined) payload.nom = cleanText(nom);
+    if (isCreate || prenom !== undefined) payload.prenom = cleanText(prenom, '');
+    if (isCreate || telephone !== undefined) payload.telephone = cleanText(telephone);
+
+    return payload;
+}
+
+function buildVehiclePayload(vehicule = {}, clientId = null) {
+    const payload = {};
+
+    if (clientId !== null) payload.client_id = clientId;
+    if (vehicule.immatriculation !== undefined) payload.immatriculation = cleanText(vehicule.immatriculation);
+    payload.marque = cleanText(vehicule.marque);
+    payload.modele = cleanText(vehicule.modele);
+    payload.puissance = cleanNullableNumber(vehicule.puissance);
+    payload.energie = cleanNullableText(vehicule.energie);
+    payload.type_vehicule = cleanNullableText(vehicule.type_vehicule);
+
+    return payload;
+}
+
+function computeContractStatus(dateFinValue) {
+    const dateFin = new Date(dateFinValue);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    dateFin.setHours(0, 0, 0, 0);
+    return dateFin < today ? 'expire' : 'actif';
+}
+
+function computeDurationMonths(dateDebutValue, dateFinValue, fallback = 12) {
+    if (!dateDebutValue || !dateFinValue) {
+        return fallback;
+    }
+
+    const dateDebut = new Date(dateDebutValue);
+    const dateFin = new Date(dateFinValue);
+
+    if (Number.isNaN(dateDebut.getTime()) || Number.isNaN(dateFin.getTime())) {
+        return fallback;
+    }
+
+    const diffTime = Math.abs(dateFin - dateDebut);
+    return Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 30)));
+}
+
+function buildContractPayload(contrat = {}, ids = {}, existing = {}) {
+    const dateDebut = contrat.date_debut || existing.date_debut;
+    const dateFin = contrat.date_fin || existing.date_fin;
+    const dureeMois = contrat.duree_mois || computeDurationMonths(dateDebut, dateFin, existing.duree_mois || 12);
+    const payload = {};
+
+    if (ids.client_id !== undefined) payload.client_id = ids.client_id;
+    if (ids.vehicule_id !== undefined) payload.vehicule_id = ids.vehicule_id;
+    if (ids.entreprise_id !== undefined) payload.entreprise_id = ids.entreprise_id;
+    if (contrat.numero_police !== undefined) payload.numero_contrat = cleanText(contrat.numero_police);
+    if (contrat.type_contrat !== undefined || ids.isCreate) payload.type_contrat = cleanText(contrat.type_contrat, ids.defaultType || 'Tous risques');
+    if (dateDebut) payload.date_debut = dateDebut;
+    if (dateFin) payload.date_fin = dateFin;
+    if (dureeMois) payload.duree_mois = dureeMois;
+    if (contrat.montant !== undefined) payload.montant = Number(contrat.montant) || 0;
+    if (contrat.montant_paye !== undefined || ids.isCreate) payload.montant_paye = Number(contrat.montant_paye) || 0;
+    if (contrat.montant_restant !== undefined || ids.isCreate) payload.montant_restant = Number(contrat.montant_restant) || 0;
+    if (dateFin) payload.statut = computeContractStatus(dateFin);
+    if (contrat.categorie_vehicule !== undefined || ids.isCreate) payload.categorie_vehicule = cleanText(contrat.categorie_vehicule, 'VP/CI');
+
+    return payload;
+}
+
 function normalizeVehicleType(rawVehicule = {}) {
     const combined = [
         rawVehicule.type_vehicule,
@@ -55,7 +186,7 @@ const getAllClients = async (req, res) => {
             .select(`
                 *,
                 vehicules (*),
-                contrats (id, numero_contrat, date_fin, statut, categorie_vehicule)
+                contrats (*)
             `, { count: 'exact' })
             .eq('entreprise_id', req.entrepriseId);
 
@@ -183,8 +314,8 @@ const getAllClients = async (req, res) => {
             limit: parsedLimit
         });
     } catch (error) {
-        console.error('Erreur lors de la récupération des clients:', error);
-        res.status(500).json({ error: 'Erreur lors de la récupération des clients: ' + error.message });
+        console.error('Erreur lors de la récupération des clients');
+        res.status(500).json({ error: 'Erreur lors de la récupération des clients' });
     }
 };
 
@@ -214,8 +345,8 @@ const getClientById = async (req, res) => {
         
         res.json({ client });
     } catch (error) {
-        console.error('Erreur lors de la récupération du client:', error);
-        res.status(500).json({ error: 'Erreur lors de la récupération du client: ' + error.message });
+        console.error('Erreur lors de la récupération du client');
+        res.status(500).json({ error: 'Erreur lors de la récupération du client' });
     }
 };
 
@@ -245,35 +376,31 @@ const createClient = async (req, res) => {
         }
         
         // Créer le client avec Supabase (nom complet dans le champ nom, prenom vide)
-        const { data: newClient, error: clientError } = await db.supabase
-            .from('clients')
-            .insert({
+        const { data: newClient, error: clientError } = await runMutationWithSchemaFallback(
+            {
                 entreprise_id: req.entrepriseId,
-                nom: nom,
-                prenom: '', // Vide car on ne demande que le nom complet
-                telephone: telephone
-            })
-            .select()
-            .single();
+                ...buildClientPayload({ nom, prenom: '', telephone }, true)
+            },
+            (payload) => db.supabase
+                .from('clients')
+                .insert(payload)
+                .select()
+                .single()
+        );
         
         if (clientError) {
             throw clientError;
         }
         
         // Créer le véhicule avec seulement l'immatriculation
-        const { data: newVehicule, error: vehiculeError } = await db.supabase
-            .from('vehicules')
-            .insert({
-                client_id: newClient.id,
-                marque: vehicule.marque || '',
-                modele: vehicule.modele || '',
-                immatriculation: vehicule.immatriculation,
-                puissance: vehicule.puissance ?? null,
-                energie: vehicule.energie || null,
-                type_vehicule: vehicule.type_vehicule || null
-            })
-            .select('id')
-            .single();
+        const { data: newVehicule, error: vehiculeError } = await runMutationWithSchemaFallback(
+            buildVehiclePayload(vehicule, newClient.id),
+            (payload) => db.supabase
+                .from('vehicules')
+                .insert(payload)
+                .select('id')
+                .single()
+        );
         
         if (vehiculeError) {
             throw vehiculeError;
@@ -291,29 +418,23 @@ const createClient = async (req, res) => {
         const statut = dateFin < today ? 'expire' : 'actif';
         
         // Créer le contrat
-        const { data: newContrat, error: contratError } = await db.supabase
-            .from('contrats')
-            .insert({
+        const { data: newContrat, error: contratError } = await runMutationWithSchemaFallback(
+            buildContractPayload(contrat, {
                 client_id: newClient.id,
                 vehicule_id: newVehicule.id,
                 entreprise_id: req.entrepriseId,
-                numero_contrat: contrat.numero_police,
-                type_contrat: contrat.type_contrat || 'Tous risques',
-                duree_mois: contrat.duree_mois || 12,
-                date_debut: contrat.date_debut,
-                date_fin: contrat.date_fin,
-                montant: contrat.montant,
-                montant_paye: montantPaye,
-                montant_restant: montantRestant,
-                statut: statut,
-                categorie_vehicule: contrat.categorie_vehicule || 'VP/CI'
-            })
-            .select('id')
-            .single();
+                isCreate: true
+            }),
+            (payload) => db.supabase
+                .from('contrats')
+                .insert(payload)
+                .select('id')
+                .single()
+        );
         
         if (contratError) {
-            console.error('Erreur lors de la création du contrat:', contratError);
-            throw new Error('Erreur lors de la création du contrat: ' + contratError.message);
+            console.error('Erreur lors de la création du contrat');
+            throw new Error('Erreur lors de la création du contrat');
         }
         
         res.status(201).json({
@@ -323,8 +444,8 @@ const createClient = async (req, res) => {
             contratId: newContrat.id
         });
     } catch (error) {
-        console.error('Erreur lors de la création du client:', error);
-        res.status(500).json({ error: 'Erreur lors de la création du client: ' + error.message });
+        console.error('Erreur lors de la création du client');
+        res.status(500).json({ error: 'Erreur lors de la création du client' });
     }
 };
 
@@ -347,16 +468,15 @@ const updateClient = async (req, res) => {
         }
         
         // Mettre à jour le client avec Supabase
-        const { data: updated, error: clientError } = await db.supabase
-            .from('clients')
-            .update({
-                nom: nom || undefined,
-                prenom: prenom || undefined,
-                telephone: telephone || undefined
-            })
-            .eq('id', id)
-            .select()
-            .single();
+        const { data: updated, error: clientError } = await runMutationWithSchemaFallback(
+            buildClientPayload({ nom, prenom, telephone }),
+            (payload) => db.supabase
+                .from('clients')
+                .update(payload)
+                .eq('id', id)
+                .select()
+                .single()
+        );
         
         if (clientError) {
             throw clientError;
@@ -373,34 +493,25 @@ const updateClient = async (req, res) => {
             
             if (existingVehicules && existingVehicules.length > 0) {
                 // Mettre à jour le véhicule existant
-                const { error: vehiculeError } = await db.supabase
-                    .from('vehicules')
-                    .update({
-                        immatriculation: vehicule.immatriculation,
-                        marque: vehicule.marque || '',
-                        modele: vehicule.modele || '',
-                        puissance: vehicule.puissance ?? null,
-                        energie: vehicule.energie || null,
-                        type_vehicule: vehicule.type_vehicule || null
-                    })
-                    .eq('id', existingVehicules[0].id);
+                const { error: vehiculeError } = await runMutationWithSchemaFallback(
+                    buildVehiclePayload(vehicule),
+                    (payload) => db.supabase
+                        .from('vehicules')
+                        .update(payload)
+                        .eq('id', existingVehicules[0].id)
+                );
                 
                 if (vehiculeError) {
                     throw vehiculeError;
                 }
             } else {
                 // Créer un nouveau véhicule si aucun n'existe
-                const { error: vehiculeError } = await db.supabase
-                    .from('vehicules')
-                    .insert({
-                        client_id: id,
-                        immatriculation: vehicule.immatriculation,
-                        marque: vehicule.marque || '',
-                        modele: vehicule.modele || '',
-                        puissance: vehicule.puissance ?? null,
-                        energie: vehicule.energie || null,
-                        type_vehicule: vehicule.type_vehicule || null
-                    });
+                const { error: vehiculeError } = await runMutationWithSchemaFallback(
+                    buildVehiclePayload(vehicule, id),
+                    (payload) => db.supabase
+                        .from('vehicules')
+                        .insert(payload)
+                );
                 
                 if (vehiculeError) {
                     throw vehiculeError;
@@ -434,20 +545,13 @@ const updateClient = async (req, res) => {
                 const montantRestant = contrat.montant_restant || 0;
                 
                 // Mettre à jour le contrat existant
-                const { error: contratError } = await db.supabase
-                    .from('contrats')
-                    .update({
-                        numero_contrat: contrat.numero_police,
-                        date_debut: contrat.date_debut,
-                        date_fin: contrat.date_fin,
-                        duree_mois: diffMonths,
-                        montant: contrat.montant,
-                        montant_paye: montantPaye,
-                        montant_restant: montantRestant,
-                        statut: statut,
-                        categorie_vehicule: contrat.categorie_vehicule || 'VP/CI'
-                    })
-                    .eq('id', existingContrats[0].id);
+                const { error: contratError } = await runMutationWithSchemaFallback(
+                    buildContractPayload(contrat),
+                    (payload) => db.supabase
+                        .from('contrats')
+                        .update(payload)
+                        .eq('id', existingContrats[0].id)
+                );
                 
                 if (contratError) {
                     throw contratError;
@@ -479,23 +583,18 @@ const updateClient = async (req, res) => {
                 const montantPaye = contrat.montant_paye || 0;
                 const montantRestant = contrat.montant_restant || 0;
                 
-                const { error: contratError } = await db.supabase
-                    .from('contrats')
-                    .insert({
+                const { error: contratError } = await runMutationWithSchemaFallback(
+                    buildContractPayload(contrat, {
                         client_id: id,
                         vehicule_id: clientVehicules[0].id,
                         entreprise_id: req.entrepriseId,
-                        numero_contrat: contrat.numero_police,
-                        type_contrat: 'AC',
-                        date_debut: contrat.date_debut,
-                        date_fin: contrat.date_fin,
-                        duree_mois: diffMonths,
-                        montant: contrat.montant,
-                        montant_paye: montantPaye,
-                        montant_restant: montantRestant,
-                        statut: statut,
-                        categorie_vehicule: contrat.categorie_vehicule || 'VP/CI'
-                    });
+                        isCreate: true,
+                        defaultType: 'AC'
+                    }),
+                    (payload) => db.supabase
+                        .from('contrats')
+                        .insert(payload)
+                );
                 
                 if (contratError) {
                     throw contratError;
@@ -508,8 +607,8 @@ const updateClient = async (req, res) => {
             client: updated
         });
     } catch (error) {
-        console.error('Erreur lors de la mise à jour du client:', error);
-        res.status(500).json({ error: 'Erreur lors de la mise à jour du client: ' + error.message });
+        console.error('Erreur lors de la mise à jour du client');
+        res.status(500).json({ error: 'Erreur lors de la mise à jour du client' });
     }
 };
 
@@ -542,8 +641,8 @@ const deleteClient = async (req, res) => {
         
         res.json({ message: 'Client supprimé avec succès' });
     } catch (error) {
-        console.error('Erreur lors de la suppression du client:', error);
-        res.status(500).json({ error: 'Erreur lors de la suppression du client: ' + error.message });
+        console.error('Erreur lors de la suppression du client');
+        res.status(500).json({ error: 'Erreur lors de la suppression du client' });
     }
 };
 
@@ -630,8 +729,8 @@ const getFideleClients = async (req, res) => {
             total_vehicules: enrichedClients.reduce((sum, client) => sum + client.nombre_vehicules, 0)
         });
     } catch (error) {
-        console.error('Erreur lors de la récupération du portefeuille fidèle:', error);
-        res.status(500).json({ error: 'Erreur lors de la récupération du portefeuille fidèle: ' + error.message });
+        console.error('Erreur lors de la récupération du portefeuille fidèle');
+        res.status(500).json({ error: 'Erreur lors de la récupération du portefeuille fidèle' });
     }
 };
 

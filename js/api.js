@@ -14,6 +14,13 @@ function debugLog(...args) {
     }
 }
 
+function clearSession() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('entreprise');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('entreprise');
+}
+
 // Fonction pour obtenir le token d'authentification
 function getAuthToken() {
     return localStorage.getItem('token') || sessionStorage.getItem('token');
@@ -46,40 +53,22 @@ async function apiRequest(endpoint, options = {}) {
     
     try {
         const response = await fetch(`${API_BASE_URL}${endpoint}`, finalOptions);
+        const data = await response.json().catch(() => ({}));
         
         // Si le token est expiré ou invalide, gérer l'erreur
         if (response.status === 401 || response.status === 403) {
-            const errorData = await response.json().catch(() => ({}));
-            
-            // Ne rediriger que si on n'est pas déjà sur une page publique
             const isPublicPage = window.location.pathname.includes('login.html') || 
                                 window.location.pathname.includes('register.html') ||
                                 window.location.pathname.includes('verify-email.html') ||
                                 window.location.pathname.includes('reset-password.html');
             
-            // Si c'est une erreur d'email non confirmé, ne pas déconnecter
-            if (errorData.code === 'EMAIL_NOT_CONFIRMED') {
-                throw new Error(errorData.error || 'Veuillez vérifier votre email');
-            }
-            
-            // Ne nettoyer le stockage QUE si on est sûr que le token est vraiment invalide
-            // et seulement sur les pages protégées (pas sur login.html)
             if (!isPublicPage && response.status === 401) {
-                // Token vraiment invalide (401), nettoyer seulement après confirmation
-                localStorage.removeItem('token');
-                localStorage.removeItem('entreprise');
-                sessionStorage.removeItem('token');
-                sessionStorage.removeItem('entreprise');
-                // Retourner une erreur claire au lieu de rediriger immédiatement
-                // Laisser le code appelant gérer la redirection
-                throw new Error(errorData.error || 'Token d\'authentification manquant ou invalide');
+                clearSession();
+                throw new Error('Session expirée ou invalide');
             } else if (response.status === 403) {
-                // Erreur 403 (forbidden) - peut être temporaire, ne pas nettoyer immédiatement
-                throw new Error(errorData.error || 'Accès refusé');
+                throw new Error('Accès refusé');
             }
         }
-        
-        const data = await response.json();
         
         if (!response.ok) {
             throw new Error(data.error || 'Erreur API');
@@ -87,7 +76,7 @@ async function apiRequest(endpoint, options = {}) {
         
         return data;
     } catch (error) {
-        console.error('Erreur API:', error);
+        debugLog('API error', { endpoint, message: error.message });
         throw error;
     }
 }

@@ -16,6 +16,8 @@ const db = require('./database/connection');
 
 const DEFAULT_EMAIL = 'oassurpro@gmail.com';
 const PROJECT_ROOT = __dirname;
+const DEFAULT_IMPORT_DIR = path.join(PROJECT_ROOT, 'bordereau', 'prod');
+let vehiculeDetailColumnsAvailable = true;
 
 const COLUMN_ALIASES = {
     numeroPolice: ['NUMERO POLICE', 'NUMERO_POLICE'],
@@ -63,6 +65,21 @@ function resolveProductionFile(fileArg) {
             throw new Error(`Fichier introuvable: ${resolved}`);
         }
         return resolved;
+    }
+
+    {
+        const searchDir = fs.existsSync(DEFAULT_IMPORT_DIR) ? DEFAULT_IMPORT_DIR : PROJECT_ROOT;
+        const matches = fs
+            .readdirSync(searchDir)
+            .filter((name) => name.startsWith('Production_Global') && name.endsWith('.xlsx') && !name.startsWith('~$'))
+            .map((name) => path.join(searchDir, name))
+            .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
+
+        if (matches.length === 0) {
+            throw new Error(`Aucun fichier Production_Global*.xlsx trouve dans ${searchDir}.`);
+        }
+
+        return matches[0];
     }
 
     const matches = fs
@@ -308,6 +325,49 @@ async function findContractByPolice(entrepriseId, numeroPolice) {
     return data;
 }
 
+function isMissingVehiculeDetailColumn(error) {
+    return (
+        error &&
+        (error.code === 'PGRST204' || /Could not find the '.+' column of 'vehicules'/i.test(error.message || ''))
+    );
+}
+
+function buildVehiclePayload(row, includeDetails = vehiculeDetailColumnsAvailable) {
+    const payload = {
+        marque: row.marque,
+        modele: row.modele,
+    };
+
+    if (row.immat !== undefined) {
+        payload.immatriculation = row.immat;
+    }
+
+    if (includeDetails) {
+        payload.puissance = row.puissance;
+        payload.energie = row.energie;
+        payload.type_vehicule = row.typeVehicule;
+    }
+
+    return payload;
+}
+
+async function findContractByVehicleAndEndDate(entrepriseId, vehiculeId, dateFin) {
+    const { data, error } = await db.supabase
+        .from('contrats')
+        .select('id, client_id, vehicule_id, numero_contrat, date_debut, date_fin, duree_mois, montant, statut, montant_paye, montant_restant')
+        .eq('entreprise_id', entrepriseId)
+        .eq('vehicule_id', vehiculeId)
+        .eq('date_fin', dateFin)
+        .limit(1)
+        .maybeSingle();
+
+    if (error) {
+        throw error;
+    }
+
+    return data;
+}
+
 async function findVehicleByImmat(immat) {
     const { data, error } = await db.supabase
         .from('vehicules')
@@ -348,13 +408,7 @@ async function findClientByNom(entrepriseId, nom) {
 }
 
 function contractNeedsUpdate(existing, row) {
-    return (
-        existing.date_debut !== row.dateDebut ||
-        existing.date_fin !== row.dateFin ||
-        Number(existing.duree_mois) !== row.dureeMois ||
-        Number(existing.montant) !== row.montant ||
-        existing.statut !== row.statut
-    );
+    return existing.date_fin !== row.dateFin;
 }
 
 async function updateExistingContract(existing, row, dryRun) {
@@ -391,16 +445,21 @@ async function updateVehicle(vehiculeId, row, dryRun) {
 
     const { error: vehiculeError } = await db.supabase
         .from('vehicules')
-        .update({
-            marque: row.marque,
-            modele: row.modele,
-            puissance: row.puissance,
-            energie: row.energie,
-            type_vehicule: row.typeVehicule,
-        })
+        .update(buildVehiclePayload(row))
         .eq('id', vehiculeId);
 
     if (vehiculeError) {
+        if (isMissingVehiculeDetailColumn(vehiculeError) && vehiculeDetailColumnsAvailable) {
+            vehiculeDetailColumnsAvailable = false;
+            const { error: fallbackError } = await db.supabase
+                .from('vehicules')
+                .update(buildVehiclePayload(row, false))
+                .eq('id', vehiculeId);
+            if (!fallbackError) {
+                return;
+            }
+            throw fallbackError;
+        }
         throw vehiculeError;
     }
 }
@@ -419,17 +478,27 @@ async function createVehicle(clientId, row, dryRun) {
         .from('vehicules')
         .insert({
             client_id: clientId,
-            marque: row.marque,
-            modele: row.modele,
-            immatriculation: row.immat,
-            puissance: row.puissance,
-            energie: row.energie,
-            type_vehicule: row.typeVehicule,
+            ...buildVehiclePayload(row),
         })
         .select('id')
         .single();
 
     if (error) {
+        if (isMissingVehiculeDetailColumn(error) && vehiculeDetailColumnsAvailable) {
+            vehiculeDetailColumnsAvailable = false;
+            const { data: fallbackData, error: fallbackError } = await db.supabase
+                .from('vehicules')
+                .insert({
+                    client_id: clientId,
+                    ...buildVehiclePayload(row, false),
+                })
+                .select('id')
+                .single();
+            if (!fallbackError) {
+                return fallbackData.id;
+            }
+            throw fallbackError;
+        }
         if (error.code === '23505') {
             const fallbackVehicle = await findVehicleByImmat(row.immat);
             if (fallbackVehicle) {
@@ -553,12 +622,14 @@ async function processRow(entrepriseId, row, dryRun) {
 
     if (existingContract) {
         const action = await updateExistingContract(existingContract, row, dryRun);
-        await updateVehicle(existingContract.vehicule_id, row, dryRun);
+        if (action !== 'ignored') {
+            await updateVehicle(existingContract.vehicule_id, row, dryRun);
+        }
         return {
             action,
             message:
                 action === 'ignored'
-                    ? 'Contrat déjà à jour'
+                    ? `Assurance ${row.numeroPolice} deja presente avec la meme echeance (${row.dateFin})`
                     : `Contrat ${row.numeroPolice} mis à jour (${row.dateDebut} → ${row.dateFin})`,
         };
     }
@@ -571,6 +642,14 @@ async function processRow(entrepriseId, row, dryRun) {
             return {
                 action: 'error',
                 message: `Immatriculation ${row.immat} déjà utilisée par une autre entreprise`,
+            };
+        }
+
+        const duplicateInsurance = await findContractByVehicleAndEndDate(entrepriseId, existingVehicle.id, row.dateFin);
+        if (duplicateInsurance) {
+            return {
+                action: 'ignored',
+                message: `Assurance deja presente pour ${row.immat} avec la meme echeance (${row.dateFin})`,
             };
         }
 

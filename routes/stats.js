@@ -22,7 +22,7 @@ router.get('/dashboard', async (req, res) => {
             .eq('entreprise_id', entrepriseId);
         
         if (clientsError) {
-            console.error('Erreur lors du comptage des clients:', clientsError);
+            console.error('Erreur lors du comptage des clients');
             throw clientsError;
         }
         
@@ -43,7 +43,7 @@ router.get('/dashboard', async (req, res) => {
             .order('created_at', { ascending: false });
         
         if (contratsError) {
-            console.error('Erreur lors du comptage des contrats actifs:', contratsError);
+            console.error('Erreur lors du comptage des contrats actifs');
             throw contratsError;
         }
         
@@ -68,7 +68,7 @@ router.get('/dashboard', async (req, res) => {
             .lte('date_fin', dateLimite);
         
         if (renouvellementsError) {
-            console.error('Erreur lors du comptage des renouvellements:', renouvellementsError);
+            console.error('Erreur lors du comptage des renouvellements');
             throw renouvellementsError;
         }
         
@@ -92,7 +92,7 @@ router.get('/dashboard', async (req, res) => {
             .lt('date_fin', aujourdhui);
         
         if (expiresError) {
-            console.error('Erreur lors du comptage des contrats expirés:', expiresError);
+            console.error('Erreur lors du comptage des contrats expirés');
             throw expiresError;
         }
 
@@ -113,7 +113,7 @@ router.get('/dashboard', async (req, res) => {
             .lt('date_fin', aujourdhui);
         
         if (allExpiresError) {
-            console.error('Erreur lors du comptage de tous les contrats expirés:', allExpiresError);
+            console.error('Erreur lors du comptage de tous les contrats expirés');
             throw allExpiresError;
         }
         
@@ -129,8 +129,8 @@ router.get('/dashboard', async (req, res) => {
             tous_expires_data: allExpiresData || []
         });
     } catch (error) {
-        console.error('Erreur lors de la récupération des statistiques:', error);
-        res.status(500).json({ error: 'Erreur lors de la récupération des statistiques: ' + (error.message || 'Erreur inconnue') });
+        console.error('Erreur lors de la récupération des statistiques');
+        res.status(500).json({ error: 'Erreur lors de la récupération des statistiques' });
     }
 });
 

@@ -1,5 +1,5 @@
 {
-  "name": "optimum-assur-pro",
+  "name": "gestionnaire-clientele",
   "version": "1.0.0",
   "description": "Application de gestion de clients d'assurance automobile",
   "main": "server.js",
@@ -21,7 +21,7 @@
     "gestion",
     "clients"
   ],
-  "author": "MęȚźĂ kìŃğ",
+  "author": "",
   "license": "ISC",
   "dependencies": {
     "@supabase/supabase-js": "^2.89.0",

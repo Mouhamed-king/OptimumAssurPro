@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: optimum-assur-pro
+    name: gestionnaire-clientele
     env: node
     plan: free
     buildCommand: npm install
@@ -15,5 +15,5 @@ services:
       # - SUPABASE_URL (trouvé dans Supabase Dashboard > Settings > API > Project URL)
       # - SUPABASE_SERVICE_ROLE_KEY (trouvé dans Supabase Dashboard > Settings > API > service_role secret)
       # - SUPABASE_ANON_KEY (trouvé dans Supabase Dashboard > Settings > API > anon public)
-      # - APP_URL (votre URL Render, ex: https://votre-app.onrender.com)
+      # - APP_URL (votre URL Render, ex: https://gestionnaire-clientele.onrender.com)
 

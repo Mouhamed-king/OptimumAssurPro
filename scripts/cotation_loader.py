@@ -1,10 +1,11 @@
-"""Chargement des grilles tarifaires depuis Cotation Auto.xls."""
+"""Chargement des grilles tarifaires depuis le fichier global ou Cotation Auto.xls."""
 
 from __future__ import annotations
 
 import math
+import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import xlrd
@@ -31,6 +32,14 @@ class TwoWheelType:
     rc_annual: float
 
 
+@dataclass
+class FixedPrimeBand:
+    label: str
+    min_cv: int
+    max_cv: int | None
+    primes_by_months: dict[int, float]
+
+
 def _cell(ws, row: int, col: int):
     if row < ws.nrows and col < ws.ncols:
         return ws.cell_value(row, col)
@@ -53,7 +62,7 @@ def _parse_cv_band(label: str) -> CvBand | None:
     return None
 
 
-def _parse_grid(ws, start_row: int, essence_col: int, diesel_col: int, rc_col: int, max_rows: int = 12) -> TariffGrid:
+def _parse_grid(ws, start_row: int, essence_col: int, diesel_col: int, rc_col: int, max_rows: int = 5) -> TariffGrid:
     essence_bands: list[tuple[CvBand, float]] = []
     diesel_bands: list[tuple[CvBand, float]] = []
 
@@ -148,13 +157,21 @@ def _normalize_category(categorie: str) -> str:
 
 def _normalize_charge_utile(charge: str) -> str:
     text = str(charge or "").strip().lower()
+    compact = text.replace(" ", "").replace(",", ".")
+    is_public = "public" in text
+    is_superieur = "sup" in text
+    if "tpc" in text:
+        return "tpc"
     if "break" in text:
         return "break"
-    if "inf" in text or "3t500" in text.replace(" ", "").replace(",", "."):
-        if "sup" not in text:
-            return "inferieur_3t500"
-    if "sup" in text:
+    if "moins" in text or "inf" in text or "inferieur" in text:
+        return "break"
+    if re.search(r"(?:^|[^0-9])3(?:t|\.?5|500)", compact) and not is_superieur:
+        return "break"
+    if is_superieur:
         return "superieur_3t500"
+    if is_public:
+        return "break"
     return text
 
 
@@ -181,6 +198,9 @@ class CotationData:
     cat5_two_wheel: list[TwoWheelType]
     bonus_primes_by_months: dict[int, float]
     reference_annual_rc: float
+    cat2_public_inf_3t5: TariffGrid | None = None
+    cat2_public_sup_3t5: TariffGrid | None = None
+    tpc_bands: list[FixedPrimeBand] = field(default_factory=list)
 
     def rc_for_cat1(self, puissance: int) -> float | None:
         bands = self.cat1_tourisme.essence_bands or self.cat1_tourisme.diesel_bands
@@ -192,15 +212,36 @@ class CotationData:
 
         if charge == "break":
             grid = self.cat2_break
-        elif charge == "superieur_3t500":
-            grid = self.cat2_prive_sup_3t5
         elif charge == "inferieur_3t500":
-            grid = self.cat2_prive_inf_3t5
+            grid = self.cat2_break
+        elif charge == "superieur_3t500":
+            return None
+        elif charge == "public_inferieur_3t500" and self.cat2_public_inf_3t5:
+            grid = self.cat2_public_inf_3t5
+        elif charge == "public_superieur_3t500" and self.cat2_public_sup_3t5:
+            grid = self.cat2_public_sup_3t5
         else:
             return None
 
         bands = grid.diesel_bands if is_diesel else grid.essence_bands
         return _match_cv_band(puissance, bands)
+
+    def is_tpc_tariff(self, categorie: str, charge_utile: str) -> bool:
+        charge = _normalize_charge_utile(charge_utile)
+        return "TPC" in str(categorie or "").upper() or charge in {"tpc", "superieur_3t500"}
+
+    def prime_for_tpc(self, puissance: int, duree: str) -> float | None:
+        months = _parse_duration_months(duree)
+        if months is None:
+            return None
+
+        for band in self.tpc_bands:
+            if band.max_cv is None and puissance >= band.min_cv:
+                return band.primes_by_months.get(months)
+            if band.max_cv is not None and band.min_cv <= puissance <= band.max_cv:
+                return band.primes_by_months.get(months)
+
+        return None
 
     def rc_for_cat5(self) -> float | None:
         cyclomoteur = _cyclomoteur_type(self.cat5_two_wheel)
@@ -219,6 +260,10 @@ class CotationData:
 
 
 def load_cotation(path: str | Path, sheet_name: str = "Tarif auto") -> CotationData:
+    path = Path(path)
+    if path.suffix.lower() == ".json":
+        return _load_cotation_json(path)
+
     workbook = xlrd.open_workbook(str(path))
     worksheet = workbook.sheet_by_name(sheet_name)
 
@@ -232,4 +277,63 @@ def load_cotation(path: str | Path, sheet_name: str = "Tarif auto") -> CotationD
         cat5_two_wheel=_parse_two_wheel(worksheet, start_row=41, type_col=14, rc_col=16),
         bonus_primes_by_months=_parse_duration_primes(worksheet, start_row=20),
         reference_annual_rc=reference_annual_rc,
+        cat2_public_inf_3t5=_parse_grid(worksheet, start_row=23, essence_col=14, diesel_col=15, rc_col=16),
+        cat2_public_sup_3t5=_parse_grid(worksheet, start_row=23, essence_col=18, diesel_col=19, rc_col=20),
+    )
+
+
+def _band_from_json(item: dict) -> tuple[CvBand, float]:
+    return (
+        CvBand(
+            label=str(item["label"]),
+            min_cv=int(item["min_cv"]),
+            max_cv=int(item["max_cv"]) if item.get("max_cv") is not None else None,
+        ),
+        float(item["rc_annual"]),
+    )
+
+
+def _grid_from_json(item: dict) -> TariffGrid:
+    return TariffGrid(
+        essence_bands=[_band_from_json(row) for row in item.get("essence", [])],
+        diesel_bands=[_band_from_json(row) for row in item.get("diesel", [])],
+    )
+
+
+def _load_cotation_json(path: Path) -> CotationData:
+    with path.open("r", encoding="utf-8") as handle:
+        payload = json.load(handle)
+
+    auto = payload.get("auto", {})
+    categories = auto.get("categories", {})
+    tpc = payload.get("tpc", {})
+
+    return CotationData(
+        cat1_tourisme=_grid_from_json(categories["cat1_tourisme"]),
+        cat2_break=_grid_from_json(categories["cat2_break"]),
+        cat2_prive_inf_3t5=_grid_from_json(categories["cat2_prive_inf_3t5"]),
+        cat2_prive_sup_3t5=_grid_from_json(categories["cat2_prive_sup_3t5"]),
+        cat5_two_wheel=[
+            TwoWheelType(label=str(row["label"]), rc_annual=float(row["rc_annual"]))
+            for row in categories.get("cat5_two_wheel", [])
+        ],
+        bonus_primes_by_months={
+            int(months): float(prime)
+            for months, prime in auto.get("bonus_primes_by_months", {}).items()
+        },
+        reference_annual_rc=float(auto.get("reference_annual_rc", 0)),
+        cat2_public_inf_3t5=_grid_from_json(categories["cat2_public_inf_3t5"]),
+        cat2_public_sup_3t5=_grid_from_json(categories["cat2_public_sup_3t5"]),
+        tpc_bands=[
+            FixedPrimeBand(
+                label=str(band["label"]),
+                min_cv=int(band["min_cv"]),
+                max_cv=int(band["max_cv"]) if band.get("max_cv") is not None else None,
+                primes_by_months={
+                    int(row["months"]): float(row["prime_nette"])
+                    for row in band.get("durations", [])
+                },
+            )
+            for band in tpc.get("bands", [])
+        ],
     )

@@ -8,6 +8,11 @@ let beneficeChart = null;
 let rapportsCurrentPage = 1;
 const rapportsClientsPerPage = 25;
 
+function formatRapportText(value, fallback = '-') {
+    const text = value === null || value === undefined || String(value).trim() === '' ? fallback : value;
+    return typeof window.escapeHtml === 'function' ? window.escapeHtml(text) : text;
+}
+
 function getReportFilterParams() {
     const periode = document.getElementById('rapportPeriode')?.value || 'annee';
     const categorie = document.getElementById('rapportCategorie')?.value || '';
@@ -78,9 +83,9 @@ async function loadRapports() {
         remplirTableauRapports(summary.detailedContracts || []);
         updateRapportsPagination(summary.detailedContractsTotal || 0);
     } catch (error) {
-        console.error('Erreur lors du chargement des rapports:', error);
+        console.error('Erreur lors du chargement des rapports:');
         if (typeof window.showToast === 'function') {
-            window.showToast('Erreur lors du chargement des rapports: ' + (error.message || 'Erreur inconnue'), 'error');
+            window.showToast('Erreur lors du chargement des rapports', 'error');
         }
     }
 }
@@ -165,7 +170,7 @@ function creerGraphiqueEvolution(evolutionData) {
             }
         });
     } catch (error) {
-        console.error('Erreur lors de la création du graphique d\'évolution:', error);
+        console.error('Erreur lors de la création du graphique d\'évolution:');
         // Ne pas bloquer le reste des rapports si ce graphique échoue
     }
 }
@@ -215,7 +220,7 @@ function creerGraphiqueRepartition(distributionData) {
             }
         });
     } catch (error) {
-        console.error('Erreur lors de la création du graphique de répartition:', error);
+        console.error('Erreur lors de la création du graphique de répartition:');
         // Ne pas bloquer le reste des rapports si ce graphique échoue
     }
 }
@@ -270,7 +275,7 @@ function creerGraphiquePaiements(montantEncaisse, montantRestant) {
             }
         });
     } catch (error) {
-        console.error('Erreur lors de la création du graphique de paiements:', error);
+        console.error('Erreur lors de la création du graphique de paiements:');
         // Ne pas bloquer le reste des rapports si ce graphique échoue
     }
 }
@@ -357,7 +362,7 @@ function creerGraphiqueBenefice(profitEvolution) {
             }
         });
     } catch (error) {
-        console.error('Erreur lors de la création du graphique de bénéfice:', error);
+        console.error('Erreur lors de la création du graphique de bénéfice:');
         // Ne pas bloquer le reste des rapports si ce graphique échoue
     }
 }
@@ -392,8 +397,8 @@ function remplirTableauRapports(contrats) {
         const montantTotal = parseFloat(contrat.montant) || 0;
         
         row.innerHTML = `
-            <td>${contrat.client_nom || 'Client'}</td>
-            <td>${contrat.numero_contrat || '-'}</td>
+            <td>${formatRapportText(contrat.client_nom, 'Client')}</td>
+            <td>${formatRapportText(contrat.numero_contrat)}</td>
             <td>${formatDate(contrat.date_debut)}</td>
             <td>${formatDate(contrat.date_fin)}</td>
             <td style="text-align: right;">${formatMoney(montantTotal)}</td>
@@ -517,11 +522,11 @@ async function exportRapport() {
         }
         
     } catch (error) {
-        console.error('Erreur lors de l\'export du rapport:', error);
+        console.error('Erreur lors de l\'export du rapport:');
         if (typeof window.showToast === 'function') {
-            window.showToast('Erreur lors de l\'export du rapport: ' + (error.message || 'Erreur inconnue'), 'error');
+            window.showToast('Erreur lors de l\'export du rapport', 'error');
         } else {
-            alert('Erreur lors de l\'export du rapport: ' + (error.message || 'Erreur inconnue'));
+            alert('Erreur lors de l\'export du rapport');
         }
     }
 }

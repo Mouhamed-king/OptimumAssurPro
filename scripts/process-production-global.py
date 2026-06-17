@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Nettoie Production_Global et recalcule les primes nettes via Cotation Auto.xls."""
+"""Nettoie Production_Global et recalcule les primes nettes via les baremes auto."""
 
 from __future__ import annotations
 
@@ -102,6 +102,14 @@ def calculate_prime_nette(
 
     rc_annual: float | None = None
 
+    if cotation.is_tpc_tariff(categorie, str(charge_utile or "")):
+        if cv <= 0:
+            return None, "Puissance invalide pour TPC"
+        prime = cotation.prime_for_tpc(cv, duree)
+        if prime is None:
+            return None, f"Aucun tarif TPC pour puissance {cv} et duree {duree!r}"
+        return prime, None
+
     if cat == "1":
         if cv <= 0:
             return None, "Puissance invalide pour CAT 1"
@@ -120,6 +128,8 @@ def calculate_prime_nette(
             )
 
     elif cat == "5":
+        # Regle metier: toute CAT 5 est traitee au tarif cyclomoteur,
+        # quelle que soit la cylindree renseignee dans le fichier source.
         rc_annual = cotation.rc_for_cat5()
         if rc_annual is None:
             return None, "Tarif cyclomoteur introuvable pour CAT 5"
@@ -229,8 +239,8 @@ def main() -> int:
     )
     parser.add_argument(
         "--cotation",
-        default=str(PROJECT_ROOT / "Cotation Auto.xls"),
-        help="Chemin vers Cotation Auto.xls",
+        default=str(PROJECT_ROOT / "data" / "baremes-assurance.json"),
+        help="Chemin vers le fichier global des baremes (.json) ou Cotation Auto.xls",
     )
     parser.add_argument(
         "--dry-run",

@@ -1,0 +1,169 @@
+{
+  "version": 1,
+  "sources": {
+    "auto": "Cotation Auto.xls, feuille Tarif auto",
+    "tpc": "TPC.jpeg"
+  },
+  "rules": {
+    "cat1": "Utiliser le RC tourisme selon energie/CV puis convertir avec le tableau bonus par duree.",
+    "cat2": "Inferieur a 3T500 = vehicule Break selon energie/CV. Superieur a 3T500 = tarif TPC selon CV/duree, sans energie.",
+    "cat5": "Toujours cyclomoteur, quel que soit le cylindre renseigne."
+  },
+  "bordereau": {
+    "standard": {
+      "frais": 3000,
+      "taxe_rate": 0.14,
+      "fga_rate": 0.025,
+      "commission_rate": 0.25
+    }
+  },
+  "auto": {
+    "reference_annual_rc": 65680,
+    "bonus_primes_by_months": {
+      "1": 4597.6,
+      "2": 9195.2,
+      "3": 13792.8,
+      "4": 18390.4,
+      "5": 22988,
+      "6": 27585.6,
+      "7": 32183.2,
+      "8": 36780.8,
+      "9": 41378.4,
+      "10": 45976,
+      "11": 50573.6,
+      "12": 52544
+    },
+    "categories": {
+      "cat1_tourisme": {
+        "essence": [
+          { "label": "3 a 6 CV", "min_cv": 3, "max_cv": 6, "rc_annual": 45185 },
+          { "label": "7 a 10 CV", "min_cv": 7, "max_cv": 10, "rc_annual": 51080 },
+          { "label": "11 a 14 CV", "min_cv": 11, "max_cv": 14, "rc_annual": 65680 },
+          { "label": "15 a 23 CV", "min_cv": 15, "max_cv": 23, "rc_annual": 86460 },
+          { "label": "24 et plus", "min_cv": 24, "max_cv": null, "rc_annual": 104145 }
+        ],
+        "diesel": [
+          { "label": "3 a 6 CV", "min_cv": 3, "max_cv": 6, "rc_annual": 45185 },
+          { "label": "7 a 10 CV", "min_cv": 7, "max_cv": 10, "rc_annual": 51080 },
+          { "label": "11 a 14 CV", "min_cv": 11, "max_cv": 14, "rc_annual": 65680 },
+          { "label": "15 a 23 CV", "min_cv": 15, "max_cv": 23, "rc_annual": 86460 },
+          { "label": "24 et plus", "min_cv": 24, "max_cv": null, "rc_annual": 104145 }
+        ]
+      },
+      "cat2_break": {
+        "essence": [
+          { "label": "3 a 6 CV", "min_cv": 3, "max_cv": 6, "rc_annual": 67645 },
+          { "label": "7 a 10 CV", "min_cv": 7, "max_cv": 10, "rc_annual": 78975 },
+          { "label": "11 a 14 CV", "min_cv": 11, "max_cv": 14, "rc_annual": 113945 },
+          { "label": "15 a 23 CV", "min_cv": 15, "max_cv": 23, "rc_annual": 146970 },
+          { "label": "24 et plus", "min_cv": 24, "max_cv": null, "rc_annual": 174495 }
+        ],
+        "diesel": [
+          { "label": "2 a 4 CV", "min_cv": 2, "max_cv": 4, "rc_annual": 67645 },
+          { "label": "5 a 7 CV", "min_cv": 5, "max_cv": 7, "rc_annual": 78975 },
+          { "label": "8 a 10 CV", "min_cv": 8, "max_cv": 10, "rc_annual": 113945 },
+          { "label": "11 a 16 CV", "min_cv": 11, "max_cv": 16, "rc_annual": 146970 },
+          { "label": "17 et plus", "min_cv": 17, "max_cv": null, "rc_annual": 174495 }
+        ]
+      },
+      "cat2_prive_inf_3t5": {
+        "essence": [
+          { "label": "3 a 6 CV", "min_cv": 3, "max_cv": 6, "rc_annual": 101050 },
+          { "label": "7 a 10 CV", "min_cv": 7, "max_cv": 10, "rc_annual": 127880 },
+          { "label": "11 a 14 CV", "min_cv": 11, "max_cv": 14, "rc_annual": 168085 },
+          { "label": "15 a 23 CV", "min_cv": 15, "max_cv": 23, "rc_annual": 206063 },
+          { "label": "24 et plus", "min_cv": 24, "max_cv": null, "rc_annual": 237710 }
+        ],
+        "diesel": [
+          { "label": "2 a 4 CV", "min_cv": 2, "max_cv": 4, "rc_annual": 101050 },
+          { "label": "5 a 7 CV", "min_cv": 5, "max_cv": 7, "rc_annual": 127880 },
+          { "label": "8 a 10 CV", "min_cv": 8, "max_cv": 10, "rc_annual": 168085 },
+          { "label": "11 a 16 CV", "min_cv": 11, "max_cv": 16, "rc_annual": 206063 },
+          { "label": "17 et plus", "min_cv": 17, "max_cv": null, "rc_annual": 237710 }
+        ]
+      },
+      "cat2_prive_sup_3t5": {
+        "essence": [
+          { "label": "3 a 6 CV", "min_cv": 3, "max_cv": 6, "rc_annual": 103580 },
+          { "label": "7 a 10 CV", "min_cv": 7, "max_cv": 10, "rc_annual": 130415 },
+          { "label": "11 a 14 CV", "min_cv": 11, "max_cv": 14, "rc_annual": 170620 },
+          { "label": "15 a 23 CV", "min_cv": 15, "max_cv": 23, "rc_annual": 208600 },
+          { "label": "24 et plus", "min_cv": 24, "max_cv": null, "rc_annual": 240245 }
+        ],
+        "diesel": [
+          { "label": "2 a 4 CV", "min_cv": 2, "max_cv": 4, "rc_annual": 103580 },
+          { "label": "5 a 7 CV", "min_cv": 5, "max_cv": 7, "rc_annual": 130415 },
+          { "label": "8 a 10 CV", "min_cv": 8, "max_cv": 10, "rc_annual": 170620 },
+          { "label": "11 a 16 CV", "min_cv": 11, "max_cv": 16, "rc_annual": 208600 },
+          { "label": "17 et plus", "min_cv": 17, "max_cv": null, "rc_annual": 240245 }
+        ]
+      },
+      "cat2_public_inf_3t5": {
+        "essence": [
+          { "label": "3 a 6 CV", "min_cv": 3, "max_cv": 6, "rc_annual": 133060 },
+          { "label": "7 a 10 CV", "min_cv": 7, "max_cv": 10, "rc_annual": 165605 },
+          { "label": "11 a 14 CV", "min_cv": 11, "max_cv": 14, "rc_annual": 222270 },
+          { "label": "15 a 23 CV", "min_cv": 15, "max_cv": 23, "rc_annual": 283130 },
+          { "label": "24 et plus", "min_cv": 24, "max_cv": null, "rc_annual": 328955 }
+        ],
+        "diesel": [
+          { "label": "2 a 4 CV", "min_cv": 2, "max_cv": 4, "rc_annual": 133060 },
+          { "label": "5 a 7 CV", "min_cv": 5, "max_cv": 7, "rc_annual": 165605 },
+          { "label": "8 a 10 CV", "min_cv": 8, "max_cv": 10, "rc_annual": 222270 },
+          { "label": "11 a 16 CV", "min_cv": 11, "max_cv": 16, "rc_annual": 283130 },
+          { "label": "17 et plus", "min_cv": 17, "max_cv": null, "rc_annual": 328955 }
+        ]
+      },
+      "cat2_public_sup_3t5": {
+        "essence": [
+          { "label": "3 a 6 CV", "min_cv": 3, "max_cv": 6, "rc_annual": 135440 },
+          { "label": "7 a 10 CV", "min_cv": 7, "max_cv": 10, "rc_annual": 167985 },
+          { "label": "11 a 14 CV", "min_cv": 11, "max_cv": 14, "rc_annual": 224650 },
+          { "label": "15 a 23 CV", "min_cv": 15, "max_cv": 23, "rc_annual": 285510 },
+          { "label": "24 et plus", "min_cv": 24, "max_cv": null, "rc_annual": 331340 }
+        ],
+        "diesel": [
+          { "label": "2 a 4 CV", "min_cv": 2, "max_cv": 4, "rc_annual": 135440 },
+          { "label": "5 a 7 CV", "min_cv": 5, "max_cv": 7, "rc_annual": 167985 },
+          { "label": "8 a 10 CV", "min_cv": 8, "max_cv": 10, "rc_annual": 224650 },
+          { "label": "11 a 16 CV", "min_cv": 11, "max_cv": 16, "rc_annual": 285510 },
+          { "label": "17 et plus", "min_cv": 17, "max_cv": null, "rc_annual": 331340 }
+        ]
+      },
+      "cat5_two_wheel": [
+        { "label": "Cyclomoteurs", "rc_annual": 18780 },
+        { "label": "Scoot et velomot 125 cm3", "rc_annual": 29450 },
+        { "label": "Scoot et velomot +125 cm3", "rc_annual": 34025 },
+        { "label": "Side-cars", "rc_annual": 40880 }
+      ]
+    }
+  },
+  "tpc": {
+    "bands": [
+      {
+        "label": "TPC 11 a 16 CV PA",
+        "min_cv": 11,
+        "max_cv": 16,
+        "durations": [
+          { "label": "01 MOIS", "months": 1, "prime_nette": 12776, "frais": 3000, "taxe": 2208, "fga": 319, "ttc": 18303, "commission": 2555, "net_a_verser": 12747 },
+          { "label": "02 MOIS", "months": 2, "prime_nette": 25553, "frais": 3000, "taxe": 3993, "fga": 638, "ttc": 33184, "commission": 5110, "net_a_verser": 25073 },
+          { "label": "03 MOIS", "months": 3, "prime_nette": 38330, "frais": 3000, "taxe": 5786, "fga": 958, "ttc": 48074, "commission": 7666, "net_a_verser": 37408 },
+          { "label": "06 MOIS", "months": 6, "prime_nette": 65709, "frais": 3000, "taxe": 9619, "fga": 1642, "ttc": 79970, "commission": 13141, "net_a_verser": 63628 },
+          { "label": "1 AN", "months": 12, "prime_nette": 125160, "frais": 3000, "taxe": 17942, "fga": 3650, "ttc": 149752, "commission": 25032, "net_a_verser": 121720 }
+        ]
+      },
+      {
+        "label": "TPC 17 CV et plus",
+        "min_cv": 17,
+        "max_cv": null,
+        "durations": [
+          { "label": "01 MOIS", "months": 1, "prime_nette": 14844, "frais": 3000, "taxe": 2498, "fga": 371, "ttc": 20713, "commission": 2968, "net_a_verser": 14744 },
+          { "label": "02 MOIS", "months": 2, "prime_nette": 28178, "frais": 3000, "taxe": 4364, "fga": 704, "ttc": 36246, "commission": 5635, "net_a_verser": 27610 },
+          { "label": "03 MOIS", "months": 3, "prime_nette": 41512, "frais": 3000, "taxe": 6231, "fga": 1037, "ttc": 51780, "commission": 8302, "net_a_verser": 40477 },
+          { "label": "06 MOIS", "months": 6, "prime_nette": 68178, "frais": 3000, "taxe": 9964, "fga": 1704, "ttc": 82846, "commission": 13635, "net_a_verser": 66210 },
+          { "label": "1 AN", "months": 12, "prime_nette": 130400, "frais": 3000, "taxe": 18676, "fga": 3260, "ttc": 155336, "commission": 26080, "net_a_verser": 126256 }
+        ]
+      }
+    ]
+  }
+}

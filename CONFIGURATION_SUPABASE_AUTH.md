@@ -122,7 +122,7 @@ DB_SSL_REJECT_UNAUTHORIZED=false
    - Copiez **"anon" public key**
 
 4. **APP_URL** :
-   - URL de votre application Render (ex: `https://optimumassurpro.onrender.com`)
+   - URL de votre application Render (ex: `https://gestionnaire-clientele.onrender.com`)
 
 ---
 

@@ -208,8 +208,8 @@ const getSummary = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Erreur lors de la récupération du résumé des rapports:', error);
-        res.status(500).json({ error: 'Erreur lors de la récupération du résumé des rapports: ' + error.message });
+        console.error('Erreur lors de la récupération du résumé des rapports');
+        res.status(500).json({ error: 'Erreur lors de la récupération du résumé des rapports' });
     }
 };
 

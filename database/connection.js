@@ -71,7 +71,7 @@ async function connect() {
                 console.warn('Migration colonnes véhicule ignorée');
             });
         } else {
-            console.log('⚠️  pg Pool non configuré — exécutez database/add-vehicule-details.sql dans Supabase si besoin');
+            console.log('⚠️  pg Pool non configuré — création automatique des colonnes véhicule ignorée');
         }
         
         return supabase;
@@ -84,7 +84,7 @@ async function connect() {
 // Fonction pour créer les tables si elles n'existent pas (utilise pg Pool pour SQL brut uniquement)
 async function createTablesIfNotExist() {
     if (!pgPool) {
-        console.log('⚠️  pg Pool non configuré, utilisez npm run migrate pour créer les tables');
+        console.log('⚠️  pg Pool non configuré, création automatique des tables ignorée');
         return;
     }
     

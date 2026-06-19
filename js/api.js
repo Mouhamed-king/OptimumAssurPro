@@ -284,6 +284,22 @@ const reportsAPI = {
     }
 };
 
+const assistantAPI = {
+    chat: async (message) => {
+        return await apiRequest('/assistant/chat', {
+            method: 'POST',
+            body: JSON.stringify({ message })
+        });
+    },
+
+    execute: async (action) => {
+        return await apiRequest('/assistant/execute', {
+            method: 'POST',
+            body: JSON.stringify({ action })
+        });
+    }
+};
+
 // ============================================
 // API NOTIFICATIONS
 // ============================================
@@ -311,5 +327,6 @@ window.api = {
     contracts: contractsAPI,
     stats: statsAPI,
     notifications: notificationsAPI,
-    reports: reportsAPI
+    reports: reportsAPI,
+    assistant: assistantAPI
 };

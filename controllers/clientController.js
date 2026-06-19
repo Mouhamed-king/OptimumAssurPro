@@ -3,6 +3,7 @@
 // ============================================
 
 const db = require('../database/connection');
+const { recordPaymentMovement, toMoney } = require('../services/paymentLedger');
 
 const DEFAULT_TEXT = 'Non renseigné';
 
@@ -437,6 +438,17 @@ const createClient = async (req, res) => {
             throw new Error('Erreur lors de la création du contrat');
         }
         
+        if (toMoney(contrat.montant_paye) > 0) {
+            await recordPaymentMovement({
+                entrepriseId: req.entrepriseId,
+                contratId: newContrat.id,
+                clientId: newClient.id,
+                montant: contrat.montant_paye,
+                source: 'creation_client',
+                note: 'Paiement initial'
+            });
+        }
+
         res.status(201).json({
             message: 'Client créé avec succès',
             client: newClient,
@@ -524,7 +536,7 @@ const updateClient = async (req, res) => {
             // Récupérer le dernier contrat du client (le plus récent)
             const { data: existingContrats } = await db.supabase
                 .from('contrats')
-                .select('id')
+                .select('id, montant_paye')
                 .eq('client_id', id)
                 .order('date_fin', { ascending: false })
                 .limit(1);
@@ -545,8 +557,15 @@ const updateClient = async (req, res) => {
                 const montantRestant = contrat.montant_restant || 0;
                 
                 // Mettre à jour le contrat existant
+                const contractPayload = buildContractPayload(contrat);
+                const ancienMontantPaye = toMoney(existingContrats[0].montant_paye);
+                const nouveauMontantPaye = Object.prototype.hasOwnProperty.call(contractPayload, 'montant_paye')
+                    ? toMoney(contractPayload.montant_paye)
+                    : ancienMontantPaye;
+                const mouvement = toMoney(nouveauMontantPaye - ancienMontantPaye);
+
                 const { error: contratError } = await runMutationWithSchemaFallback(
-                    buildContractPayload(contrat),
+                    contractPayload,
                     (payload) => db.supabase
                         .from('contrats')
                         .update(payload)
@@ -555,6 +574,18 @@ const updateClient = async (req, res) => {
                 
                 if (contratError) {
                     throw contratError;
+                }
+
+                if (mouvement !== 0) {
+                    await recordPaymentMovement({
+                        entrepriseId: req.entrepriseId,
+                        contratId: existingContrats[0].id,
+                        clientId: id,
+                        montant: mouvement,
+                        type: mouvement > 0 ? 'encaissement' : 'correction',
+                        source: 'edition_client',
+                        note: mouvement > 0 ? 'Paiement complementaire' : 'Correction de paiement'
+                    });
                 }
             } else {
                 // Créer un nouveau contrat si aucun n'existe
@@ -583,7 +614,7 @@ const updateClient = async (req, res) => {
                 const montantPaye = contrat.montant_paye || 0;
                 const montantRestant = contrat.montant_restant || 0;
                 
-                const { error: contratError } = await runMutationWithSchemaFallback(
+                const { data: newContrat, error: contratError } = await runMutationWithSchemaFallback(
                     buildContractPayload(contrat, {
                         client_id: id,
                         vehicule_id: clientVehicules[0].id,
@@ -594,10 +625,23 @@ const updateClient = async (req, res) => {
                     (payload) => db.supabase
                         .from('contrats')
                         .insert(payload)
+                        .select('id')
+                        .single()
                 );
                 
                 if (contratError) {
                     throw contratError;
+                }
+
+                if (newContrat && toMoney(contrat.montant_paye) > 0) {
+                    await recordPaymentMovement({
+                        entrepriseId: req.entrepriseId,
+                        contratId: newContrat.id,
+                        clientId: id,
+                        montant: contrat.montant_paye,
+                        source: 'creation_contrat_client',
+                        note: 'Paiement initial'
+                    });
                 }
             }
         }

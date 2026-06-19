@@ -1,5 +1,5 @@
 // ============================================
-// GESTION DES RAPPORTS
+// GESTION DES RAPPORTS DE CAISSE
 // ============================================
 
 let evolutionChart = null;
@@ -8,15 +8,81 @@ let beneficeChart = null;
 let rapportsCurrentPage = 1;
 const rapportsClientsPerPage = 25;
 
+function setupRapportLabels() {
+    const setMetricLabel = (id, label) => {
+        const valueEl = document.getElementById(id);
+        const labelEl = valueEl?.nextElementSibling;
+        if (labelEl) labelEl.textContent = label;
+    };
+
+    setMetricLabel('rapportChiffreAffaires', 'Somme totale');
+    setMetricLabel('rapportMontantEncaisse', 'Encaissé période');
+    setMetricLabel('rapportMontantRestant', 'Montant restant');
+    setMetricLabel('rapportContratsTotal', 'Contrats payés');
+    setMetricLabel('rapportClientsTotal', 'Clients payeurs');
+    setMetricLabel('rapportTauxRenouvellement', 'Net à verser');
+    setMetricLabel('rapportBenefice', 'Bénéfice estimé');
+
+    const chartTitles = [
+        ['evolutionChart', 'Encaissements par jour'],
+        ['repartitionChart', 'Types d\'encaissement'],
+        ['paiementsChart', 'Encaissé vs reste à payer'],
+        ['beneficeChart', 'Bénéfice estimé par jour']
+    ];
+
+    chartTitles.forEach(([canvasId, title]) => {
+        const titleEl = document.getElementById(canvasId)
+            ?.closest('.card')
+            ?.querySelector('.card-header h3');
+        if (titleEl) titleEl.textContent = title;
+    });
+
+    const tableTitle = document.getElementById('rapportsTableBody')
+        ?.closest('.card')
+        ?.querySelector('.card-header h3');
+    if (tableTitle) tableTitle.textContent = 'Détails des encaissements';
+
+    const headerRow = document.querySelector('#rapportsTableBody')
+        ?.closest('table')
+        ?.querySelector('thead tr');
+    if (headerRow) {
+        headerRow.innerHTML = `
+            <th>Date paiement</th>
+            <th>Client</th>
+            <th>Numéro de police</th>
+            <th>Libellé</th>
+            <th>Prime nette</th>
+            <th>Encaissé</th>
+            <th>Montant restant</th>
+            <th>Bénéfice</th>
+        `;
+    }
+}
+
 function formatRapportText(value, fallback = '-') {
     const text = value === null || value === undefined || String(value).trim() === '' ? fallback : value;
     return typeof window.escapeHtml === 'function' ? window.escapeHtml(text) : text;
 }
 
+function formatRapportDateTime(value) {
+    if (!value) return '-';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
 function getReportFilterParams() {
-    const periode = document.getElementById('rapportPeriode')?.value || 'annee';
+    const periode = document.getElementById('rapportPeriode')?.value || 'aujourdhui';
     const categorie = document.getElementById('rapportCategorie')?.value || '';
     const filterMap = {
+        aujourdhui: 'today',
+        deux_jours: 'two_days',
         mois: 'month',
         trimestre: 'quarter',
         annee: 'year',
@@ -26,15 +92,14 @@ function getReportFilterParams() {
     return {
         periode,
         categorie,
-        filter: filterMap[periode] || 'year'
+        filter: filterMap[periode] || 'today'
     };
 }
 
-// Charger les rapports avec pagination
 async function loadRapports() {
     try {
         if (!window.api || !window.api.reports) {
-            throw new Error('API non chargée');
+            throw new Error('API non chargee');
         }
 
         const offset = (rapportsCurrentPage - 1) * rapportsClientsPerPage;
@@ -47,7 +112,7 @@ async function loadRapports() {
         });
 
         const chiffreAffairesEl = document.getElementById('rapportChiffreAffaires');
-        if (chiffreAffairesEl) chiffreAffairesEl.textContent = formatMoney(summary.totalRevenue || 0);
+        if (chiffreAffairesEl) chiffreAffairesEl.textContent = formatMoney(summary.totalPremium || 0);
 
         const montantEncaisseEl = document.getElementById('rapportMontantEncaisse');
         if (montantEncaisseEl) montantEncaisseEl.textContent = formatMoney(summary.totalPaid || 0);
@@ -68,142 +133,92 @@ async function loadRapports() {
         const clientsTotalEl = document.getElementById('rapportClientsTotal');
         if (clientsTotalEl) clientsTotalEl.textContent = summary.totalClients || 0;
 
-        const tauxRenouvellementEl = document.getElementById('rapportTauxRenouvellement');
-        if (tauxRenouvellementEl) tauxRenouvellementEl.textContent = `${summary.renewalRate || 0}%`;
+        const netAVerserEl = document.getElementById('rapportTauxRenouvellement');
+        if (netAVerserEl) netAVerserEl.textContent = formatMoney(summary.totalNetAVerser || 0);
 
         if (typeof Chart !== 'undefined') {
-            creerGraphiqueEvolution(summary.contractsEvolution || []);
+            creerGraphiqueEvolution(summary.cashFlowByDay || summary.contractsEvolution || []);
             creerGraphiqueRepartition(summary.contractTypeDistribution || []);
             creerGraphiquePaiements(summary.totalPaid || 0, summary.totalRemaining || 0);
             creerGraphiqueBenefice(summary.profitEvolution || []);
         } else {
-            console.warn('Chart.js n\'est pas chargé. Les graphiques ne seront pas affichés.');
+            console.warn('Chart.js non disponible');
         }
 
-        remplirTableauRapports(summary.detailedContracts || []);
-        updateRapportsPagination(summary.detailedContractsTotal || 0);
+        remplirTableauRapports(summary.detailedPayments || summary.detailedContracts || []);
+        updateRapportsPagination(summary.detailedPaymentsTotal || summary.detailedContractsTotal || 0);
     } catch (error) {
-        console.error('Erreur lors du chargement des rapports:');
+        console.error('Erreur lors du chargement des rapports:', error);
         if (typeof window.showToast === 'function') {
             window.showToast('Erreur lors du chargement des rapports', 'error');
         }
     }
 }
 
-// Filtrer les contrats par période
-function filtrerParPeriode(contrats, periode) {
-    const maintenant = new Date();
-    let dateDebut = new Date();
-    
-    switch (periode) {
-        case 'mois':
-            dateDebut.setMonth(maintenant.getMonth() - 1);
-            break;
-        case 'trimestre':
-            dateDebut.setMonth(maintenant.getMonth() - 3);
-            break;
-        case 'annee':
-            dateDebut.setFullYear(maintenant.getFullYear() - 1);
-            break;
-        case 'tout':
-        default:
-            return contrats;
-    }
-    
-    return contrats.filter(c => {
-        const dateContrat = new Date(c.date_debut || c.created_at);
-        return dateContrat >= dateDebut;
-    });
-}
-
-// Créer le graphique d'évolution mensuelle
 function creerGraphiqueEvolution(evolutionData) {
     try {
-        if (typeof Chart === 'undefined') {
-            console.warn('Chart.js n\'est pas disponible');
-            return;
-        }
-        
         const ctx = document.getElementById('evolutionChart');
-        if (!ctx) {
-            console.warn('Canvas evolutionChart non trouvé');
-            return;
-        }
-        
-        const labels = evolutionData.map(item => item.month);
-        const donnees = evolutionData.map(item => item.count);
-        
-        if (evolutionChart) {
-            evolutionChart.destroy();
-        }
-        
+        if (!ctx || typeof Chart === 'undefined') return;
+
+        const labels = evolutionData.map(item => item.day || item.month || item.date);
+        const donnees = evolutionData.map(item => item.amount || 0);
+
+        if (evolutionChart) evolutionChart.destroy();
+
         evolutionChart = new Chart(ctx, {
-            type: 'line',
+            type: 'bar',
             data: {
-                labels: labels,
+                labels,
                 datasets: [{
-                    label: 'Nombre de contrats',
+                    label: 'Encaissements',
                     data: donnees,
-                    borderColor: '#2563EB',
-                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                    tension: 0.4,
-                    fill: true
+                    backgroundColor: 'rgba(16, 185, 129, 0.75)',
+                    borderColor: '#10B981',
+                    borderWidth: 1
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top'
+                    legend: { display: true, position: 'top' },
+                    tooltip: {
+                        callbacks: {
+                            label: context => 'Encaisse: ' + formatMoney(context.parsed.y)
+                        }
                     }
                 },
                 scales: {
                     y: {
                         beginAtZero: true,
-                        ticks: {
-                            stepSize: 1
-                        }
+                        ticks: { callback: value => formatMoney(value) }
                     }
                 }
             }
         });
     } catch (error) {
-        console.error('Erreur lors de la création du graphique d\'évolution:');
-        // Ne pas bloquer le reste des rapports si ce graphique échoue
+        console.error('Erreur graphique encaissements:', error);
     }
 }
 
-// Créer le graphique de répartition par type
 function creerGraphiqueRepartition(distributionData) {
     try {
-        if (typeof Chart === 'undefined') {
-            console.warn('Chart.js n\'est pas disponible');
-            return;
-        }
-        
         const ctx = document.getElementById('repartitionChart');
-        if (!ctx) {
-            console.warn('Canvas repartitionChart non trouvé');
-            return;
-        }
-        
-        const labels = distributionData.map(item => item.type || 'Non specifie');
+        if (!ctx || typeof Chart === 'undefined') return;
+
+        const labels = distributionData.map(item => item.type || 'Autre');
         const donnees = distributionData.map(item => item.count || 0);
-        const couleurs = ['#2563EB', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
-        
-        if (repartitionChart) {
-            repartitionChart.destroy();
-        }
-        
+        const couleurs = ['#2563EB', '#10B981', '#F59E0B', '#EF4444', '#14B8A6', '#8B5CF6'];
+
+        if (repartitionChart) repartitionChart.destroy();
+
         repartitionChart = new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: labels,
+                labels,
                 datasets: [{
                     data: donnees,
-                    backgroundColor: couleurs.slice(0, labels.length),
+                    backgroundColor: couleurs.slice(0, Math.max(labels.length, 1)),
                     borderWidth: 2,
                     borderColor: '#fff'
                 }]
@@ -211,46 +226,29 @@ function creerGraphiqueRepartition(distributionData) {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'bottom'
-                    }
-                }
+                plugins: { legend: { display: true, position: 'bottom' } }
             }
         });
     } catch (error) {
-        console.error('Erreur lors de la création du graphique de répartition:');
-        // Ne pas bloquer le reste des rapports si ce graphique échoue
+        console.error('Erreur graphique repartition:', error);
     }
 }
 
-// Créer le graphique des paiements (encaissés vs restants)
 function creerGraphiquePaiements(montantEncaisse, montantRestant) {
     try {
         const ctx = document.getElementById('paiementsChart');
-        if (!ctx) {
-            console.warn('Canvas paiementsChart non trouvé');
-            return;
-        }
+        if (!ctx || typeof Chart === 'undefined') return;
 
-        // Vérifier que Chart.js est disponible
-        if (typeof Chart === 'undefined') {
-            console.warn('Chart.js non disponible');
-            return;
-        }
-
-        // Détruire le graphique existant s'il existe et est valide
         if (window.paiementsChart && typeof window.paiementsChart.destroy === 'function') {
             window.paiementsChart.destroy();
         }
-        
+
         window.paiementsChart = new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: ['Montant encaissé', 'Montant restant'],
+                labels: ['Encaisse', 'Reste a payer'],
                 datasets: [{
-                    data: [montantEncaisse, montantRestant],
+                    data: [Math.max(montantEncaisse, 0), Math.max(montantRestant, 0)],
                     backgroundColor: ['#10B981', '#F59E0B'],
                     borderWidth: 2,
                     borderColor: '#fff'
@@ -260,157 +258,99 @@ function creerGraphiquePaiements(montantEncaisse, montantRestant) {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: {
-                        display: true,
-                        position: 'bottom'
-                    },
+                    legend: { display: true, position: 'bottom' },
                     tooltip: {
                         callbacks: {
-                            label: function(context) {
-                                return context.label + ': ' + formatMoney(context.parsed);
-                            }
+                            label: context => context.label + ': ' + formatMoney(context.parsed)
                         }
                     }
                 }
             }
         });
     } catch (error) {
-        console.error('Erreur lors de la création du graphique de paiements:');
-        // Ne pas bloquer le reste des rapports si ce graphique échoue
+        console.error('Erreur graphique paiements:', error);
     }
 }
 
-// Créer le graphique de bénéfice (montant payé - net à verser)
 function creerGraphiqueBenefice(profitEvolution) {
     try {
-        if (typeof Chart === 'undefined') {
-            console.warn('Chart.js n\'est pas disponible');
-            return;
-        }
-        
         const ctx = document.getElementById('beneficeChart');
-        if (!ctx) {
-            console.warn('Canvas beneficeChart non trouvé');
-            return;
-        }
-        
-        if (!profitEvolution.length) {
-            console.warn('Aucun bénéfice à afficher');
-            if (beneficeChart) {
-                beneficeChart.destroy();
-                beneficeChart = null;
-            }
-            return;
-        }
-        
-        const labels = profitEvolution.map(item => item.month);
-        const donnees = profitEvolution.map(item => item.amount);
-        
-        // Détruire le graphique existant s'il existe
-        if (beneficeChart) {
-            beneficeChart.destroy();
-        }
-        
+        if (!ctx || typeof Chart === 'undefined') return;
+
+        if (beneficeChart) beneficeChart.destroy();
+
+        const labels = profitEvolution.map(item => item.month || item.day || item.date);
+        const donnees = profitEvolution.map(item => item.amount || 0);
+
         beneficeChart = new Chart(ctx, {
-            type: 'bar',
+            type: 'line',
             data: {
-                labels: labels,
+                labels,
                 datasets: [{
-                    label: 'Bénéfice (FCFA)',
+                    label: 'Benefice estime',
                     data: donnees,
-                    backgroundColor: donnees.map(b => b >= 0 ? 'rgba(16, 185, 129, 0.7)' : 'rgba(239, 68, 68, 0.7)'),
-                    borderColor: donnees.map(b => b >= 0 ? '#10B981' : '#EF4444'),
-                    borderWidth: 2
+                    borderColor: '#2563EB',
+                    backgroundColor: 'rgba(37, 99, 235, 0.12)',
+                    tension: 0.35,
+                    fill: true
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top'
-                    },
+                    legend: { display: true, position: 'top' },
                     tooltip: {
                         callbacks: {
-                            label: function(context) {
-                                const benefice = context.parsed.y;
-                                const signe = benefice >= 0 ? '+' : '';
-                                return 'Bénéfice: ' + signe + formatMoney(benefice);
-                            }
+                            label: context => 'Benefice: ' + formatMoney(context.parsed.y)
                         }
                     }
                 },
                 scales: {
                     y: {
-                        beginAtZero: false,
-                        ticks: {
-                            callback: function(value) {
-                                return formatMoney(value);
-                            }
-                        },
-                        grid: {
-                            color: function(context) {
-                                if (context.tick.value === 0) {
-                                    return '#E5E7EB';
-                                }
-                                return 'rgba(0, 0, 0, 0.1)';
-                            }
-                        }
+                        beginAtZero: true,
+                        ticks: { callback: value => formatMoney(value) }
                     }
                 }
             }
         });
     } catch (error) {
-        console.error('Erreur lors de la création du graphique de bénéfice:');
-        // Ne pas bloquer le reste des rapports si ce graphique échoue
+        console.error('Erreur graphique benefice:', error);
     }
 }
 
-// Remplir le tableau des rapports
-function remplirTableauRapports(contrats) {
+function remplirTableauRapports(paiements) {
     const tbody = document.getElementById('rapportsTableBody');
     if (!tbody) return;
-    
+
     tbody.innerHTML = '';
-    
-    if (contrats.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: #6B7280;">Aucun contrat trouvé pour cette période</td></tr>';
+
+    if (!paiements.length) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: #6B7280;">Aucun encaissement trouve pour cette periode</td></tr>';
         return;
     }
-    
-    // Trier par date de début (plus récent en premier)
-    const contratsTries = [...contrats].sort((a, b) => {
-        return new Date(b.date_debut || b.created_at) - new Date(a.date_debut || a.created_at);
-    });
-    
-    contratsTries.forEach(contrat => {
+
+    paiements.forEach(paiement => {
         const row = document.createElement('tr');
-        const statutBadge = contrat.statut === 'actif' 
-            ? '<span class="badge badge-success">Actif</span>'
-            : contrat.statut === 'expire'
-            ? '<span class="badge badge-danger">Expiré</span>'
-            : '<span class="badge badge-warning">Inactif</span>';
-        
-        const montantPaye = parseFloat(contrat.montant_paye) || 0;
-        const montantRestant = parseFloat(contrat.montant_restant) || 0;
-        const montantTotal = parseFloat(contrat.montant) || 0;
-        
+        const montantEncaisse = parseFloat(paiement.montant_paye) || 0;
+        const montantRestant = parseFloat(paiement.montant_restant) || 0;
+        const montantTotal = parseFloat(paiement.montant) || 0;
+        const benefice = parseFloat(paiement.commission) || 0;
+
         row.innerHTML = `
-            <td>${formatRapportText(contrat.client_nom, 'Client')}</td>
-            <td>${formatRapportText(contrat.numero_contrat)}</td>
-            <td>${formatDate(contrat.date_debut)}</td>
-            <td>${formatDate(contrat.date_fin)}</td>
+            <td>${formatRapportDateTime(paiement.date_paiement)}</td>
+            <td>${formatRapportText(paiement.client_nom, 'Client')}</td>
+            <td>${formatRapportText(paiement.numero_contrat)}</td>
+            <td>${formatRapportText(paiement.libelle, 'Encaissement')}</td>
             <td style="text-align: right;">${formatMoney(montantTotal)}</td>
-            <td style="text-align: right; color: #10B981;">${formatMoney(montantPaye)}</td>
+            <td style="text-align: right; color: ${montantEncaisse >= 0 ? '#10B981' : '#EF4444'};">${formatMoney(montantEncaisse)}</td>
             <td style="text-align: right; color: ${montantRestant > 0 ? '#F59E0B' : '#10B981'};">${formatMoney(montantRestant)}</td>
-            <td>${statutBadge}</td>
+            <td style="text-align: right; color: ${benefice >= 0 ? '#2563EB' : '#EF4444'};">${formatMoney(benefice)}</td>
         `;
         tbody.appendChild(row);
     });
 }
 
-// Formater l'argent
 function formatMoney(amount) {
     return new Intl.NumberFormat('fr-FR', {
         style: 'decimal',
@@ -419,18 +359,13 @@ function formatMoney(amount) {
     }).format(amount) + ' FCFA';
 }
 
-// Exporter le rapport en CSV
 async function exportRapport() {
     try {
         if (!window.api || !window.api.reports) {
-            if (typeof window.showToast === 'function') {
-                window.showToast('API non disponible', 'error');
-            } else {
-                alert('API non disponible');
-            }
+            if (typeof window.showToast === 'function') window.showToast('API non disponible', 'error');
             return;
         }
-        
+
         const { periode, categorie, filter } = getReportFilterParams();
         const summary = await window.api.reports.getSummary({
             filter,
@@ -438,129 +373,101 @@ async function exportRapport() {
             offset: 0,
             limit: 1000
         });
-        const contratsFiltres = summary.detailedContracts || [];
-        
-        if (contratsFiltres.length === 0) {
+        const paiements = summary.detailedPayments || summary.detailedContracts || [];
+
+        if (!paiements.length) {
             if (typeof window.showToast === 'function') {
-                window.showToast('Aucune donnée à exporter pour cette période', 'info');
-            } else {
-                alert('Aucune donnée à exporter pour cette période');
+                window.showToast('Aucune donnee a exporter pour cette periode', 'info');
             }
             return;
         }
-        
-        // Préparer les données CSV
+
         const csvHeaders = [
-            'Numéro Contrat',
+            'Date paiement',
             'Client',
-            'Véhicule',
-            'Date Début',
-            'Date Fin',
-            'Prime Nette (FCFA)',
-            'Montant Payé (FCFA)',
-            'Montant Restant (FCFA)',
-            'Statut'
+            'Numero police',
+            'Libelle',
+            'Prime nette',
+            'Montant encaisse',
+            'Montant restant',
+            'Benefice estime',
+            'Net a verser'
         ];
-        
-        const csvRows = contratsFiltres.map(contrat => {
-            const clientNom = contrat.client_nom ? `${contrat.client_nom} ${contrat.client_prenom || ''}`.trim() : '-';
-            const vehicule = contrat.vehicule_immatriculation || '-';
-            const dateDebut = contrat.date_debut ? new Date(contrat.date_debut).toLocaleDateString('fr-FR') : '-';
-            const dateFin = contrat.date_fin ? new Date(contrat.date_fin).toLocaleDateString('fr-FR') : '-';
-            const primeNette = (parseFloat(contrat.montant) || 0).toLocaleString('fr-FR');
-            const montantPaye = (parseFloat(contrat.montant_paye) || 0).toLocaleString('fr-FR');
-            const montantRestant = (parseFloat(contrat.montant_restant) || 0).toLocaleString('fr-FR');
-            const statut = contrat.statut || '-';
-            
-            return [
-                contrat.numero_contrat || '-',
-                clientNom,
-                vehicule,
-                dateDebut,
-                dateFin,
-                primeNette.replace(/\s/g, ''),
-                montantPaye.replace(/\s/g, ''),
-                montantRestant.replace(/\s/g, ''),
-                statut
-            ];
-        });
-        
-        // Calculer les totaux
-        const totalPrimeNette = contratsFiltres.reduce((sum, c) => sum + (parseFloat(c.montant) || 0), 0);
-        const totalPaye = contratsFiltres.reduce((sum, c) => sum + (parseFloat(c.montant_paye) || 0), 0);
-        const totalRestant = contratsFiltres.reduce((sum, c) => sum + (parseFloat(c.montant_restant) || 0), 0);
-        
-        csvRows.push([]); // Ligne vide
-        csvRows.push(['TOTAL', '', '', '', '', totalPrimeNette.toLocaleString('fr-FR'), totalPaye.toLocaleString('fr-FR'), totalRestant.toLocaleString('fr-FR'), '']);
-        
-        // Convertir en CSV
+
+        const csvRows = paiements.map(paiement => [
+            formatRapportDateTime(paiement.date_paiement),
+            paiement.client_nom || '-',
+            paiement.numero_contrat || '-',
+            paiement.libelle || '-',
+            parseFloat(paiement.montant || 0).toLocaleString('fr-FR'),
+            parseFloat(paiement.montant_paye || 0).toLocaleString('fr-FR'),
+            parseFloat(paiement.montant_restant || 0).toLocaleString('fr-FR'),
+            parseFloat(paiement.commission || 0).toLocaleString('fr-FR'),
+            parseFloat(paiement.net_a_verser || 0).toLocaleString('fr-FR')
+        ]);
+
+        csvRows.push([]);
+        csvRows.push([
+            'TOTAL',
+            '',
+            '',
+            '',
+            parseFloat(summary.totalPremium || 0).toLocaleString('fr-FR'),
+            parseFloat(summary.totalPaid || 0).toLocaleString('fr-FR'),
+            parseFloat(summary.totalRemaining || 0).toLocaleString('fr-FR'),
+            parseFloat(summary.totalProfit || 0).toLocaleString('fr-FR'),
+            parseFloat(summary.totalNetAVerser || 0).toLocaleString('fr-FR')
+        ]);
+
         const csvContent = [
             csvHeaders.join(','),
-            ...csvRows.map(row => row.map(cell => `"${cell}"`).join(','))
+            ...csvRows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
         ].join('\n');
-        
-        // Créer le blob et télécharger
-        const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' }); // BOM pour Excel
+
+        const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        
-        // Nom du fichier avec la date
         const dateStr = new Date().toISOString().split('T')[0];
-        const periodeStr = periode === 'mois' ? 'mois' : periode === 'trimestre' ? 'trimestre' : periode === 'annee' ? 'annee' : 'tout';
-        link.download = `rapport-${periodeStr}-${dateStr}.csv`;
-        
+        link.download = `etat-caisse-${periode}-${dateStr}.csv`;
+
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-        
+
         if (typeof window.showToast === 'function') {
-            window.showToast('Rapport exporté avec succès', 'success');
-        } else {
-            alert('Rapport exporté avec succès');
+            window.showToast('Etat de caisse exporte avec succes', 'success');
         }
-        
     } catch (error) {
-        console.error('Erreur lors de l\'export du rapport:');
+        console.error('Erreur lors de l export du rapport:', error);
         if (typeof window.showToast === 'function') {
-            window.showToast('Erreur lors de l\'export du rapport', 'error');
-        } else {
-            alert('Erreur lors de l\'export du rapport');
+            window.showToast('Erreur lors de l export du rapport', 'error');
         }
     }
 }
 
-// Exposer les fonctions globalement
 window.loadRapports = loadRapports;
 window.exportRapport = exportRapport;
 
-// Fonction de mise à jour de la pagination des rapports
 function updateRapportsPagination(total) {
     const totalPages = Math.max(Math.ceil(total / rapportsClientsPerPage), 1);
     const pageInfo = document.getElementById('rapportsPageInfo');
     const prevBtn = document.getElementById('rapportsPrevPage');
     const nextBtn = document.getElementById('rapportsNextPage');
-    
-    if (pageInfo) {
-        pageInfo.textContent = `Page ${rapportsCurrentPage} sur ${totalPages}`;
-    }
-    
-    if (prevBtn) {
-        prevBtn.disabled = rapportsCurrentPage <= 1;
-    }
-    
-    if (nextBtn) {
-        nextBtn.disabled = rapportsCurrentPage >= totalPages || totalPages === 0;
-    }
+
+    if (pageInfo) pageInfo.textContent = `Page ${rapportsCurrentPage} sur ${totalPages}`;
+    if (prevBtn) prevBtn.disabled = rapportsCurrentPage <= 1;
+    if (nextBtn) nextBtn.disabled = rapportsCurrentPage >= totalPages || totalPages === 0;
 }
 
-// Gestionnaires d'événements pour la pagination des rapports
 document.addEventListener('DOMContentLoaded', function() {
     const periodeSelect = document.getElementById('rapportPeriode');
+    setupRapportLabels();
+
     if (periodeSelect) {
+        periodeSelect.value = 'aujourdhui';
         periodeSelect.addEventListener('change', function() {
-            // Réinitialiser la pagination lorsqu'on change de période
             rapportsCurrentPage = 1;
             loadRapports();
         });
@@ -573,10 +480,10 @@ document.addEventListener('DOMContentLoaded', function() {
             loadRapports();
         });
     }
-    
+
     const prevBtn = document.getElementById('rapportsPrevPage');
     const nextBtn = document.getElementById('rapportsNextPage');
-    
+
     if (prevBtn) {
         prevBtn.addEventListener('click', function() {
             if (rapportsCurrentPage > 1) {
@@ -585,11 +492,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    
+
     if (nextBtn) {
         nextBtn.addEventListener('click', function() {
-            // On ne peut pas connaître le total exact sans recharger, donc on autorise le clic
-            // La désactivation sera gérée dans updateRapportsPagination
             rapportsCurrentPage++;
             loadRapports();
         });

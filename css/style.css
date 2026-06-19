@@ -1973,3 +1973,170 @@ input.form-input:focus {
     border-radius: 8px;
     background: linear-gradient(135deg, #0F172A, #334155);
 }
+
+/* ============================================
+   ASSISTANT IA
+   ============================================ */
+.assistant-toggle {
+    position: fixed;
+    right: 1.5rem;
+    bottom: 1.5rem;
+    width: 54px;
+    height: 54px;
+    border: none;
+    border-radius: 50%;
+    background: var(--color-primary);
+    color: var(--color-white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-lg);
+    cursor: pointer;
+    z-index: 1150;
+}
+
+.assistant-toggle i {
+    font-size: 20px;
+}
+
+.assistant-panel {
+    position: fixed;
+    right: 1.5rem;
+    bottom: 5.5rem;
+    width: min(420px, calc(100vw - 2rem));
+    height: min(640px, calc(100vh - 7rem));
+    background: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-lg);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 1150;
+}
+
+.assistant-panel.show {
+    display: flex;
+}
+
+.assistant-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.assistant-header h2 {
+    font-size: 18px;
+    margin: 0;
+}
+
+.assistant-header p {
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    margin: 0;
+}
+
+.assistant-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    background: #F9FAFB;
+}
+
+.assistant-message {
+    display: flex;
+    margin-bottom: 0.75rem;
+}
+
+.assistant-message-user {
+    justify-content: flex-end;
+}
+
+.assistant-message-assistant {
+    align-items: flex-start;
+    flex-direction: column;
+}
+
+.assistant-message-content {
+    max-width: 86%;
+    padding: 0.75rem 0.875rem;
+    border-radius: var(--border-radius);
+    font-size: 14px;
+    line-height: 1.45;
+    white-space: normal;
+}
+
+.assistant-message-assistant .assistant-message-content {
+    background: var(--color-white);
+    border: 1px solid var(--color-border);
+}
+
+.assistant-message-user .assistant-message-content {
+    background: var(--color-primary);
+    color: var(--color-white);
+}
+
+.assistant-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    max-width: 92%;
+    margin-top: 0.5rem;
+}
+
+.assistant-suggestion-btn {
+    border: 1px solid var(--color-border);
+    background: var(--color-white);
+    color: var(--color-text);
+    border-radius: 8px;
+    padding: 0.45rem 0.6rem;
+    font-size: 12px;
+    line-height: 1.25;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.assistant-suggestion-btn:hover {
+    background: #F3F4F6;
+    border-color: var(--color-primary);
+}
+
+.assistant-confirm-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: 0.5rem;
+    align-self: flex-end;
+}
+
+.assistant-confirm-actions button {
+    padding: 0.5rem 0.75rem;
+}
+
+.assistant-form {
+    display: grid;
+    grid-template-columns: 1fr 44px;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-white);
+}
+
+.assistant-form input {
+    width: 100%;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    padding: 0.7rem 0.8rem;
+}
+
+.assistant-form button {
+    width: 44px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

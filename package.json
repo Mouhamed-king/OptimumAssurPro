@@ -8,6 +8,7 @@
     "dev": "nodemon server.js",
     "migrate": "node database/migrate.js",
     "migrate-payments": "node database/add-payment-columns.js",
+    "migrate-payment-ledger": "node database/add-payment-ledger.js",
     "migrate-categorie": "node database/add-categorie-vehicule.js",
     "migrate-vehicule-details": "node database/run-vehicule-details-migrate.js",
     "import-clients": "node import-clients.js"

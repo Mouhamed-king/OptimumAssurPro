@@ -9,6 +9,7 @@ const contractRoutes = require('./routes/contracts');
 const statsRoutes = require('./routes/stats');
 const notificationRoutes = require('./routes/notifications');
 const reportRoutes = require('./routes/reports');
+const assistantRoutes = require('./routes/assistant');
 
 const db = require('./database/connection');
 
@@ -136,6 +137,7 @@ app.use('/api/contracts', contractRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/assistant', assistantRoutes);
 
 app.get('/api/health', (req, res) => {
     res.json({ status: 'OK' });

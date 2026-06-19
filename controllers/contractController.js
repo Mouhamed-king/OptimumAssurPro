@@ -4,6 +4,7 @@
 
 const db = require('../database/connection');
 const moment = require('moment');
+const { recordPaymentMovement, toMoney } = require('../services/paymentLedger');
 
 // Obtenir tous les contrats de l'entreprise
 const getAllContracts = async (req, res) => {
@@ -234,6 +235,11 @@ const createContract = async (req, res) => {
         const numeroPolice = req.body.numero_police || `CONT-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
         
         // Créer le contrat avec Supabase
+        const montantPaye = toMoney(req.body.montant_paye);
+        const montantRestant = req.body.montant_restant !== undefined
+            ? toMoney(req.body.montant_restant)
+            : Math.max(toMoney(montant) - montantPaye, 0);
+
         const { data: newContrat, error: insertError } = await db.supabase
             .from('contrats')
             .insert({
@@ -246,6 +252,8 @@ const createContract = async (req, res) => {
                 date_debut: dateDebut.format('YYYY-MM-DD'),
                 date_fin: dateFin.format('YYYY-MM-DD'),
                 montant,
+                montant_paye: montantPaye,
+                montant_restant: montantRestant,
                 statut: statut,
                 categorie_vehicule: req.body.categorie_vehicule || 'VP/CI'
             })
@@ -264,6 +272,17 @@ const createContract = async (req, res) => {
         
         if (insertError) {
             throw insertError;
+        }
+
+        if (montantPaye > 0) {
+            await recordPaymentMovement({
+                entrepriseId: req.entrepriseId,
+                contratId: newContrat.id,
+                clientId: client_id,
+                montant: montantPaye,
+                source: 'creation_contrat',
+                note: 'Paiement initial'
+            });
         }
         
         const clientData = newContrat.clients || {};
@@ -458,7 +477,7 @@ const updatePayment = async (req, res) => {
         // Vérifier que le contrat appartient à l'entreprise
         const { data: existing, error: findError } = await db.supabase
             .from('contrats')
-            .select('montant, montant_paye')
+            .select('montant, montant_paye, client_id')
             .eq('id', id)
             .eq('entreprise_id', req.entrepriseId)
             .single();
@@ -470,6 +489,8 @@ const updatePayment = async (req, res) => {
         // Récupérer les montants (saisis manuellement car le prix peut varier)
         const nouveauMontantPaye = parseFloat(montant_paye) || 0;
         const nouveauMontantRestant = parseFloat(req.body.montant_restant) || 0;
+        const ancienMontantPaye = parseFloat(existing.montant_paye) || 0;
+        const mouvement = toMoney(nouveauMontantPaye - ancienMontantPaye);
         
         // Validation
         if (nouveauMontantPaye < 0) {
@@ -493,6 +514,18 @@ const updatePayment = async (req, res) => {
         
         if (error) {
             throw error;
+        }
+
+        if (mouvement !== 0) {
+            await recordPaymentMovement({
+                entrepriseId: req.entrepriseId,
+                contratId: id,
+                clientId: existing.client_id,
+                montant: mouvement,
+                type: mouvement > 0 ? 'encaissement' : 'correction',
+                source: 'mise_a_jour_paiement',
+                note: mouvement > 0 ? 'Paiement complementaire' : 'Correction de paiement'
+            });
         }
         
         res.json({

@@ -26,6 +26,15 @@ function getAuthToken() {
     return localStorage.getItem('token') || sessionStorage.getItem('token');
 }
 
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function shouldRetryRequest(options) {
+    const method = (options.method || 'GET').toUpperCase();
+    return method === 'GET';
+}
+
 // Fonction pour faire une requête API
 async function apiRequest(endpoint, options = {}) {
     const token = getAuthToken();
@@ -52,7 +61,22 @@ async function apiRequest(endpoint, options = {}) {
     };
     
     try {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, finalOptions);
+        let response;
+        const retryDelays = shouldRetryRequest(finalOptions) ? [600, 1500] : [];
+
+        for (let attempt = 0; attempt <= retryDelays.length; attempt++) {
+            try {
+                response = await fetch(`${API_BASE_URL}${endpoint}`, finalOptions);
+                break;
+            } catch (error) {
+                if (attempt >= retryDelays.length) {
+                    throw error;
+                }
+                debugLog('API retry after network error', { endpoint, attempt: attempt + 1, message: error.message });
+                await sleep(retryDelays[attempt]);
+            }
+        }
+
         const data = await response.json().catch(() => ({}));
         
         // Si le token est expiré ou invalide, gérer l'erreur

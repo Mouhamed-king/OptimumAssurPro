@@ -126,6 +126,9 @@ app.get('/register.html', sendPublicHtml('register.html'));
 app.get('/verify-email.html', sendPublicHtml('verify-email.html'));
 app.get('/reset-password.html', sendPublicHtml('reset-password.html'));
 app.get('/index.html', sendPublicHtml('index.html'));
+app.get('/favicon.ico', (req, res) => {
+    res.status(204).end();
+});
 
 app.get('/api/test-supabase', (req, res) => {
     res.status(404).json({ error: 'Route introuvable' });

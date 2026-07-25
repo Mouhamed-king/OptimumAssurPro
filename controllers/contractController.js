@@ -352,6 +352,9 @@ const renewContract = async (req, res) => {
                 date_debut: dateDebut.format('YYYY-MM-DD'),
                 date_fin: dateFin.format('YYYY-MM-DD'),
                 montant: montant || ancienContrat.montant,
+                montant_paye: 0,
+                montant_restant: montant || ancienContrat.montant,
+                categorie_vehicule: ancienContrat.categorie_vehicule || 'VP/CI',
                 statut: 'actif'
             })
             .select(`

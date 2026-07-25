@@ -173,6 +173,22 @@ function getClientLatestContract(contrats = []) {
     }, contrats[0]);
 }
 
+function getTrackedVehiclesForCategory(client, categorie) {
+    return (client.vehicules || []).filter(vehicule =>
+        vehicule.aas_date_echeance &&
+        (!categorie || (vehicule.aas_categorie || 'VP/CI') === categorie)
+    );
+}
+
+function getLatestTrackedVehicle(vehicules = []) {
+    if (!vehicules.length) return null;
+    return vehicules.reduce((latest, current) =>
+        new Date(current.aas_date_echeance) > new Date(latest.aas_date_echeance)
+            ? current
+            : latest
+    , vehicules[0]);
+}
+
 // Obtenir tous les clients de l'entreprise
 const getAllClients = async (req, res) => {
     try {
@@ -213,6 +229,9 @@ const getAllClients = async (req, res) => {
             const nombre_contrats = contratsFiltered.length;
             const latestContract = getClientLatestContract(contratsFiltered);
             const latestContractDate = latestContract?.date_fin ? new Date(latestContract.date_fin) : null;
+            const trackedVehicles = getTrackedVehiclesForCategory(client, categorie);
+            const latestTrackedVehicle = getLatestTrackedVehicle(trackedVehicles);
+            const trackedExpiryDate = latestTrackedVehicle?.aas_date_echeance || null;
 
             if (latestContractDate) {
                 latestContractDate.setHours(0, 0, 0, 0);
@@ -224,14 +243,24 @@ const getAllClients = async (req, res) => {
                 endDate.setHours(0, 0, 0, 0);
                 return endDate >= today;
             });
+            const hasActiveTrackedInsurance = trackedVehicles.some(vehicule => {
+                const endDate = new Date(vehicule.aas_date_echeance);
+                endDate.setHours(0, 0, 0, 0);
+                return endDate >= today;
+            });
 
-            const clientStatut = hasActiveAttestation ? 'actif' : 'inactif';
+            const clientStatut = hasActiveAttestation || hasActiveTrackedInsurance ? 'actif' : 'inactif';
             const vehiculePrincipal = vehicules[0] || {};
+            const currentExpiry = trackedExpiryDate || latestContract?.date_fin || null;
 
             return {
                 ...client,
                 nombre_contrats,
                 dernier_contrat: latestContract ? latestContract.date_fin : null,
+                date_echeance_courante: currentExpiry,
+                source_echeance: trackedExpiryDate ? 'AAS/Diotali' : (latestContract ? 'Contrat Optimum' : null),
+                statut_commercial: latestTrackedVehicle?.aas_statut_commercial || null,
+                derniere_verification_aas: latestTrackedVehicle?.aas_derniere_verification || null,
                 client_statut: clientStatut,
                 contrats: contratsFiltered,
                 vehicules,
@@ -272,9 +301,8 @@ const getAllClients = async (req, res) => {
 
         if (expire === 'true' || expire === true) {
             enrichedClients = enrichedClients.filter(client => {
-                const latestContract = getClientLatestContract(client.contrats || []);
-                if (!latestContract?.date_fin) return false;
-                const endDate = new Date(latestContract.date_fin);
+                if (!client.date_echeance_courante) return false;
+                const endDate = new Date(client.date_echeance_courante);
                 endDate.setHours(0, 0, 0, 0);
                 return endDate < today;
             });
@@ -282,18 +310,17 @@ const getAllClients = async (req, res) => {
 
         if (categorie && (categorie === 'TPV' || categorie === 'VP/CI')) {
             enrichedClients = enrichedClients.filter(client => {
-                return client.contrats && client.contrats.length > 0;
+                return (client.contrats && client.contrats.length > 0) ||
+                    getTrackedVehiclesForCategory(client, categorie).length > 0;
             });
         }
 
         if (expiringSoon === 'true') {
             enrichedClients = enrichedClients.filter(client => {
-                return client.contrats && client.contrats.some(c => {
-                    if (!c.date_fin) return false;
-                    const dateFin = new Date(c.date_fin);
-                    dateFin.setHours(0, 0, 0, 0);
-                    return dateFin >= today && dateFin <= nextWeek;
-                });
+                if (!client.date_echeance_courante) return false;
+                const dateFin = new Date(client.date_echeance_courante);
+                dateFin.setHours(0, 0, 0, 0);
+                return dateFin >= today && dateFin <= nextWeek;
             });
         }
         
@@ -361,22 +388,8 @@ const createClient = async (req, res) => {
             return res.status(400).json({ error: 'Nom, téléphone, immatriculation, numéro de police, dates et prime nette sont requis' });
         }
         
-        // Vérifier si le téléphone existe déjà pour cette entreprise
-        const { data: existingClient, error: existingClientError } = await db.supabase
-            .from('clients')
-            .select('id')
-            .eq('telephone', telephone)
-            .eq('entreprise_id', req.entrepriseId)
-            .maybeSingle();
-
-        if (existingClientError && existingClientError.code !== 'PGRST116') {
-            throw existingClientError;
-        }
-        if (existingClient) {
-            return res.status(400).json({ error: 'Un client avec ce numéro de téléphone existe déjà' });
-        }
-        
-        // Créer le client avec Supabase (nom complet dans le champ nom, prenom vide)
+        // Le téléphone est une simple coordonnée et peut être partagé.
+        // Il ne sert jamais à déduire qu'il s'agit du même client.
         const { data: newClient, error: clientError } = await runMutationWithSchemaFallback(
             {
                 entreprise_id: req.entrepriseId,
@@ -388,10 +401,8 @@ const createClient = async (req, res) => {
                 .select()
                 .single()
         );
-        
-        if (clientError) {
-            throw clientError;
-        }
+
+        if (clientError) throw clientError;
         
         // Créer le véhicule avec seulement l'immatriculation
         const { data: newVehicule, error: vehiculeError } = await runMutationWithSchemaFallback(
@@ -480,8 +491,13 @@ const updateClient = async (req, res) => {
         }
         
         // Mettre à jour le client avec Supabase
+        const clientPayload = buildClientPayload({ nom, prenom, telephone });
+        if (nom !== undefined || telephone !== undefined) {
+            clientPayload.coordonnees_source = 'manuel';
+            clientPayload.coordonnees_verifiees = true;
+        }
         const { data: updated, error: clientError } = await runMutationWithSchemaFallback(
-            buildClientPayload({ nom, prenom, telephone }),
+            clientPayload,
             (payload) => db.supabase
                 .from('clients')
                 .update(payload)
@@ -494,16 +510,28 @@ const updateClient = async (req, res) => {
             throw clientError;
         }
         
+        let targetVehicleId = null;
+
         // Mettre à jour le véhicule si fourni
         if (vehicule && vehicule.immatriculation) {
-            // Récupérer le premier véhicule du client
-            const { data: existingVehicules } = await db.supabase
+            let vehicleQuery = db.supabase
                 .from('vehicules')
                 .select('id')
-                .eq('client_id', id)
-                .limit(1);
+                .eq('client_id', id);
+
+            vehicleQuery = vehicule.id
+                ? vehicleQuery.eq('id', vehicule.id)
+                : vehicleQuery.limit(1);
+
+            const { data: existingVehicules, error: vehicleLookupError } = await vehicleQuery;
+            if (vehicleLookupError) throw vehicleLookupError;
             
-            if (existingVehicules && existingVehicules.length > 0) {
+            if (vehicule.id && (!existingVehicules || existingVehicules.length === 0)) {
+                return res.status(404).json({ error: 'Véhicule non trouvé pour ce client' });
+            }
+
+            if (!vehicule.is_new && existingVehicules && existingVehicules.length > 0) {
+                targetVehicleId = existingVehicules[0].id;
                 // Mettre à jour le véhicule existant
                 const { error: vehiculeError } = await runMutationWithSchemaFallback(
                     buildVehiclePayload(vehicule),
@@ -516,18 +544,21 @@ const updateClient = async (req, res) => {
                 if (vehiculeError) {
                     throw vehiculeError;
                 }
-            } else {
-                // Créer un nouveau véhicule si aucun n'existe
-                const { error: vehiculeError } = await runMutationWithSchemaFallback(
+            } else if (vehicule.is_new || !existingVehicules || existingVehicules.length === 0) {
+                // Sans identifiant explicite, le formulaire demande l'ajout d'un véhicule.
+                const { data: createdVehicle, error: vehiculeError } = await runMutationWithSchemaFallback(
                     buildVehiclePayload(vehicule, id),
                     (payload) => db.supabase
                         .from('vehicules')
                         .insert(payload)
+                        .select('id')
+                        .single()
                 );
                 
                 if (vehiculeError) {
                     throw vehiculeError;
                 }
+                targetVehicleId = createdVehicle.id;
             }
         }
         
@@ -557,7 +588,10 @@ const updateClient = async (req, res) => {
                 const montantRestant = contrat.montant_restant || 0;
                 
                 // Mettre à jour le contrat existant
-                const contractPayload = buildContractPayload(contrat);
+                const contractPayload = buildContractPayload(
+                    contrat,
+                    targetVehicleId ? { vehicule_id: targetVehicleId } : {}
+                );
                 const ancienMontantPaye = toMoney(existingContrats[0].montant_paye);
                 const nouveauMontantPaye = Object.prototype.hasOwnProperty.call(contractPayload, 'montant_paye')
                     ? toMoney(contractPayload.montant_paye)

@@ -66,6 +66,10 @@ async function connect() {
         // Vérifier si les tables existent, sinon les créer (utilise pg)
         if (pgPool) {
             await createTablesIfNotExist();
+            const { ensureAasTrackingColumns } = require('./add-aas-tracking');
+            await ensureAasTrackingColumns(pgPool).catch(() => {
+                console.warn('Migration colonnes de suivi AAS ignorée');
+            });
             const { ensureVehiculeDetailColumns } = require('./add-vehicule-details');
             await ensureVehiculeDetailColumns(pgPool).catch((error) => {
                 console.warn('Migration colonnes véhicule ignorée');

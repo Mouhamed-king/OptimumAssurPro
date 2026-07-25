@@ -4,6 +4,7 @@
 
 let currentEditingClientId = null;
 let currentEditingContractId = null;
+let currentClientVehicles = [];
 
 function formatDetailValue(value, fallback = 'Non renseigné') {
     if (value === null || value === undefined || String(value).trim() === '') {
@@ -78,9 +79,12 @@ function renderVehicleDetailsHtml(vehicule) {
 
 function openAddClientModal() {
     currentEditingClientId = null;
+    currentClientVehicles = [];
     document.getElementById('clientModalTitle').textContent = 'Ajouter un client avec contrat';
     document.getElementById('clientForm').reset();
     document.getElementById('clientId').value = '';
+    const selectionGroup = document.getElementById('vehiculeSelectionGroup');
+    if (selectionGroup) selectionGroup.style.display = 'none';
     
     // Réinitialiser les champs du contrat avec dates par défaut
     const today = new Date();
@@ -140,10 +144,17 @@ function openEditClientModal(clientId) {
             document.getElementById('clientTelephone').value = client.telephone || '';
             
             // Récupérer le premier véhicule (le plus récent ou le premier)
-            const vehicule = client.vehicules && client.vehicules.length > 0 ? client.vehicules[0] : null;
-            if (vehicule) {
-                document.getElementById('vehiculeImmatriculation').value = vehicule.immatriculation || '';
+            currentClientVehicles = client.vehicules || [];
+            const selection = document.getElementById('vehiculeSelection');
+            const selectionGroup = document.getElementById('vehiculeSelectionGroup');
+            if (selection && selectionGroup) {
+                selectionGroup.style.display = 'block';
+                selection.innerHTML = currentClientVehicles
+                    .map(v => `<option value="${v.id}">${formatDetailValue(v.immatriculation)} — ${formatDetailValue(v.marque)} ${formatDetailValue(v.modele, '')}</option>`)
+                    .join('');
+                selection.insertAdjacentHTML('beforeend', '<option value="new">+ Ajouter un véhicule</option>');
             }
+            fillClientVehicleFields(currentClientVehicles[0] || null);
             
             // Récupérer le dernier contrat (le plus récent)
             const contrat = client.contrats && client.contrats.length > 0 
@@ -190,6 +201,16 @@ function closeClientModal() {
     currentEditingClientId = null;
 }
 
+function fillClientVehicleFields(vehicule) {
+    document.getElementById('vehiculeImmatriculation').value = vehicule?.immatriculation || '';
+    document.getElementById('vehiculeMarque').value = vehicule?.marque?.startsWith('Non renseign') ? '' : (vehicule?.marque || '');
+    document.getElementById('vehiculeModele').value = vehicule?.modele?.startsWith('Non renseign') ? '' : (vehicule?.modele || '');
+}
+
+function selectClientVehicle(vehicleId) {
+    fillClientVehicleFields(currentClientVehicles.find(v => String(v.id) === String(vehicleId)) || null);
+}
+
 // Fonction supprimée - le montant restant est maintenant saisi manuellement
 
 function toggleVehiculeFields() {
@@ -215,6 +236,9 @@ async function saveClient(event) {
     const telephone = document.getElementById('clientTelephone').value.trim();
     const numeroPolice = document.getElementById('contractNumeroPolice').value.trim();
     const immatriculation = document.getElementById('vehiculeImmatriculation').value.trim();
+    const marque = document.getElementById('vehiculeMarque').value.trim();
+    const modele = document.getElementById('vehiculeModele').value.trim();
+    const selectedVehicleId = document.getElementById('vehiculeSelection')?.value;
     const categorieVehicule = document.getElementById('categorieVehicule')?.value || 'VP/CI';
     const dateEffet = document.getElementById('contractDateEffet').value;
     const dateEcheance = document.getElementById('contractDateEcheance').value;
@@ -261,9 +285,11 @@ async function saveClient(event) {
         prenom: '', // Vide car on ne demande que le nom complet
         telephone: telephone, // Téléphone fourni par l'utilisateur
         vehicule: {
+            id: isEditing && selectedVehicleId && selectedVehicleId !== 'new' ? selectedVehicleId : undefined,
+            is_new: isEditing && selectedVehicleId === 'new',
             immatriculation: immatriculation,
-            marque: '', // Non demandé
-            modele: '' // Non demandé
+            marque: marque,
+            modele: modele
         },
         contrat: {
             numero_police: numeroPolice,
@@ -300,7 +326,7 @@ async function saveClient(event) {
         } else {
             // Créer client avec véhicule et contrat
             const result = await window.api.clients.create(formData);
-            (typeof window.showToast === 'function' ? window.showToast : console.log)('Client et contrat créés avec succès', 'success');
+            (typeof window.showToast === 'function' ? window.showToast : console.log)(result.message || 'Client et contrat créés avec succès', 'success');
             
             // Recharger le bordereau
             if (typeof loadBordereau === 'function') {
@@ -313,7 +339,7 @@ async function saveClient(event) {
         loadDashboard(); // Recharger le dashboard pour mettre à jour les stats
     } catch (error) {
         console.error('Erreur lors de la sauvegarde du client');
-        (typeof window.showToast === 'function' ? window.showToast : console.log)('Erreur lors de la sauvegarde', 'error');
+        (typeof window.showToast === 'function' ? window.showToast : console.log)(error.message || 'Erreur lors de la sauvegarde', 'error');
     }
 }
 
@@ -363,8 +389,11 @@ async function viewClient(id) {
                         <button class="btn-primary" onclick="updatePayment(${c.id}, ${montantTotal}, ${montantPaye}, ${montantRestant})" style="flex: 1;">
                             <i class="fas fa-money-bill-wave"></i> Paiement
                         </button>
-                        <button class="btn-secondary" onclick="openEditContractModal(${c.id})" style="flex: 1; background-color: var(--color-accent); color: white; border: none;">
-                            <i class="fas fa-edit"></i> Modifier / Renouveler
+                        <button class="btn-secondary" onclick="openEditContractModal(${c.id})" style="flex: 1;">
+                            <i class="fas fa-edit"></i> Modifier
+                        </button>
+                        <button class="btn-primary" onclick="renewContract(${c.id})" style="flex: 1;">
+                            <i class="fas fa-rotate"></i> Renouveler
                         </button>
                     </div>
                 </div>
@@ -478,6 +507,8 @@ async function openAddContractModal() {
     document.getElementById('contractModalTitle').textContent = 'Nouveau contrat';
     document.getElementById('contractForm').reset();
     document.getElementById('contractId').value = '';
+    document.getElementById('contractClient').disabled = false;
+    document.getElementById('contractVehicule').disabled = false;
     
     // Charger la liste des clients
     try {
@@ -526,6 +557,7 @@ async function openEditContractModal(contractId) {
             if (client.id === contrat.client_id) option.selected = true;
             clientSelect.appendChild(option);
         });
+        clientSelect.disabled = true;
         
         // Charger la liste des véhicules pour ce client et sélectionner le bon
         await loadClientVehicules(contrat.client_id);
@@ -536,6 +568,7 @@ async function openEditContractModal(contractId) {
                 break;
             }
         }
+        vehiculeSelect.disabled = true;
         
         // Remplir les autres champs
         document.getElementById('contractId').value = contrat.id;

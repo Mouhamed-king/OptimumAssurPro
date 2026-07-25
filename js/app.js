@@ -1152,7 +1152,21 @@ function renderClientsTable(clients) {
     clients.forEach(client => {
         const vehicule = client.vehicules && client.vehicules.length > 0 ? client.vehicules[0] : null;
         const immatriculation = vehicule ? vehicule.immatriculation || '-' : '-';
-        const dateEcheance = client.dernier_contrat ? formatDate(client.dernier_contrat) : '-';
+        const dateEcheance = client.date_echeance_courante
+            ? formatDate(client.date_echeance_courante)
+            : (client.dernier_contrat ? formatDate(client.dernier_contrat) : '-');
+        const sourceEcheance = client.source_echeance
+            ? `<div style="font-size:0.75rem;color:#6B7280;">${safeHtml(client.source_echeance)}</div>`
+            : '';
+        const commercialStatusLabels = {
+            chez_nous: 'Chez nous',
+            renouvele_ailleurs: 'Renouvelé ailleurs',
+            expire: 'Expiré',
+            a_verifier: 'À vérifier'
+        };
+        const commercialStatus = client.statut_commercial
+            ? `<div style="font-size:0.75rem;color:#6B7280;">${safeHtml(commercialStatusLabels[client.statut_commercial] || client.statut_commercial)}</div>`
+            : '';
 
         let telephoneDisplay = '-';
         if (client.telephone && !client.telephone.startsWith('TEMP-')) {
@@ -1175,7 +1189,7 @@ function renderClientsTable(clients) {
             </td>
             <td>${safeHtml(telephoneDisplay)}</td>
             <td>${safeHtml(immatriculation)}</td>
-            <td>${dateEcheance}</td>
+            <td>${dateEcheance}${sourceEcheance}${commercialStatus}</td>
             <td><span class="badge ${statutClass}">${statutLabel}</span></td>
             <td>
                 <div class="action-buttons">
@@ -1378,6 +1392,7 @@ async function renewContract(contractId) {
 
             await window.api.contracts.renew(contractId);
             showToast('Contrat renouvelé avec succès', 'success');
+            document.getElementById('viewClientModal')?.classList.remove('show');
             loadContrats();
             loadDashboard(); // Recharger le dashboard pour mettre à jour les stats
         } catch (error) {

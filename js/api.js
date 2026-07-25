@@ -308,6 +308,25 @@ const reportsAPI = {
     }
 };
 
+// Suivi d'assurances externes vérifiées via AAS/Diotali.
+// Ces enregistrements ne sont jamais comptabilisés comme des contrats vendus.
+const trackingAPI = {
+    upsertAas: async (trackingData) => {
+        return await apiRequest('/tracking/aas', {
+            method: 'POST',
+            body: JSON.stringify(trackingData)
+        });
+    },
+    getExpiries: async ({ category = '', offset = 0, limit = 100 } = {}) => {
+        const params = new URLSearchParams();
+        if (category) params.append('category', category);
+        if (offset) params.append('offset', offset);
+        if (limit !== 100) params.append('limit', limit);
+        const query = params.toString();
+        return await apiRequest(`/tracking/expiries${query ? `?${query}` : ''}`);
+    }
+};
+
 const assistantAPI = {
     chat: async (message) => {
         return await apiRequest('/assistant/chat', {
@@ -349,6 +368,7 @@ window.api = {
     auth: authAPI,
     clients: clientsAPI,
     contracts: contractsAPI,
+    tracking: trackingAPI,
     stats: statsAPI,
     notifications: notificationsAPI,
     reports: reportsAPI,

@@ -10,6 +10,7 @@ const statsRoutes = require('./routes/stats');
 const notificationRoutes = require('./routes/notifications');
 const reportRoutes = require('./routes/reports');
 const assistantRoutes = require('./routes/assistant');
+const trackingRoutes = require('./routes/tracking');
 
 const db = require('./database/connection');
 
@@ -141,6 +142,7 @@ app.use('/api/stats', statsRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/assistant', assistantRoutes);
+app.use('/api/tracking', trackingRoutes);
 
 app.get('/api/health', (req, res) => {
     res.json({ status: 'OK' });

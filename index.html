@@ -778,6 +778,22 @@
                         </label>
                         <input type="text" id="vehiculeImmatriculation" name="immatriculation" required placeholder="Ex: AA127QE" oninput="updateBordereau()">
                     </div>
+
+                    <div class="form-group" id="vehiculeSelectionGroup" style="display: none;">
+                        <label for="vehiculeSelection"><i class="fas fa-car"></i> Véhicule à modifier</label>
+                        <select id="vehiculeSelection" name="vehicule_id" onchange="selectClientVehicle(this.value)"></select>
+                        <small>Sélectionnez un véhicule existant ou choisissez « Ajouter un véhicule ».</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="vehiculeMarque"><i class="fas fa-industry"></i> Marque</label>
+                        <input type="text" id="vehiculeMarque" name="marque" placeholder="Ex: Toyota">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="vehiculeModele"><i class="fas fa-car-side"></i> Modèle</label>
+                        <input type="text" id="vehiculeModele" name="modele" placeholder="Ex: Hiace">
+                    </div>
                     
                     <div class="form-group">
                         <label for="categorieVehicule">

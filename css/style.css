@@ -2140,3 +2140,87 @@ input.form-input:focus {
     align-items: center;
     justify-content: center;
 }
+
+/* Formulaires clients et contrats */
+#clientModal .modal-content,
+#contractModal .modal-content,
+#viewClientModal .modal-content {
+    max-width: 760px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 20px;
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.22);
+}
+
+#clientModal .modal-header,
+#contractModal .modal-header,
+#viewClientModal .modal-header {
+    padding: 1.25rem 1.5rem;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.10), rgba(59, 130, 246, 0.08));
+}
+
+#clientModal .modal-body,
+#contractModal .modal-body {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem 1.25rem;
+    padding: 1.5rem;
+}
+
+#clientModal .form-group,
+#contractModal .form-group {
+    margin-bottom: 0;
+}
+
+#clientModal .form-group label,
+#contractModal .form-group label {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #334155;
+}
+
+#clientModal .form-group input,
+#clientModal .form-group select,
+#contractModal .form-group input,
+#contractModal .form-group select {
+    min-height: 46px;
+    background: #f8fafc;
+    border: 1px solid #dbe3ee;
+    border-radius: 11px;
+}
+
+#clientModal .form-group input:focus,
+#clientModal .form-group select:focus,
+#contractModal .form-group input:focus,
+#contractModal .form-group select:focus {
+    background: #fff;
+    border-color: var(--color-secondary);
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12);
+}
+
+#contractModal select:disabled {
+    color: #334155;
+    background: #eef2f7;
+    cursor: not-allowed;
+    opacity: 1;
+}
+
+#viewClientContent > div {
+    padding: 1rem;
+    border: 1px solid #e5eaf1;
+    border-radius: 14px;
+    background: #fff;
+}
+
+@media (max-width: 640px) {
+    #clientModal .modal-body,
+    #contractModal .modal-body {
+        grid-template-columns: 1fr;
+    }
+
+    #clientModal .modal-content,
+    #contractModal .modal-content,
+    #viewClientModal .modal-content {
+        width: calc(100% - 1rem);
+        border-radius: 15px;
+    }
+}

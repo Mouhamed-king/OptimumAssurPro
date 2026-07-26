@@ -117,16 +117,33 @@ router.get('/dashboard', async (req, res) => {
             throw allExpiresError;
         }
         
+        // Un véhicule couvert aujourd'hui ne doit pas apparaître aussi dans
+        // les expirés. Ses anciens contrats restent disponibles dans l'historique.
+        const currentActiveVehicleIds = new Set(
+            (contratsActifsData || [])
+                .filter(contrat =>
+                    contrat.vehicule_id &&
+                    moment(contrat.date_fin).isSameOrAfter(aujourdhui, 'day')
+                )
+                .map(contrat => contrat.vehicule_id)
+        );
+        const visibleExpiresData = (expiresData || []).filter(
+            contrat => !contrat.vehicule_id || !currentActiveVehicleIds.has(contrat.vehicule_id)
+        );
+        const visibleAllExpiresData = (allExpiresData || []).filter(
+            contrat => !contrat.vehicule_id || !currentActiveVehicleIds.has(contrat.vehicule_id)
+        );
+
         res.json({
             clients_actifs: clientsActifsCount || 0,
             contrats_actifs: (contratsActifsData || []).length,
             contrats_actifs_data: contratsActifsData || [],
             renouvellements_a_venir: (renouvellementsData || []).length,
             contrats_renouvellement: renouvellementsData || [],
-            expires_ce_mois: (expiresData || []).length,
-            contrats_expires_data: expiresData || [],
-            tous_expires: (allExpiresData || []).length,
-            tous_expires_data: allExpiresData || []
+            expires_ce_mois: visibleExpiresData.length,
+            contrats_expires_data: visibleExpiresData,
+            tous_expires: visibleAllExpiresData.length,
+            tous_expires_data: visibleAllExpiresData
         });
     } catch (error) {
         console.error('Erreur lors de la récupération des statistiques');

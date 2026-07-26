@@ -571,8 +571,20 @@ function getDashboardStatEntries(type) {
     const contracts = dashboardState.contracts || [];
     const clients = dashboardState.clients || [];
     const now = new Date();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
+    const currentlyInsuredVehicleIds = new Set(
+        contracts
+            .filter(contract =>
+                contract.statut === 'actif' &&
+                contract.date_fin &&
+                new Date(contract.date_fin) >= today
+            )
+            .map(contract => contract.vehicule_id)
+            .filter(Boolean)
+    );
 
     if (type === 'clients_actifs') {
         return clients
@@ -620,6 +632,10 @@ function getDashboardStatEntries(type) {
         return contracts
             .filter(contract => {
                 if (!contract.date_fin) return false;
+                if (!['actif', 'expire'].includes(contract.statut)) return false;
+                if (contract.vehicule_id && currentlyInsuredVehicleIds.has(contract.vehicule_id)) {
+                    return false;
+                }
                 const endDate = new Date(contract.date_fin);
                 // Comparer avec la date d'aujourd'hui (sans l'heure pour être précis sur le jour)
                 const today = new Date();
@@ -646,6 +662,10 @@ function getDashboardStatEntries(type) {
         return contracts
             .filter(contract => {
                 if (!contract.date_fin) return false;
+                if (!['actif', 'expire'].includes(contract.statut)) return false;
+                if (contract.vehicule_id && currentlyInsuredVehicleIds.has(contract.vehicule_id)) {
+                    return false;
+                }
                 const endDate = new Date(contract.date_fin);
                 return endDate < today;
             })

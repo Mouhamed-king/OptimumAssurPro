@@ -246,29 +246,30 @@ const createContract = async (req, res) => {
             ? toMoney(req.body.montant_restant)
             : Math.max(toMoney(montant) - montantPaye, 0);
 
-        const { data: newContrat, error: insertError } = await db.supabase
+        const contractPayload = {
+            client_id,
+            vehicule_id,
+            entreprise_id: req.entrepriseId,
+            numero_contrat: numeroPolice,
+            type_contrat,
+            duree_mois,
+            date_debut: dateDebut.format('YYYY-MM-DD'),
+            date_fin: dateFin.format('YYYY-MM-DD'),
+            montant,
+            montant_paye: montantPaye,
+            montant_restant: montantRestant,
+            numero_attestation: req.body.numero_attestation || null,
+            frais: req.body.frais ?? null,
+            taxe: req.body.taxe ?? null,
+            fga: req.body.fga ?? null,
+            prime_ttc: req.body.prime_ttc ?? null,
+            net_a_verser: req.body.net_a_verser ?? null,
+            statut: statut,
+            categorie_vehicule: req.body.categorie_vehicule || 'VP/CI'
+        };
+        let { data: newContrat, error: insertError } = await db.supabase
             .from('contrats')
-            .insert({
-                client_id,
-                vehicule_id,
-                entreprise_id: req.entrepriseId,
-                numero_contrat: numeroPolice, // Utiliser numero_police comme numero_contrat
-                type_contrat,
-                duree_mois,
-                date_debut: dateDebut.format('YYYY-MM-DD'),
-                date_fin: dateFin.format('YYYY-MM-DD'),
-                montant,
-                montant_paye: montantPaye,
-                montant_restant: montantRestant,
-                numero_attestation: req.body.numero_attestation || null,
-                frais: req.body.frais ?? null,
-                taxe: req.body.taxe ?? null,
-                fga: req.body.fga ?? null,
-                prime_ttc: req.body.prime_ttc ?? null,
-                net_a_verser: req.body.net_a_verser ?? null,
-                statut: statut,
-                categorie_vehicule: req.body.categorie_vehicule || 'VP/CI'
-            })
+            .insert(contractPayload)
             .select(`
                 *,
                 clients (
@@ -281,6 +282,30 @@ const createContract = async (req, res) => {
                 )
             `)
             .single();
+
+        // Older Optimum databases can temporarily lack the optional financial
+        // and attestation columns. Keep the active-policy registration usable
+        // while the SQL migration is being rolled out.
+        if (insertError && (insertError.code === 'PGRST204' || /column .* does not exist|could not find.*column/i.test(insertError.message || ''))) {
+            const {
+                numero_attestation,
+                frais,
+                taxe,
+                fga,
+                prime_ttc,
+                net_a_verser,
+                ...compatiblePayload
+            } = contractPayload;
+            ({ data: newContrat, error: insertError } = await db.supabase
+                .from('contrats')
+                .insert(compatiblePayload)
+                .select(`
+                    *,
+                    clients (nom, prenom),
+                    vehicules (marque, modele)
+                `)
+                .single());
+        }
         
         if (insertError) {
             throw insertError;

@@ -411,8 +411,11 @@ const createClient = async (req, res) => {
         const { nom, telephone, vehicule, contrat } = req.body;
         
         // Validation des champs essentiels
-        if (!nom || !telephone || !vehicule || !vehicule.immatriculation || !contrat || !contrat.numero_police || !contrat.date_debut || !contrat.date_fin || !contrat.montant) {
-            return res.status(400).json({ error: 'Nom, téléphone, immatriculation, numéro de police, dates et prime nette sont requis' });
+        if (!nom || !telephone || !vehicule || !vehicule.immatriculation) {
+            return res.status(400).json({ error: 'Nom, téléphone et immatriculation sont requis' });
+        }
+        if (contrat && (!contrat.numero_police || !contrat.date_debut || !contrat.date_fin || !contrat.montant)) {
+            return res.status(400).json({ error: 'Un contrat fourni exige son numéro de police, ses dates et sa prime nette' });
         }
         
         // Le téléphone est une simple coordonnée et peut être partagé.
@@ -443,6 +446,17 @@ const createClient = async (req, res) => {
         
         if (vehiculeError) {
             throw vehiculeError;
+        }
+
+        // The assistant may register an AAS customer and vehicle before it
+        // writes the contract through the dedicated contracts endpoint.
+        if (!contrat) {
+            return res.status(201).json({
+                message: 'Client et véhicule créés avec succès',
+                client: newClient,
+                vehiculeId: newVehicule.id,
+                contratId: null
+            });
         }
         
         // Récupérer les montants (saisis manuellement car le prix peut varier)

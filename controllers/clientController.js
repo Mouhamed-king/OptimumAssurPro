@@ -88,7 +88,9 @@ function buildClientPayload({ nom, prenom, telephone }, isCreate = false) {
 
     if (isCreate || nom !== undefined) payload.nom = cleanText(nom);
     if (isCreate || prenom !== undefined) payload.prenom = cleanText(prenom, '');
-    if (isCreate || telephone !== undefined) payload.telephone = cleanText(telephone);
+    // A client may be registered before a phone number is known.  Keep this
+    // value empty in the database instead of manufacturing a placeholder.
+    if (isCreate || telephone !== undefined) payload.telephone = cleanNullableText(telephone);
 
     return payload;
 }
@@ -411,8 +413,8 @@ const createClient = async (req, res) => {
         const { nom, telephone, vehicule, contrat } = req.body;
         
         // Validation des champs essentiels
-        if (!nom || !telephone || !vehicule || !vehicule.immatriculation) {
-            return res.status(400).json({ error: 'Nom, téléphone et immatriculation sont requis' });
+        if (!nom || !vehicule || !vehicule.immatriculation) {
+            return res.status(400).json({ error: 'Nom et immatriculation sont requis' });
         }
         if (contrat && (!contrat.numero_police || !contrat.date_debut || !contrat.date_fin || !contrat.montant)) {
             return res.status(400).json({ error: 'Un contrat fourni exige son numéro de police, ses dates et sa prime nette' });

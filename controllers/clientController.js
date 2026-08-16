@@ -30,6 +30,24 @@ function cleanNullableNumber(value) {
     return Number.isFinite(parsed) ? parsed : null;
 }
 
+function getTaxiContractValues(puissanceValue) {
+    const puissance = Number(puissanceValue);
+    if (!Number.isInteger(puissance) || puissance < 5) {
+        throw new Error('La puissance fiscale TPV doit etre un entier superieur ou egal a 5 CV');
+    }
+
+    return {
+        montant: 12872,
+        montant_paye: puissance >= 8 ? 16000 : 14100,
+        montant_restant: 0,
+        frais: 2000,
+        taxe: 2082,
+        fga: 322,
+        prime_ttc: 17276,
+        net_a_verser: puissance >= 8 ? 16000 : 14100
+    };
+}
+
 function getMissingSchemaCacheColumn(error) {
     if (!error || error.code !== 'PGRST204') {
         return null;
@@ -130,8 +148,17 @@ function buildContractPayload(contrat = {}, ids = {}, existing = {}) {
     if (contrat.montant !== undefined) payload.montant = Number(contrat.montant) || 0;
     if (contrat.montant_paye !== undefined || ids.isCreate) payload.montant_paye = Number(contrat.montant_paye) || 0;
     if (contrat.montant_restant !== undefined || ids.isCreate) payload.montant_restant = Number(contrat.montant_restant) || 0;
+    if (contrat.numero_attestation !== undefined) payload.numero_attestation = cleanNullableText(contrat.numero_attestation);
+    if (contrat.frais !== undefined) payload.frais = cleanNullableNumber(contrat.frais);
+    if (contrat.taxe !== undefined) payload.taxe = cleanNullableNumber(contrat.taxe);
+    if (contrat.fga !== undefined) payload.fga = cleanNullableNumber(contrat.fga);
+    if (contrat.prime_ttc !== undefined) payload.prime_ttc = cleanNullableNumber(contrat.prime_ttc);
+    if (contrat.net_a_verser !== undefined) payload.net_a_verser = cleanNullableNumber(contrat.net_a_verser);
     if (dateFin) payload.statut = computeContractStatus(dateFin);
     if (contrat.categorie_vehicule !== undefined || ids.isCreate) payload.categorie_vehicule = cleanText(contrat.categorie_vehicule, 'VP/CI');
+    if (payload.categorie_vehicule === 'TPV' || existing.categorie_vehicule === 'TPV') {
+        Object.assign(payload, getTaxiContractValues(contrat.puissance_fiscale));
+    }
 
     return payload;
 }

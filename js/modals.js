@@ -82,6 +82,7 @@ function openAddClientModal() {
     currentClientVehicles = [];
     document.getElementById('clientModalTitle').textContent = 'Ajouter un client avec contrat';
     document.getElementById('clientForm').reset();
+    toggleTpvContractFields();
     document.getElementById('clientId').value = '';
     const selectionGroup = document.getElementById('vehiculeSelectionGroup');
     if (selectionGroup) selectionGroup.style.display = 'none';
@@ -187,6 +188,8 @@ function openEditClientModal(clientId) {
                 if (categorieSelect) {
                     categorieSelect.value = contrat.categorie_vehicule || 'VP/CI';
                 }
+                toggleTpvContractFields();
+                document.getElementById('contractNumeroAttestation').value = contrat.numero_attestation || '';
             }
             
             document.getElementById('clientModal').classList.add('show');
@@ -205,10 +208,40 @@ function fillClientVehicleFields(vehicule) {
     document.getElementById('vehiculeImmatriculation').value = vehicule?.immatriculation || '';
     document.getElementById('vehiculeMarque').value = vehicule?.marque?.startsWith('Non renseign') ? '' : (vehicule?.marque || '');
     document.getElementById('vehiculeModele').value = vehicule?.modele?.startsWith('Non renseign') ? '' : (vehicule?.modele || '');
+    document.getElementById('contractPuissanceFiscale').value = vehicule?.puissance ?? '';
 }
 
 function selectClientVehicle(vehicleId) {
     fillClientVehicleFields(currentClientVehicles.find(v => String(v.id) === String(vehicleId)) || null);
+}
+
+function toggleTpvContractFields() {
+    const isTpv = document.getElementById('categorieVehicule')?.value === 'TPV';
+    const container = document.getElementById('tpvContractFields');
+    if (container) container.style.display = isTpv ? 'block' : 'none';
+    [
+        'contractNumeroAttestation',
+        'contractPuissanceFiscale'
+    ].forEach(id => {
+        const input = document.getElementById(id);
+        if (input) input.required = isTpv;
+    });
+    ['contractPrimeNette', 'contractMontantPaye', 'contractMontantRestant'].forEach(id => {
+        const input = document.getElementById(id);
+        if (input) input.readOnly = isTpv;
+    });
+    if (isTpv) updateTpvPrices();
+}
+
+function updateTpvPrices() {
+    if (document.getElementById('categorieVehicule')?.value !== 'TPV') return;
+    const puissance = parseInt(document.getElementById('contractPuissanceFiscale').value, 10);
+    const prix = Number.isInteger(puissance) && puissance >= 5
+        ? (puissance >= 8 ? 16000 : 14100)
+        : '';
+    document.getElementById('contractPrimeNette').value = puissance >= 5 ? 12872 : '';
+    document.getElementById('contractMontantPaye').value = prix;
+    document.getElementById('contractMontantRestant').value = puissance >= 5 ? 0 : '';
 }
 
 // Fonction supprimée - le montant restant est maintenant saisi manuellement
@@ -246,6 +279,8 @@ async function saveClient(event) {
     const primeNette = parseFloat(primeNetteValue);
     const montantPaye = parseFloat(document.getElementById('contractMontantPaye').value) || 0;
     const montantRestant = parseFloat(document.getElementById('contractMontantRestant').value) || 0;
+    const numeroAttestation = document.getElementById('contractNumeroAttestation').value.trim();
+    const puissanceFiscale = parseInt(document.getElementById('contractPuissanceFiscale').value, 10);
     
     const isEditing = Boolean(currentEditingClientId);
 
@@ -257,6 +292,14 @@ async function saveClient(event) {
 
     if (!isEditing && (!numeroPolice || !immatriculation || !categorieVehicule || !dateEffet || !dateEcheance || !primeNette || primeNette <= 0)) {
         (typeof window.showToast === 'function' ? window.showToast : console.log)('Veuillez remplir tous les champs obligatoires', 'error');
+        return;
+    }
+
+    if (
+        categorieVehicule === 'TPV' &&
+        (!numeroAttestation || !Number.isInteger(puissanceFiscale) || puissanceFiscale < 5)
+    ) {
+        (typeof window.showToast === 'function' ? window.showToast : console.log)('Veuillez renseigner toutes les données du bordereau taxi', 'error');
         return;
     }
     
@@ -289,7 +332,8 @@ async function saveClient(event) {
             is_new: isEditing && selectedVehicleId === 'new',
             immatriculation: immatriculation,
             marque: marque,
-            modele: modele
+            modele: modele,
+            puissance: categorieVehicule === 'TPV' ? puissanceFiscale : undefined
         },
         contrat: {
             numero_police: numeroPolice,
@@ -299,7 +343,9 @@ async function saveClient(event) {
             montant: primeNette,
             montant_paye: montantPaye,
             montant_restant: montantRestant,
-            categorie_vehicule: categorieVehicule
+            categorie_vehicule: categorieVehicule,
+            numero_attestation: categorieVehicule === 'TPV' ? numeroAttestation : null,
+            puissance_fiscale: categorieVehicule === 'TPV' ? puissanceFiscale : null
         }
     };
 

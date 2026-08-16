@@ -6,6 +6,12 @@ const db = require('../database/connection');
 const moment = require('moment');
 const { recordPaymentMovement, toMoney } = require('../services/paymentLedger');
 
+// Insurance coverage is inclusive: a contract starting on the 16th for one
+// month ends on the 15th of the following month at 23:59:59, not on the 16th.
+function inclusiveExpiryDate(startDate, durationMonths) {
+    return moment(startDate).startOf('day').add(durationMonths, 'months').subtract(1, 'day');
+}
+
 // Obtenir tous les contrats de l'entreprise
 const getAllContracts = async (req, res) => {
     try {
@@ -224,7 +230,7 @@ const createContract = async (req, res) => {
         
         // Calculer la date de fin
         const dateDebut = moment(date_debut);
-        const dateFin = dateDebut.clone().add(duree_mois, 'months');
+        const dateFin = inclusiveExpiryDate(dateDebut, duree_mois);
         
         // Déterminer le statut du contrat en fonction de la date d'échéance
         const today = moment().startOf('day');
@@ -254,6 +260,12 @@ const createContract = async (req, res) => {
                 montant,
                 montant_paye: montantPaye,
                 montant_restant: montantRestant,
+                numero_attestation: req.body.numero_attestation || null,
+                frais: req.body.frais ?? null,
+                taxe: req.body.taxe ?? null,
+                fga: req.body.fga ?? null,
+                prime_ttc: req.body.prime_ttc ?? null,
+                net_a_verser: req.body.net_a_verser ?? null,
                 statut: statut,
                 categorie_vehicule: req.body.categorie_vehicule || 'VP/CI'
             })
@@ -335,7 +347,7 @@ const renewContract = async (req, res) => {
         
         // Calculer les nouvelles dates
         const dateDebut = moment(ancienContrat.date_fin).add(1, 'day');
-        const dateFin = dateDebut.clone().add(duree_mois || ancienContrat.duree_mois, 'months');
+        const dateFin = inclusiveExpiryDate(dateDebut, duree_mois || ancienContrat.duree_mois);
         
         // Créer le nouveau contrat
         const numeroContrat = `CONT-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
@@ -355,6 +367,12 @@ const renewContract = async (req, res) => {
                 montant_paye: 0,
                 montant_restant: montant || ancienContrat.montant,
                 categorie_vehicule: ancienContrat.categorie_vehicule || 'VP/CI',
+                numero_attestation: req.body.numero_attestation ?? ancienContrat.numero_attestation,
+                frais: req.body.frais ?? ancienContrat.frais,
+                taxe: req.body.taxe ?? ancienContrat.taxe,
+                fga: req.body.fga ?? ancienContrat.fga,
+                prime_ttc: req.body.prime_ttc ?? ancienContrat.prime_ttc,
+                net_a_verser: req.body.net_a_verser ?? ancienContrat.net_a_verser,
                 statut: 'actif'
             })
             .select(`
@@ -397,7 +415,20 @@ const renewContract = async (req, res) => {
 const updateContract = async (req, res) => {
     try {
         const { id } = req.params;
-        const { type_contrat, duree_mois, date_debut, montant, statut } = req.body;
+        const {
+            type_contrat,
+            duree_mois,
+            date_debut,
+            date_fin,
+            montant,
+            statut,
+            numero_attestation,
+            frais,
+            taxe,
+            fga,
+            prime_ttc,
+            net_a_verser
+        } = req.body;
         
         // Vérifier que le contrat appartient à l'entreprise
         const { data: existing } = await db.supabase
@@ -413,12 +444,14 @@ const updateContract = async (req, res) => {
         
         // Recalculer la date de fin si nécessaire
         let dateFin = existing.date_fin;
-        if (date_debut && duree_mois) {
-            dateFin = moment(date_debut).add(duree_mois, 'months').format('YYYY-MM-DD');
+        if (date_fin) {
+            dateFin = moment(date_fin).format('YYYY-MM-DD');
+        } else if (date_debut && duree_mois) {
+            dateFin = inclusiveExpiryDate(date_debut, duree_mois).format('YYYY-MM-DD');
         } else if (date_debut && !duree_mois) {
-            dateFin = moment(date_debut).add(existing.duree_mois, 'months').format('YYYY-MM-DD');
+            dateFin = inclusiveExpiryDate(date_debut, existing.duree_mois).format('YYYY-MM-DD');
         } else if (!date_debut && duree_mois) {
-            dateFin = moment(existing.date_debut).add(duree_mois, 'months').format('YYYY-MM-DD');
+            dateFin = inclusiveExpiryDate(existing.date_debut, duree_mois).format('YYYY-MM-DD');
         }
         
         // Préparer les données de mise à jour
@@ -428,6 +461,12 @@ const updateContract = async (req, res) => {
         if (date_debut) updateData.date_debut = date_debut;
         if (montant) updateData.montant = montant;
         if (statut) updateData.statut = statut;
+        if (numero_attestation !== undefined) updateData.numero_attestation = numero_attestation || null;
+        if (frais !== undefined) updateData.frais = frais;
+        if (taxe !== undefined) updateData.taxe = taxe;
+        if (fga !== undefined) updateData.fga = fga;
+        if (prime_ttc !== undefined) updateData.prime_ttc = prime_ttc;
+        if (net_a_verser !== undefined) updateData.net_a_verser = net_a_verser;
         updateData.date_fin = dateFin;
         
         // Mettre à jour avec Supabase

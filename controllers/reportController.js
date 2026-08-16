@@ -422,6 +422,64 @@ const getSummary = async (req, res) => {
     }
 };
 
+const getTpvBordereau = async (req, res) => {
+    try {
+        const { dateDebut, dateFin } = req.query;
+        if (!dateDebut || !dateFin) {
+            return res.status(400).json({ error: 'dateDebut et dateFin sont requis' });
+        }
+
+        const { data, error } = await db.supabase
+            .from('contrats')
+            .select(`
+                numero_contrat,
+                numero_attestation,
+                date_debut,
+                date_fin,
+                montant,
+                frais,
+                taxe,
+                fga,
+                prime_ttc,
+                net_a_verser,
+                statut,
+                clients (nom, prenom, telephone),
+                vehicules (immatriculation)
+            `)
+            .eq('entreprise_id', req.entrepriseId)
+            .eq('categorie_vehicule', 'TPV')
+            .gte('date_debut', dateDebut)
+            .lte('date_debut', dateFin)
+            .order('date_debut', { ascending: true });
+
+        if (error) throw error;
+        const records = (data || []).map(contract => ({
+            policyNumber: contract.numero_contrat,
+            attestationNumber: contract.numero_attestation,
+            customerName: [contract.clients?.prenom, contract.clients?.nom]
+                .filter(Boolean)
+                .join(' ')
+                .trim(),
+            customerPhone: contract.clients?.telephone,
+            matricule: contract.vehicules?.immatriculation,
+            effectiveDate: contract.date_debut,
+            expiryDate: contract.date_fin,
+            primeNette: toMoney(contract.montant),
+            fees: toMoney(contract.frais),
+            taxes: toMoney(contract.taxe),
+            fga: toMoney(contract.fga),
+            primeTtc: toMoney(contract.prime_ttc),
+            netToPay: toMoney(contract.net_a_verser),
+            status: contract.statut
+        }));
+        return res.json({ records, total: records.length, dateDebut, dateFin });
+    } catch (error) {
+        console.error('Erreur lors de la recuperation du bordereau TPV', error);
+        return res.status(500).json({ error: 'Erreur lors de la recuperation du bordereau TPV' });
+    }
+};
+
 module.exports = {
-    getSummary
+    getSummary,
+    getTpvBordereau
 };

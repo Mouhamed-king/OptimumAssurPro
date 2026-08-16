@@ -800,10 +800,21 @@
                             <i class="fas fa-tags"></i>
                             Catégorie de véhicule *
                         </label>
-                        <select id="categorieVehicule" name="categorie_vehicule" required>
+                        <select id="categorieVehicule" name="categorie_vehicule" required onchange="toggleTpvContractFields()">
                             <option value="VP/CI">VP/CI (Véhicule Particulier/Camionnette)</option>
                             <option value="TPV">TPV (Transport Public de Voyageurs)</option>
                         </select>
+                    </div>
+
+                    <div id="tpvContractFields" style="display: none;">
+                        <div class="form-group">
+                            <label for="contractNumeroAttestation">ATTESTAT *</label>
+                            <input type="text" id="contractNumeroAttestation" name="numero_attestation" placeholder="Ex: 279593">
+                        </div>
+                        <div class="form-group">
+                            <label for="contractPuissanceFiscale">Puissance fiscale (CV) *</label>
+                            <input type="number" id="contractPuissanceFiscale" name="puissance_fiscale" min="5" step="1" placeholder="Ex: 7" oninput="updateTpvPrices()">
+                        </div>
                     </div>
                     
                     <div class="form-group">

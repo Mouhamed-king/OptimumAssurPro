@@ -11,6 +11,7 @@ router.use(authenticateToken);
 
 // Obtenir le résumé des rapports
 router.get('/summary', reportController.getSummary);
+router.get('/tpv-bordereau', reportController.getTpvBordereau);
 
 module.exports = router;
 

@@ -88,9 +88,10 @@ function buildClientPayload({ nom, prenom, telephone }, isCreate = false) {
 
     if (isCreate || nom !== undefined) payload.nom = cleanText(nom);
     if (isCreate || prenom !== undefined) payload.prenom = cleanText(prenom, '');
-    // A client may be registered before a phone number is known.  Keep this
-    // value empty in the database instead of manufacturing a placeholder.
-    if (isCreate || telephone !== undefined) payload.telephone = cleanNullableText(telephone);
+    // A client may be registered before a phone number is known.  The current
+    // database requires a value, so use its explicit missing-data marker —
+    // never a fabricated telephone number.
+    if (isCreate || telephone !== undefined) payload.telephone = cleanText(telephone);
 
     return payload;
 }

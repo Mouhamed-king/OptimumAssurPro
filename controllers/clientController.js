@@ -219,6 +219,43 @@ function getLatestTrackedVehicle(vehicules = []) {
     , vehicules[0]);
 }
 
+function dateTimestamp(value) {
+    if (!value) return null;
+    const timestamp = new Date(value).getTime();
+    return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+// AAS tracking is useful commercial context, but its historical cache must
+// never hide a later commercial contract. Prefer it only when it records a
+// strictly later expiry and was verified no earlier than that contract.
+function currentExpiryForClient(latestContract, latestTrackedVehicle) {
+    const contractExpiry = latestContract?.date_fin || null;
+    const trackedExpiry = latestTrackedVehicle?.aas_date_echeance || null;
+    if (!trackedExpiry) {
+        return { date: contractExpiry, source: contractExpiry ? 'Contrat Optimum' : null };
+    }
+    if (!contractExpiry) {
+        return { date: trackedExpiry, source: 'AAS/Diotali' };
+    }
+
+    const trackedExpiryTime = dateTimestamp(trackedExpiry);
+    const contractExpiryTime = dateTimestamp(contractExpiry);
+    const trackingVerifiedTime = dateTimestamp(latestTrackedVehicle?.aas_derniere_verification);
+    const contractUpdatedTime = dateTimestamp(
+        latestContract?.updated_at || latestContract?.created_at || latestContract?.date_debut
+    );
+    const trackingIsNewer =
+        trackedExpiryTime !== null &&
+        contractExpiryTime !== null &&
+        trackedExpiryTime > contractExpiryTime &&
+        trackingVerifiedTime !== null &&
+        (contractUpdatedTime === null || trackingVerifiedTime >= contractUpdatedTime);
+
+    return trackingIsNewer
+        ? { date: trackedExpiry, source: 'AAS/Diotali' }
+        : { date: contractExpiry, source: 'Contrat Optimum' };
+}
+
 // Obtenir tous les clients de l'entreprise
 const getAllClients = async (req, res) => {
     try {
@@ -261,7 +298,6 @@ const getAllClients = async (req, res) => {
             const latestContractDate = latestContract?.date_fin ? new Date(latestContract.date_fin) : null;
             const trackedVehicles = getTrackedVehiclesForCategory(client, categorie);
             const latestTrackedVehicle = getLatestTrackedVehicle(trackedVehicles);
-            const trackedExpiryDate = latestTrackedVehicle?.aas_date_echeance || null;
 
             if (latestContractDate) {
                 latestContractDate.setHours(0, 0, 0, 0);
@@ -281,14 +317,14 @@ const getAllClients = async (req, res) => {
 
             const clientStatut = hasActiveAttestation || hasActiveTrackedInsurance ? 'actif' : 'inactif';
             const vehiculePrincipal = vehicules[0] || {};
-            const currentExpiry = trackedExpiryDate || latestContract?.date_fin || null;
+            const currentCoverage = currentExpiryForClient(latestContract, latestTrackedVehicle);
 
             return {
                 ...client,
                 nombre_contrats,
                 dernier_contrat: latestContract ? latestContract.date_fin : null,
-                date_echeance_courante: currentExpiry,
-                source_echeance: trackedExpiryDate ? 'AAS/Diotali' : (latestContract ? 'Contrat Optimum' : null),
+                date_echeance_courante: currentCoverage.date,
+                source_echeance: currentCoverage.source,
                 statut_commercial: latestTrackedVehicle?.aas_statut_commercial || null,
                 derniere_verification_aas: latestTrackedVehicle?.aas_derniere_verification || null,
                 client_statut: clientStatut,
